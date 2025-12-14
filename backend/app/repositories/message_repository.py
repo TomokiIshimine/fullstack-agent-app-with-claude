@@ -26,12 +26,7 @@ class MessageRepository:
         Returns:
             Sequence of Message instances
         """
-        return (
-            self.session.query(Message)
-            .filter(Message.conversation_id == conversation_id)
-            .order_by(Message.created_at.asc())
-            .all()
-        )
+        return self.session.query(Message).filter(Message.conversation_id == conversation_id).order_by(Message.created_at.asc()).all()
 
     def create(
         self,
@@ -69,11 +64,7 @@ class MessageRepository:
         Returns:
             Number of messages
         """
-        return (
-            self.session.query(Message)
-            .filter(Message.conversation_id == conversation_id)
-            .count()
-        )
+        return self.session.query(Message).filter(Message.conversation_id == conversation_id).count()
 
 
 __all__ = ["MessageRepository"]

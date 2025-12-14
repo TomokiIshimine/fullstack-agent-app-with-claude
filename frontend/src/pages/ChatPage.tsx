@@ -75,7 +75,7 @@ export function ChatPage() {
 
   // Reload conversations when a new one is created
   useEffect(() => {
-    if (uuid && conversations.length > 0 && !conversations.find((c) => c.uuid === uuid)) {
+    if (uuid && conversations.length > 0 && !conversations.find(c => c.uuid === uuid)) {
       void loadConversations()
     }
   }, [uuid, conversations, loadConversations])
@@ -121,7 +121,7 @@ export function ChatPage() {
             </svg>
           </button>
           <h1 className="chat-main__title">
-            {uuid ? (conversation?.title || '読み込み中...') : '新しいチャット'}
+            {uuid ? conversation?.title || '読み込み中...' : '新しいチャット'}
           </h1>
         </header>
 
@@ -145,9 +145,7 @@ export function ChatPage() {
             </div>
           )
         ) : (
-          <div className="chat-main__empty">
-            メッセージを入力して新しい会話を始めましょう
-          </div>
+          <div className="chat-main__empty">メッセージを入力して新しい会話を始めましょう</div>
         )}
 
         <ChatInput onSend={handleSendMessage} disabled={isInputDisabled} />

@@ -29,11 +29,7 @@ class ConversationRepository:
         Returns:
             Conversation if found, None otherwise
         """
-        return (
-            self.session.query(Conversation)
-            .filter(Conversation.uuid == uuid)
-            .first()
-        )
+        return self.session.query(Conversation).filter(Conversation.uuid == uuid).first()
 
     def find_by_uuid_with_messages(self, uuid: str) -> Conversation | None:
         """
@@ -45,12 +41,7 @@ class ConversationRepository:
         Returns:
             Conversation with messages if found, None otherwise
         """
-        return (
-            self.session.query(Conversation)
-            .options(joinedload(Conversation.messages))
-            .filter(Conversation.uuid == uuid)
-            .first()
-        )
+        return self.session.query(Conversation).options(joinedload(Conversation.messages)).filter(Conversation.uuid == uuid).first()
 
     def find_by_user_id(
         self,
@@ -69,11 +60,7 @@ class ConversationRepository:
         Returns:
             Tuple of (conversations list, total count)
         """
-        query = (
-            self.session.query(Conversation)
-            .filter(Conversation.user_id == user_id)
-            .order_by(Conversation.updated_at.desc())
-        )
+        query = self.session.query(Conversation).filter(Conversation.user_id == user_id).order_by(Conversation.updated_at.desc())
 
         total = query.count()
         offset = (page - 1) * per_page
@@ -111,9 +98,7 @@ class ConversationRepository:
         query = (
             self.session.query(
                 Conversation,
-                func.coalesce(message_count_subquery.c.message_count, 0).label(
-                    "message_count"
-                ),
+                func.coalesce(message_count_subquery.c.message_count, 0).label("message_count"),
             )
             .outerjoin(
                 message_count_subquery,
@@ -124,18 +109,12 @@ class ConversationRepository:
         )
 
         # Get total count
-        total = (
-            self.session.query(Conversation)
-            .filter(Conversation.user_id == user_id)
-            .count()
-        )
+        total = self.session.query(Conversation).filter(Conversation.user_id == user_id).count()
 
         offset = (page - 1) * per_page
         results = query.offset(offset).limit(per_page).all()
 
-        conversations_with_count = [
-            {"conversation": conv, "message_count": count} for conv, count in results
-        ]
+        conversations_with_count = [{"conversation": conv, "message_count": count} for conv, count in results]
 
         return conversations_with_count, total
 

@@ -108,14 +108,14 @@ export function ChatSidebar({
           ) : conversations.length === 0 ? (
             <div className="chat-sidebar__empty">会話履歴がありません</div>
           ) : (
-            conversations.map((conv) => (
+            conversations.map(conv => (
               <div
                 key={conv.uuid}
                 className={`chat-sidebar__item ${conv.uuid === currentUuid ? 'chat-sidebar__item--active' : ''}`}
                 onClick={() => onSelectConversation(conv.uuid)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => {
+                onKeyDown={e => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     onSelectConversation(conv.uuid)
                   }

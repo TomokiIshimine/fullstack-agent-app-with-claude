@@ -24,7 +24,7 @@ export function MessageList({
 
   return (
     <div className="message-list">
-      {messages.map((message) => (
+      {messages.map(message => (
         <MessageItem key={message.id} message={message} userName={userName} />
       ))}
       {isStreaming && <StreamingMessage content={streamingContent} />}

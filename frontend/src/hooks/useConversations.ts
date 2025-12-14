@@ -5,11 +5,7 @@ import {
   fetchConversations,
 } from '@/lib/api/conversations'
 import { useErrorHandler } from './useErrorHandler'
-import type {
-  ConversationWithCount,
-  CreateConversationRequest,
-  PaginationMeta,
-} from '@/types/chat'
+import type { ConversationWithCount, CreateConversationRequest, PaginationMeta } from '@/types/chat'
 import { toConversationWithCount } from '@/types/chat'
 import { logger } from '@/lib/logger'
 
@@ -67,7 +63,7 @@ export function useConversations(options: UseConversationsOptions = {}) {
         await deleteConversationApi(uuid)
         logger.info('Conversation deleted', { uuid })
         // Remove from local state
-        setConversations((prev) => prev.filter((c) => c.uuid !== uuid))
+        setConversations(prev => prev.filter(c => c.uuid !== uuid))
       } catch (err) {
         handleError(err, 'Failed to delete conversation')
         throw err

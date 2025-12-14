@@ -358,16 +358,20 @@ class ConversationService:
 
         # Add existing messages
         for msg in existing_messages:
-            messages.append({
-                "role": msg.role,
-                "content": msg.content,
-            })
+            messages.append(
+                {
+                    "role": msg.role,
+                    "content": msg.content,
+                }
+            )
 
         # Add new user message
-        messages.append({
-            "role": "user",
-            "content": new_content,
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": new_content,
+            }
+        )
 
         return messages
 

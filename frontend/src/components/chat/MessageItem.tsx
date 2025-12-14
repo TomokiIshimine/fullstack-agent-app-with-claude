@@ -7,7 +7,7 @@ interface MessageItemProps {
 
 export function MessageItem({ message, userName }: MessageItemProps) {
   const isUser = message.role === 'user'
-  const avatarText = isUser ? (userName?.[0]?.toUpperCase() || 'U') : 'AI'
+  const avatarText = isUser ? userName?.[0]?.toUpperCase() || 'U' : 'AI'
 
   return (
     <div className={`message-item message-item--${message.role}`}>

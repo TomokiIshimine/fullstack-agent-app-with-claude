@@ -48,7 +48,7 @@ export function useChat(options: UseChatOptions) {
         content,
         createdAt: new Date(),
       }
-      setMessages((prev) => [...prev, tempUserMessage])
+      setMessages(prev => [...prev, tempUserMessage])
 
       setIsStreaming(true)
       setStreamingContent('')
@@ -62,18 +62,16 @@ export function useChat(options: UseChatOptions) {
         let assistantMessageId = 0
 
         await sendMessageStreaming(uuid, request, {
-          onStart: (userMessageId) => {
+          onStart: userMessageId => {
             // Update the temp user message with real ID
             realUserMessageId = userMessageId
             userMessagePersisted = true
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === tempUserMessage.id ? { ...m, id: userMessageId } : m
-              )
+            setMessages(prev =>
+              prev.map(m => (m.id === tempUserMessage.id ? { ...m, id: userMessageId } : m))
             )
             logger.debug('Streaming started', { userMessageId })
           },
-          onDelta: (delta) => {
+          onDelta: delta => {
             finalContent += delta
             setStreamingContent(finalContent)
           },
@@ -99,18 +97,21 @@ export function useChat(options: UseChatOptions) {
           content: finalContent,
           createdAt: new Date(),
         }
-        setMessages((prev) => [...prev, assistantMessage])
+        setMessages(prev => [...prev, assistantMessage])
         setStreamingContent('')
 
         logger.info('Message sent successfully', { uuid })
       } catch (err) {
         if (userMessagePersisted) {
           // Message was saved on server - reload conversation to sync state
-          logger.warn('Error after message persisted, reloading conversation', { uuid, realUserMessageId })
+          logger.warn('Error after message persisted, reloading conversation', {
+            uuid,
+            realUserMessageId,
+          })
           void loadConversation()
         } else {
           // Message was not saved - safe to remove optimistic message
-          setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id))
+          setMessages(prev => prev.filter(m => m.id !== tempUserMessage.id))
         }
         handleError(err, 'Failed to send message')
         throw err
