@@ -1,8 +1,8 @@
 # AIチャットアプリ設計書
 
 **作成日:** 2025-12-14
-**バージョン:** 1.0
-**ステータス:** ドラフト
+**バージョン:** 1.1
+**ステータス:** 確定
 
 ---
 
@@ -246,7 +246,6 @@ class Message(Base):
 | GET | /api/conversations/{uuid} | 会話詳細取得 | 必須 |
 | DELETE | /api/conversations/{uuid} | 会話削除 | 必須 |
 | POST | /api/conversations/{uuid}/messages | メッセージ送信 | 必須 |
-| PATCH | /api/conversations/{uuid} | 会話タイトル更新 | 必須 |
 
 ### 4.2 API詳細
 
@@ -402,27 +401,6 @@ data: {"message_id": 3, "content": "Pythonの非同期処理では...（完全�
 }
 ```
 
-#### 会話タイトル更新 (PATCH /api/conversations/{uuid})
-
-**リクエスト:**
-```json
-{
-  "title": "Python asyncio チュートリアル"
-}
-```
-
-**レスポンス (200 OK):**
-```json
-{
-  "conversation": {
-    "uuid": "550e8400-e29b-41d4-a716-446655440000",
-    "title": "Python asyncio チュートリアル",
-    "created_at": "2025-12-14T10:00:00Z",
-    "updated_at": "2025-12-14T12:35:00Z"
-  }
-}
-```
-
 ### 4.3 認可ルール
 
 すべての会話APIエンドポイントで以下の認可チェックを実施:
@@ -450,22 +428,34 @@ def get_conversation(uuid: str):
 ### 5.1 使用するAIサービス
 
 **Claude API (Anthropic)**
-- モデル: `claude-sonnet-4-20250514` (推奨) または設定で変更可能
+- モデル: `claude-sonnet-4-5-20250514` (Claude Sonnet 4.5)
 - API: Messages API v1
 - 認証: API Key (環境変数 `ANTHROPIC_API_KEY`)
 
-### 5.2 AIService 設計
+### 5.2 システムプロンプト
+
+```python
+SYSTEM_PROMPT = """You are a helpful AI assistant. Please respond in the same language as the user."""
+```
+
+シンプルなシステムプロンプトをコード上で定義。ユーザーの言語に合わせて応答する。
+
+### 5.3 AIService 設計
 
 ```python
 # backend/app/services/ai_service.py
 from anthropic import Anthropic
 from typing import Generator
+import os
+
+SYSTEM_PROMPT = """You are a helpful AI assistant. Please respond in the same language as the user."""
 
 class AIService:
     def __init__(self):
         self.client = Anthropic()
-        self.model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+        self.model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250514")
         self.max_tokens = int(os.getenv("CLAUDE_MAX_TOKENS", "4096"))
+        self.system_prompt = SYSTEM_PROMPT
 
     def generate_response(
         self,
@@ -492,6 +482,7 @@ class AIService:
         with self.client.messages.stream(
             model=self.model,
             max_tokens=self.max_tokens,
+            system=self.system_prompt,
             messages=messages
         ) as stream:
             for text in stream.text_stream:
@@ -501,12 +492,13 @@ class AIService:
         response = self.client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
+            system=self.system_prompt,
             messages=messages
         )
         return response.content[0].text
 ```
 
-### 5.3 ストリーミング実装
+### 5.4 ストリーミング実装
 
 **Server-Sent Events (SSE) によるストリーミング:**
 
@@ -546,17 +538,16 @@ def send_message(uuid: str):
     )
 ```
 
-### 5.4 環境変数
+### 5.5 環境変数
 
 ```env
 # AI Service Configuration
 ANTHROPIC_API_KEY=sk-ant-xxxxx
-CLAUDE_MODEL=claude-sonnet-4-20250514
+CLAUDE_MODEL=claude-sonnet-4-5-20250514
 CLAUDE_MAX_TOKENS=4096
-
-# Optional: System Prompt
-CLAUDE_SYSTEM_PROMPT="You are a helpful AI assistant."
 ```
+
+**注記:** システムプロンプトはコード上で定義されるため、環境変数での設定は不要。
 
 ---
 
@@ -779,31 +770,32 @@ def send_message(uuid: str):
 
 ---
 
-## 9. 確認事項
+## 9. 決定事項
 
-設計を進める前に、以下の点について確認が必要です：
+以下の設計方針が確定しました：
 
 ### 9.1 AI設定
 
-1. **使用するAIモデル**: Claude sonnet 4 で問題ないか？他のモデル（opus、haiku）の選択肢は必要か？
-2. **システムプロンプト**: カスタムのシステムプロンプトは必要か？
-3. **トークン制限**: 最大トークン数の設定（デフォルト: 4096）
+| 項目 | 決定内容 |
+|------|----------|
+| AIモデル | Claude Sonnet 4.5 (`claude-sonnet-4-5-20250514`) |
+| システムプロンプト | コード上で定義：`"You are a helpful AI assistant. Please respond in the same language as the user."` |
+| 最大トークン数 | 4096（デフォルト） |
 
 ### 9.2 機能要件
 
-4. **会話のタイトル**: 自動生成 or ユーザー入力？
-5. **メッセージの編集・削除**: 送信済みメッセージの編集・削除機能は必要か？
-6. **会話の検索**: 過去の会話をキーワードで検索する機能は必要か？
+| 項目 | 決定内容 |
+|------|----------|
+| 会話タイトル | 最初のメッセージから自動生成（ユーザー編集不可） |
+| メッセージ編集・削除 | 不要（イミュータブル） |
+| 会話検索 | 初期リリースでは対象外 |
 
 ### 9.3 UI/UX
 
-7. **レイアウト**: サイドバー型（上記設計） or リスト→詳細遷移型？
-8. **モバイル対応**: レスポンシブデザインの優先度
-
-### 9.4 運用
-
-9. **会話の保持期間**: 無期限 or 一定期間後に削除？
-10. **利用制限**: 1ユーザーあたりの会話数・メッセージ数の制限は必要か？
+| 項目 | 決定内容 |
+|------|----------|
+| レイアウト | サイドバー型（ChatGPTスタイル） |
+| モバイル対応 | レスポンシブ対応（サイドバーは折りたたみ） |
 
 ---
 
