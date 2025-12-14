@@ -1,0 +1,74 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+.env.*
+!.env*.example
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.cache/
+
+# Build artifacts
+dist/
+build/
+coverage/
+.tmp/
+htmlcov/
+.coverage
+coverage.xml
+
+# Docker
+.docker/
+Dockerfile.local
+*.tar
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+.pnpm-store/
+.poetry/
+.python-version
+
+.playwright-mcp/
+
+# Terraform
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfvars
+infra/terraform/*.tfvars.json
+infra/terraform/crash.log
+infra/terraform/crash.*.log
+infra/terraform/override.tf
+infra/terraform/override.tf.json
+infra/terraform/*_override.tf
+infra/terraform/*_override.tf.json
+
+.claude/settings.local.json
+
+review_results/
