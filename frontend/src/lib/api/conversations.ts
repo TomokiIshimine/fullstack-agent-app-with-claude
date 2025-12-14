@@ -111,7 +111,8 @@ export interface StreamCallbacks {
   onStart?: (userMessageId: number) => void
   onDelta?: (delta: string) => void
   onEnd?: (assistantMessageId: number, content: string) => void
-  onError?: (error: string) => void
+  /** Called on error. userMessageId is provided if message was persisted before error */
+  onError?: (error: string, userMessageId?: number) => void
 }
 
 /**
@@ -193,7 +194,8 @@ function handleStreamEvent(
       callbacks.onEnd?.(data.assistant_message_id as number, data.content as string)
       break
     case 'error':
-      callbacks.onError?.(data.error as string)
+      // user_message_id is included if the message was persisted before the error
+      callbacks.onError?.(data.error as string, data.user_message_id as number | undefined)
       break
   }
 }

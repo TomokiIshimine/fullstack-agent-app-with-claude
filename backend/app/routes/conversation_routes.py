@@ -240,6 +240,7 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
         - event: message_start, data: {"user_message_id": 1}
         - event: content_delta, data: {"delta": "..."}
         - event: message_end, data: {"assistant_message_id": 2, "content": "..."}
+        - event: error, data: {"error": "...", "user_message_id": 1} (if AI fails after user message saved)
 
     Non-streaming response:
         {
@@ -253,8 +254,18 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
     logger.info(f"POST /api/conversations/{uuid}/messages - Sending message for user_id={user_id}, stream={stream}")
 
     if stream:
+        # Validate conversation access BEFORE starting stream
+        # This allows proper HTTP error codes (404/403) to be returned
+        try:
+            conversation_service.validate_conversation_access(uuid=uuid, user_id=user_id)
+        except ValueError as exc:
+            raise NotFound(description=str(exc)) from exc
+        except PermissionError as exc:
+            raise Forbidden(description=str(exc)) from exc
+
         # Streaming response using SSE
         def generate():
+            user_message_id = None
             try:
                 for event_type, event_data in conversation_service.send_message_streaming(
                     uuid=uuid,
@@ -262,18 +273,19 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
                     content=data.content,
                 ):
                     if event_type == "start":
+                        user_message_id = event_data.get("user_message_id")
                         yield f"event: message_start\ndata: {json.dumps(event_data)}\n\n"
                     elif event_type == "delta":
                         yield f"event: content_delta\ndata: {json.dumps(event_data)}\n\n"
                     elif event_type == "end":
                         yield f"event: message_end\ndata: {json.dumps(event_data)}\n\n"
-            except ValueError as exc:
-                yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
-            except PermissionError as exc:
-                yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
-            except Exception:
+            except Exception as exc:
                 logger.error("Error during streaming", exc_info=True)
-                yield f"event: error\ndata: {json.dumps({'error': 'Internal server error'})}\n\n"
+                # Include user_message_id in error so client knows data was persisted
+                error_data = {"error": str(exc) if isinstance(exc, (ValueError, PermissionError)) else "Internal server error"}
+                if user_message_id is not None:
+                    error_data["user_message_id"] = user_message_id
+                yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
 
         return Response(
             stream_with_context(generate()),

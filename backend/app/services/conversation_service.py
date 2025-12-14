@@ -183,6 +183,30 @@ class ConversationService:
         self.conversation_repo.delete(conversation)
         logger.info(f"Deleted conversation {uuid}")
 
+    def validate_conversation_access(
+        self,
+        uuid: str,
+        user_id: int,
+    ) -> None:
+        """
+        Validate that a conversation exists and user has access.
+
+        Args:
+            uuid: Conversation UUID
+            user_id: User ID
+
+        Raises:
+            ValueError: If conversation not found
+            PermissionError: If user doesn't own the conversation
+        """
+        conversation = self.conversation_repo.find_by_uuid(uuid)
+
+        if not conversation:
+            raise ValueError("Conversation not found")
+
+        if conversation.user_id != user_id:
+            raise PermissionError("Access denied")
+
     def send_message(
         self,
         uuid: str,

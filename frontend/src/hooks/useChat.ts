@@ -54,6 +54,9 @@ export function useChat(options: UseChatOptions) {
       setStreamingContent('')
       clearError()
 
+      let userMessagePersisted = false
+      let realUserMessageId: number | undefined
+
       try {
         let finalContent = ''
         let assistantMessageId = 0
@@ -61,6 +64,8 @@ export function useChat(options: UseChatOptions) {
         await sendMessageStreaming(uuid, request, {
           onStart: (userMessageId) => {
             // Update the temp user message with real ID
+            realUserMessageId = userMessageId
+            userMessagePersisted = true
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === tempUserMessage.id ? { ...m, id: userMessageId } : m
@@ -77,7 +82,12 @@ export function useChat(options: UseChatOptions) {
             finalContent = content
             logger.debug('Streaming ended', { assistantMessageId })
           },
-          onError: (errorMsg) => {
+          onError: (errorMsg, persistedUserMessageId) => {
+            // If user message was persisted (indicated by presence of ID), mark it
+            if (persistedUserMessageId !== undefined) {
+              userMessagePersisted = true
+              realUserMessageId = persistedUserMessageId
+            }
             throw new Error(errorMsg)
           },
         })
@@ -94,15 +104,22 @@ export function useChat(options: UseChatOptions) {
 
         logger.info('Message sent successfully', { uuid })
       } catch (err) {
-        // Remove optimistic message on error
-        setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id))
+        if (userMessagePersisted) {
+          // Message was saved on server - reload conversation to sync state
+          logger.warn('Error after message persisted, reloading conversation', { uuid, realUserMessageId })
+          void loadConversation()
+        } else {
+          // Message was not saved - safe to remove optimistic message
+          setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id))
+        }
         handleError(err, 'Failed to send message')
         throw err
       } finally {
         setIsStreaming(false)
+        setStreamingContent('')
       }
     },
-    [uuid, isStreaming, clearError, handleError]
+    [uuid, isStreaming, clearError, handleError, loadConversation]
   )
 
   useEffect(() => {
