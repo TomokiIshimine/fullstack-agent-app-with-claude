@@ -785,3 +785,171 @@ VITE_ENABLE_API_LOGGING=true
 ```
 
 **Note**: Vite only exposes variables prefixed with `VITE_` to the client-side code.
+
+## Feature Implementation Example: AI Chat
+
+The AI chat feature demonstrates real-time streaming responses and conversation management:
+
+### Files
+
+- **Page**: `src/pages/ChatPage.tsx` - Main chat page with sidebar and message area
+- **Components**:
+  - `src/components/chat/ChatSidebar.tsx` - Conversation list sidebar
+  - `src/components/chat/ChatInput.tsx` - Message input with auto-resize textarea
+  - `src/components/chat/MessageList.tsx` - Message display with auto-scroll
+  - `src/components/chat/MessageItem.tsx` - Individual message rendering
+  - `src/components/chat/StreamingMessage.tsx` - Streaming response with cursor animation
+- **Hooks**:
+  - `src/hooks/useChat.ts` - Single conversation state management and message streaming
+  - `src/hooks/useConversations.ts` - Conversation list management with CRUD operations
+- **API Client**: `src/lib/api/conversations.ts` - API calls and SSE handling
+- **Types**: `src/types/chat.ts` - TypeScript interfaces and DTOs
+- **Styles**: `src/styles/chat.css` - Chat-specific CSS
+
+### Component Organization
+
+```
+components/chat/
+├── ChatSidebar.tsx       # Conversation list with new chat button
+├── ChatInput.tsx         # Message input with Enter to send
+├── MessageList.tsx       # Messages container with auto-scroll
+├── MessageItem.tsx       # Single message (user/assistant)
+└── StreamingMessage.tsx  # AI response being streamed
+```
+
+### API Client Pattern
+
+```typescript
+// Non-streaming API call
+export async function sendMessage(uuid: string, data: SendMessageRequest): Promise<SendMessageResponse> {
+  const response = await fetch(`/api/conversations/${uuid}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Stream': 'false',
+    },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  })
+  return response.json()
+}
+
+// Streaming API call with SSE
+export async function sendMessageStreaming(
+  uuid: string,
+  data: SendMessageRequest,
+  callbacks: StreamCallbacks
+): Promise<void> {
+  const response = await fetch(`/api/conversations/${uuid}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  })
+
+  const reader = response.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    // Parse SSE events: "event: type\ndata: {...}\n\n"
+    const events = parseSSEEvents(buffer)
+    for (const event of events) {
+      switch (event.type) {
+        case 'message_start':
+          callbacks.onStart?.(event.data.user_message_id)
+          break
+        case 'content_delta':
+          callbacks.onDelta?.(event.data.delta)
+          break
+        case 'message_end':
+          callbacks.onEnd?.(event.data.assistant_message_id, event.data.content)
+          break
+      }
+    }
+  }
+}
+```
+
+### Streaming Message Component
+
+```typescript
+const StreamingMessage: React.FC<{ content: string }> = ({ content }) => {
+  return (
+    <div className="streaming-message">
+      <div className="streaming-message__avatar">AI</div>
+      <div className="streaming-message__content">
+        {content ? (
+          <>
+            {content}
+            <span className="streaming-message__cursor">|</span>
+          </>
+        ) : (
+          <div className="loading-dots">
+            <span className="loading-dots__dot" />
+            <span className="loading-dots__dot" />
+            <span className="loading-dots__dot" />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+### Chat Page State Management
+
+The actual implementation uses custom hooks for clean separation of concerns:
+
+```typescript
+import { useConversations } from '@/hooks/useConversations'
+import { useChat } from '@/hooks/useChat'
+
+const ChatPage: React.FC = () => {
+  const { uuid } = useParams()
+
+  // Manage conversation list
+  const { conversations, createConversation, loadConversations } = useConversations()
+
+  // Manage single conversation with streaming
+  const {
+    messages,
+    isStreaming,
+    streamingContent,
+    sendMessage,
+  } = useChat({ uuid: uuid || '', autoLoad: !!uuid })
+
+  const handleSendMessage = async (content: string) => {
+    if (uuid) {
+      // Existing conversation
+      await sendMessage(content)
+    } else {
+      // New conversation - create it first
+      const newUuid = await createConversation({ message: content })
+      navigate(`/chat/${newUuid}`, { replace: true })
+    }
+  }
+
+  return (
+    <div className="chat-layout">
+      <ChatSidebar conversations={conversations} currentUuid={uuid} />
+      <main className="chat-main">
+        <MessageList messages={messages} isStreaming={isStreaming} streamingContent={streamingContent} />
+        <ChatInput onSend={handleSendMessage} disabled={isStreaming} />
+      </main>
+    </div>
+  )
+}
+```
+
+### Key Features
+
+- **Real-time Streaming**: SSE-based streaming with delta updates
+- **Auto-scroll**: Automatic scroll to bottom on new messages
+- **Responsive Design**: Mobile-friendly sidebar with overlay
+- **Loading States**: Animated dots while waiting, cursor while streaming
+- **Keyboard Support**: Enter to send, Shift+Enter for newline

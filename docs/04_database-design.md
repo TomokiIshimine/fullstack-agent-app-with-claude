@@ -1,8 +1,8 @@
 # データベース設計書
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-11-23
-**バージョン:** 1.1
+**最終更新:** 2025-12-14
+**バージョン:** 1.2
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -29,6 +29,8 @@
 |-------------------|------------------------------|
 | users             | ユーザー情報管理              |
 | refresh_tokens    | JWT リフレッシュトークン管理  |
+| conversations     | AIチャット会話管理            |
+| messages          | チャットメッセージ管理        |
 | schema_migrations | データベースマイグレーション履歴 |
 
 ---
@@ -38,6 +40,8 @@
 ```mermaid
 erDiagram
     users ||--o{ refresh_tokens : "has"
+    users ||--o{ conversations : "has"
+    conversations ||--o{ messages : "has"
 
     users {
         BIGINT id PK "ユーザーID"
@@ -57,6 +61,23 @@ erDiagram
         TINYINT is_revoked "無効化フラグ"
         TIMESTAMP created_at "作成日時"
         TIMESTAMP updated_at "更新日時"
+    }
+
+    conversations {
+        BIGINT id PK "会話ID"
+        VARCHAR uuid UK "会話UUID"
+        BIGINT user_id FK "ユーザーID"
+        VARCHAR title "会話タイトル"
+        DATETIME created_at "作成日時"
+        DATETIME updated_at "更新日時"
+    }
+
+    messages {
+        BIGINT id PK "メッセージID"
+        BIGINT conversation_id FK "会話ID"
+        ENUM role "ロール(user/assistant)"
+        TEXT content "メッセージ本文"
+        DATETIME created_at "作成日時"
     }
 ```
 
@@ -118,6 +139,59 @@ JWT リフレッシュトークンを管理するテーブル。
 
 ---
 
+### 3.3 conversations テーブル
+
+AIチャットの会話を管理するテーブル。
+
+| カラム名        | データ型           | 制約                     | 説明                        |
+|----------------|-------------------|-------------------------|----------------------------|
+| id             | BIGINT UNSIGNED   | PRIMARY KEY, AUTO_INC   | 会話ID                      |
+| uuid           | VARCHAR(36)       | NOT NULL, UNIQUE        | 会話の一意識別子（UUID v4）   |
+| user_id        | BIGINT UNSIGNED   | NOT NULL, FOREIGN KEY   | ユーザーID (users.id)       |
+| title          | VARCHAR(255)      | NOT NULL                | 会話タイトル（AI自動生成）    |
+| created_at     | DATETIME          | NOT NULL, DEFAULT NOW   | レコード作成日時             |
+| updated_at     | DATETIME          | NOT NULL, ON UPDATE NOW | レコード更新日時             |
+
+**インデックス:**
+- `idx_conversations_user_id` on `user_id` (ユーザー別会話検索)
+- `idx_conversations_updated_at` on `updated_at` (最新順ソート)
+
+**外部キー:**
+- `user_id` → `users.id` (ON DELETE CASCADE)
+
+**ビジネスルール:**
+- uuid は一意である必要がある（外部公開用識別子）
+- title はAIが最初のメッセージから自動生成（最大50文字）
+- ユーザー削除時に関連する会話も削除される
+
+---
+
+### 3.4 messages テーブル
+
+チャットメッセージを管理するテーブル。
+
+| カラム名          | データ型                    | 制約                     | 説明                        |
+|------------------|---------------------------|-------------------------|----------------------------|
+| id               | BIGINT UNSIGNED           | PRIMARY KEY, AUTO_INC   | メッセージID                 |
+| conversation_id  | BIGINT UNSIGNED           | NOT NULL, FOREIGN KEY   | 会話ID (conversations.id)   |
+| role             | ENUM('user', 'assistant') | NOT NULL                | メッセージの送信者ロール      |
+| content          | TEXT                      | NOT NULL                | メッセージ本文（最大32000文字）|
+| created_at       | DATETIME                  | NOT NULL, DEFAULT NOW   | レコード作成日時             |
+
+**インデックス:**
+- `idx_messages_conversation_id` on `conversation_id` (会話別メッセージ検索)
+- `idx_messages_created_at` on `created_at` (時系列ソート)
+
+**外部キー:**
+- `conversation_id` → `conversations.id` (ON DELETE CASCADE)
+
+**ビジネスルール:**
+- role は 'user'（ユーザーの発言）または 'assistant'（AIの応答）
+- content の最大長は32000文字（Claude API の制限に合わせて）
+- 会話削除時に関連するメッセージも削除される
+
+---
+
 ## 4. データベーススキーマ管理
 
 ### 4.1 スキーマファイル
@@ -129,6 +203,8 @@ JWT リフレッシュトークンを管理するテーブル。
 - **SQLAlchemy モデル**: `backend/app/models/`
   - `user.py` - User モデル
   - `refresh_token.py` - RefreshToken モデル
+  - `conversation.py` - Conversation モデル（AIチャット会話）
+  - `message.py` - Message モデル（チャットメッセージ）
   - `schema_migration.py` - SchemaMigration モデル（マイグレーション追跡用）
 
 ### 4.2 マイグレーション
@@ -239,6 +315,15 @@ poetry -C backend run python scripts/create_user.py test@example.com password123
 - `token` にインデックス（トークン検証の高速化）
 - `user_id` にインデックス（ユーザー別トークン取得）
 - `expires_at` にインデックス（期限切れトークンのクリーンアップ）
+
+**conversations テーブル:**
+- `uuid` にユニーク制約（外部公開用識別子検索）
+- `user_id` にインデックス（ユーザー別会話一覧取得）
+- `updated_at` にインデックス（最新順ソート）
+
+**messages テーブル:**
+- `conversation_id` にインデックス（会話別メッセージ取得）
+- `created_at` にインデックス（時系列順ソート）
 
 ### 5.2 クエリ最適化
 
