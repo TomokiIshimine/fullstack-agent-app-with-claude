@@ -20,7 +20,7 @@ class AIService:
     def __init__(self):
         """Initialize AI service with Claude client."""
         self.client = Anthropic()
-        self.model = os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
+        self.model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
         self.max_tokens = int(os.getenv("CLAUDE_MAX_TOKENS", "4096"))
         self.system_prompt = SYSTEM_PROMPT
 
