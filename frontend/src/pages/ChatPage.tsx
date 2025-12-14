@@ -56,6 +56,8 @@ export function ChatPage() {
 
   const handleSendMessage = useCallback(
     async (content: string) => {
+      if (isStreaming || isCreating) return
+
       if (uuid) {
         // Existing conversation
         await sendMessage(content)
@@ -71,7 +73,7 @@ export function ChatPage() {
         }
       }
     },
-    [uuid, sendMessage, createConversation, navigate]
+    [uuid, isStreaming, isCreating, sendMessage, createConversation, navigate]
   )
 
   // Reload conversations when a new one is created
