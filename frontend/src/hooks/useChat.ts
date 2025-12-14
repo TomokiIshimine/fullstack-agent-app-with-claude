@@ -20,26 +20,29 @@ export function useChat(options: UseChatOptions) {
   const [streamingContent, setStreamingContent] = useState('')
   const { error, handleError, clearError } = useErrorHandler()
 
-  const loadConversation = useCallback(async (conversationUuid?: string) => {
-    const targetUuid = conversationUuid ?? uuid
+  const loadConversation = useCallback(
+    async (conversationUuid?: string) => {
+      const targetUuid = conversationUuid ?? uuid
 
-    if (!targetUuid) {
-      return
-    }
+      if (!targetUuid) {
+        return
+      }
 
-    setIsLoading(true)
-    clearError()
-    try {
-      const data = await fetchConversation(targetUuid)
-      setConversation(toConversation(data.conversation))
-      setMessages(data.messages.map(toMessage))
-      logger.info('Conversation loaded', { uuid: targetUuid, messageCount: data.messages.length })
-    } catch (err) {
-      handleError(err, 'Failed to load conversation')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [uuid, clearError, handleError])
+      setIsLoading(true)
+      clearError()
+      try {
+        const data = await fetchConversation(targetUuid)
+        setConversation(toConversation(data.conversation))
+        setMessages(data.messages.map(toMessage))
+        logger.info('Conversation loaded', { uuid: targetUuid, messageCount: data.messages.length })
+      } catch (err) {
+        handleError(err, 'Failed to load conversation')
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [uuid, clearError, handleError]
+  )
 
   const sendMessage = useCallback(
     async (content: string, conversationUuid?: string) => {
