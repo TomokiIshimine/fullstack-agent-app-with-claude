@@ -10,8 +10,10 @@ class Base(DeclarativeBase):
 
 
 # Import models to ensure they are registered with Base metadata
+from .conversation import Conversation  # noqa: E402, F401
+from .message import Message  # noqa: E402, F401
 from .refresh_token import RefreshToken  # noqa: E402, F401
 from .schema_migration import SchemaMigration  # noqa: E402, F401
 from .user import User  # noqa: E402, F401
 
-__all__ = ["Base", "User", "RefreshToken", "SchemaMigration"]
+__all__ = ["Base", "User", "RefreshToken", "SchemaMigration", "Conversation", "Message"]
