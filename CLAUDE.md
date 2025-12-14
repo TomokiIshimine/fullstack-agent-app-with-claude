@@ -2,164 +2,147 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Application Overview
+
+AI chat application powered by Claude API. Users can have real-time streaming conversations with an AI assistant, with conversation history management and user authentication.
+
 ## Repository Overview
 
-This is a full-stack monorepo containing a React + TypeScript frontend and a Flask + SQLAlchemy backend, implementing a web application with user authentication. The project uses Docker Compose for local development with MySQL.
+Full-stack monorepo: React + TypeScript frontend, Flask + SQLAlchemy backend, MySQL database. Docker Compose for local development.
 
-The system is designed around Clean Architecture principles: inner layers (domain and use cases) must remain independent from outer layers (frameworks, UI, infrastructure). When adding new functionality, keep dependencies flowing inward and isolate infrastructure-specific code at the edges of the system.
+**Detailed guides:**
+- [backend/CLAUDE.md](backend/CLAUDE.md) - Backend architecture, patterns, logging
+- [frontend/CLAUDE.md](frontend/CLAUDE.md) - Frontend architecture, UI components, patterns
+- [docs/](docs/) - Comprehensive documentation (start with `00_development.md`)
 
-**For detailed documentation:**
-- Backend: See [backend/CLAUDE.md](backend/CLAUDE.md)
-- Frontend: See [frontend/CLAUDE.md](frontend/CLAUDE.md)
+## Architecture
 
-## Documentation
+### Clean Architecture
 
-Comprehensive documentation is available in the `docs/` directory:
+Dependencies flow inward: Routes → Services → Repositories → Models. Keep infrastructure code at the edges.
 
-**For new developers, recommended reading order:**
-1. **[Development Guide](docs/00_development.md)** - Start here: setup, commands, troubleshooting
-2. **[System Architecture](docs/01_system-architecture.md)** - Overall system design and tech stack
-3. **[Authentication & Authorization](docs/02_authentication-authorization.md)** - Security fundamentals
-4. **[Feature List](docs/03_feature-list.md)** - Implemented features and API endpoints
+### Data Flow
 
-**Specialized documentation:**
-- **[Database Design](docs/04_database-design.md)** - Schema, ER diagrams, table definitions
-- **[API Design Guide](docs/05_api-design-guide.md)** - REST API conventions and best practices
-- **[Testing Strategy](docs/06_testing-strategy.md)** - Test levels, coverage goals, test data management
-- **[Documentation Guide](docs/07_documentation-guide.md)** - Overview of all documentation (meta-document)
-- **[E2E Test List](docs/08_e2e-test-list.md)** - E2E test scenarios and implementation guide
-- **[CI/CD Setup Guide](docs/09_cicd-setup-guide.md)** - CI/CD environment setup after forking the project
-
-## Quick Start
-
-### Setup and Installation
-```bash
-make install              # Install all dependencies (frontend via pnpm, backend via poetry)
-make setup                # Full environment setup
+```
+Frontend (React)                    Backend (Flask)
+     │                                   │
+     ├─ pages/         ──HTTP/JSON──►   routes/        ─► Blueprints, request validation
+     ├─ components/                      services/      ─► Business logic
+     ├─ hooks/                           repositories/  ─► Data access (SQLAlchemy)
+     ├─ contexts/                        models/        ─► ORM models
+     └─ lib/api/                         schemas/       ─► Pydantic validation
 ```
 
-### Running the Stack
+### Key Technologies
+
+| Layer | Frontend | Backend |
+|-------|----------|---------|
+| Framework | React 18 + Vite | Flask 3.x |
+| Language | TypeScript | Python 3.12 |
+| Styling | Tailwind CSS | - |
+| State | React Context | - |
+| Validation | - | Pydantic v2 |
+| ORM | - | SQLAlchemy 2.x |
+| Database | - | MySQL 8.0 |
+| Auth | JWT (httpOnly Cookie) | JWT (httpOnly Cookie) |
+
+## Commands
+
+### Development
 ```bash
-make up                   # Start Docker containers (MySQL, frontend, backend)
-make down                 # Stop Docker containers
+make up                   # Start all services (frontend :5174, backend :5000, MySQL, Redis)
+make down                 # Stop all services
+make install              # Install all dependencies
 ```
 
-### Linting and Formatting
+### Testing
 ```bash
-make lint                 # Lint both frontend and backend (includes TypeScript check)
-make format               # Format both frontend and backend
-make format-check         # Check formatting without modifying files (used in CI)
-```
-
-## Testing
-
-### Run All Tests
-```bash
-make test                 # Run all tests (frontend and backend) with coverage
-```
-
-### Test Variants
-```bash
-make test-frontend        # Run only frontend tests
-make test-backend         # Run only backend tests
+make test                 # Run all tests with coverage
 make test-fast            # Run tests without coverage (faster)
-make test-cov             # Run tests with coverage and generate HTML report
-make test-parallel        # Run backend tests in parallel
-```
 
-### Run Individual Tests
-```bash
-# Frontend - run specific test file
+# Individual tests
 pnpm --dir frontend run test src/lib/api/auth.test.ts
-
-# Backend - run specific test file
-poetry -C backend run pytest backend/tests/routes/test_auth_routes.py
-
-# Backend - run specific test function
 poetry -C backend run pytest backend/tests/routes/test_auth_routes.py::test_login_success
 ```
 
-**For detailed testing strategy, see [docs/06_testing-strategy.md](docs/06_testing-strategy.md)**
-
-## Manual Testing and Browser Automation
-
-### Browser Testing with Playwright MCP
-
-When verifying UI functionality or performing manual testing, use the **mcp__playwright** tools provided by the Playwright MCP server. These tools allow Claude Code to interact with the browser directly.
-
-**Common workflow:**
-1. Start the application: `make up`
-2. Use `mcp__playwright__browser_navigate` to open the application (e.g., `http://localhost:5174`)
-3. Use `mcp__playwright__browser_snapshot` to capture the current page state
-4. Interact with elements using `mcp__playwright__browser_click`, `mcp__playwright__browser_type`, etc.
-5. Verify expected behaviors and take screenshots with `mcp__playwright__browser_take_screenshot`
-
-**Example use cases:**
-- Verify user registration and login flows
-- Test form validations and error messages
-- Check responsive design and UI components
-- Validate API integrations from the frontend
-- Confirm navigation and routing behavior
-
-**Note:** These tools are for manual verification and exploratory testing. Automated E2E tests are not yet implemented. For the E2E test implementation plan, see [docs/08_e2e-test-list.md](docs/08_e2e-test-list.md).
-
-## Database Management
-
-### Quick Commands
+### Code Quality
 ```bash
-make db-init              # Initialize/recreate all tables
-make db-create-user EMAIL=user@example.com PASSWORD=password123  # Create test user
-make db-reset             # Reset database (⚠️ destructive - drops all data)
+make lint                 # Lint frontend (ESLint + tsc) and backend (flake8 + mypy)
+make format               # Format frontend (Prettier) and backend (Black + isort)
 ```
 
-**For detailed database schema and management, see:**
-- [docs/04_database-design.md](docs/04_database-design.md) - Complete schema documentation
-- [docs/00_development.md](docs/00_development.md) - Database setup workflows
+### Database
+```bash
+make db-init              # Create/recreate all tables
+make db-create-user EMAIL=user@example.com PASSWORD=password123
+make db-reset             # ⚠️ Drop and recreate database
+```
 
-## Pre-commit Hooks
-
-Pre-commit hooks run lightweight checks (formatting, linting) before each commit. Heavy checks (mypy, pytest, vitest) are excluded for fast commits.
-
+### Pre-commit
 ```bash
 make pre-commit-install   # Install hooks (run once after clone)
-make pre-commit-run       # Manually run hooks on all files
-make pre-commit-update    # Update hook versions
 ```
 
-**Note:** Type checking and tests are NOT run on commit. Run them manually with `make lint` and `make test`.
+## Browser Testing with Playwright MCP
 
-**For detailed setup and troubleshooting, see [docs/00_development.md](docs/00_development.md)**
+Use **mcp__playwright** tools for UI verification:
 
-## Docker Compose Setup
+1. `make up` to start the application
+2. `mcp__playwright__browser_navigate` to `http://localhost:5174`
+3. `mcp__playwright__browser_snapshot` to capture page state
+4. `mcp__playwright__browser_click`, `mcp__playwright__browser_type` to interact
+5. `mcp__playwright__browser_take_screenshot` to verify
 
-Four services run in Docker:
-- `frontend` (Node 20-alpine)
-- `backend` (Python 3.12-slim)
-- `db` (MySQL 8.0)
-- `redis` (Redis 7-alpine) - Used for rate limiting
+## Key Patterns
 
-Services communicate via the `app-network` bridge network.
+### Backend: Adding a Feature
 
-**For detailed architecture and configuration, see [docs/01_system-architecture.md](docs/01_system-architecture.md)**
+1. **Model** (`app/models/`) - SQLAlchemy ORM with `Mapped` types
+2. **Schema** (`app/schemas/`) - Pydantic v2 for request/response validation
+3. **Repository** (`app/repositories/`) - Data access layer
+4. **Service** (`app/services/`) - Business logic
+5. **Route** (`app/routes/`) - Flask Blueprint, `@require_auth` decorator
+6. **Tests** (`backend/tests/`) - pytest with SQLite in-memory
 
-## Project Conventions
+### Frontend: Adding a Feature
+
+1. **Types** (`src/types/`) - TypeScript interfaces
+2. **API** (`src/lib/api/`) - Fetch functions with `credentials: 'include'`
+3. **Hook** (`src/hooks/`) - Custom hook for state management
+4. **Components** (`src/components/`) - React components using `@/components/ui`
+5. **Page** (`src/pages/`) - Page component with routing
+6. **Tests** (`src/**/*.test.tsx`) - Vitest + Testing Library
+
+### API Conventions
+
+- All routes under `/api` prefix
+- JSON request/response bodies
+- JWT auth via httpOnly cookies (automatic with `credentials: 'include'`)
+- Rate limiting via Flask-Limiter + Redis
 
 ### Commit Messages
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/) with format `<type>(<scope>): <subject>`.
+[Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <subject>`
 
-```bash
-pnpm -C frontend run commitlint -- --help  # Check commit message format
+Examples: `feat(chat): add streaming support`, `fix(auth): handle expired tokens`
+
+## Environment Variables
+
+### Backend (`backend/.env`)
+```env
+DATABASE_URL=mysql+pymysql://user:password@db:3306/app_db
+JWT_SECRET_KEY=your-secret-key
+ANTHROPIC_API_KEY=sk-ant-...  # For AI chat feature
 ```
 
-### Code Organization
+### Frontend (`frontend/.env`)
+```env
+VITE_API_PROXY=http://localhost:5000
+```
 
-- **Backend**: Flask + SQLAlchemy with layered architecture (routes → services → models)
-- **Frontend**: React + TypeScript with Vite, organized by pages and components
-- All API routes use `/api` prefix
-- Frontend proxies API requests to backend in development
+## Docker Services
 
-**For detailed conventions and best practices, see:**
-- [docs/05_api-design-guide.md](docs/05_api-design-guide.md) - API design principles
-- [backend/CLAUDE.md](backend/CLAUDE.md) - Backend conventions
-- [frontend/CLAUDE.md](frontend/CLAUDE.md) - Frontend conventions
+- `frontend` - Node 20, port 5174
+- `backend` - Python 3.12, port 5000
+- `db` - MySQL 8.0, port 3306
+- `redis` - Redis 7, port 6379 (rate limiting)
