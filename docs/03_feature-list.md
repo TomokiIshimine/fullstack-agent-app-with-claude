@@ -1,8 +1,8 @@
 # 機能一覧
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-11-23
-**バージョン:** 1.1
+**最終更新:** 2025-12-14
+**バージョン:** 1.2
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -25,6 +25,7 @@ graph TB
 
     System --> Auth["認証機能"]
     System --> UserMgmt["ユーザー管理機能"]
+    System --> AIChat["AIチャット機能"]
     System --> Common["共通機能"]
 
     Auth --> Login["ログイン"]
@@ -37,6 +38,12 @@ graph TB
     UserMgmt --> UserDelete["ユーザー削除"]
     UserMgmt --> PasswordChange["パスワード変更"]
 
+    AIChat --> ConversationList["会話一覧表示"]
+    AIChat --> NewConversation["新規会話作成"]
+    AIChat --> SendMessage["メッセージ送信"]
+    AIChat --> StreamingResponse["ストリーミング応答"]
+    AIChat --> DeleteConversation["会話削除"]
+
     Common --> Logging["ロギング"]
     Common --> ErrorHandle["エラーハンドリング"]
     Common --> Validation["バリデーション"]
@@ -45,6 +52,7 @@ graph TB
     style System fill:#e1f5ff
     style Auth fill:#fff4e6
     style UserMgmt fill:#e8f5e9
+    style AIChat fill:#e3f2fd
     style Common fill:#f3e5f5
 ```
 
@@ -74,7 +82,19 @@ graph TB
 
 ---
 
-### 3.3 共通機能
+### 3.3 AIチャット機能
+
+| 機能 | エンドポイント | 実装箇所 | 主な仕様 |
+|------|--------------|---------|---------|
+| **会話一覧取得** | `GET /api/conversations` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - 認証済みユーザーの会話一覧取得<br/>- ページネーション対応<br/>- メッセージ数を含む情報 |
+| **新規会話作成** | `POST /api/conversations` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - 初期メッセージ付きで会話を作成<br/>- AIによるタイトル自動生成<br/>- レート制限: 30リクエスト/分 |
+| **会話詳細取得** | `GET /api/conversations/{uuid}` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - 会話の全メッセージを取得<br/>- アクセス権限の検証 |
+| **メッセージ送信** | `POST /api/conversations/{uuid}/messages` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - Claude APIとの連携<br/>- SSEストリーミング対応<br/>- レート制限: 30リクエスト/分 |
+| **会話削除** | `DELETE /api/conversations/{uuid}` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - 会話とメッセージをカスケード削除<br/>- 所有者のみ削除可能 |
+
+---
+
+### 3.4 共通機能
 
 | 機能 | 実装箇所 | 主な仕様 |
 |------|---------|---------|
@@ -100,6 +120,11 @@ graph TB
 | ユーザー管理 | プロフィール更新 | ✓ | ✓ | BE: ✓, FE: ✓ |
 | ユーザー管理 | ユーザー削除 | ✓ | ✓ | BE: ✓, FE: ✓ |
 | ユーザー管理 | パスワード変更 | ✓ | ✓ | BE: ✓, FE: ✓ |
+| AIチャット | 会話一覧取得 | ✓ | ✓ | BE: ✓ |
+| AIチャット | 新規会話作成 | ✓ | ✓ | BE: ✓ |
+| AIチャット | 会話詳細取得 | ✓ | ✓ | BE: ✓ |
+| AIチャット | メッセージ送信 | ✓ | ✓ | BE: ✓ |
+| AIチャット | 会話削除 | ✓ | ✓ | BE: ✓ |
 | 共通 | UIコンポーネントライブラリ | - | ✓ | FE: ✓ |
 | 共通 | ロギング | ✓ | ✓ | - |
 | 共通 | エラーハンドリング | ✓ | ✓ | BE: ✓, FE: ✓ |
@@ -114,7 +139,7 @@ graph TB
 
 | 機能 | 実装箇所 | 詳細 |
 |------|---------|------|
-| **レート制限** | BE: `limiter.py`<br/>BE: `routes/auth_routes.py` | - Flask-Limiter + Redis による実装<br/>- 認証エンドポイントに制限適用<br/>  - ログイン: 10req/分<br/>  - トークン更新: 30req/分<br/>  - ログアウト: 20req/分<br/>- 429エラーレスポンス |
+| **レート制限** | BE: `limiter.py`<br/>BE: `routes/auth_routes.py`<br/>BE: `routes/conversation_routes.py` | - Flask-Limiter + Redis による実装<br/>- 認証エンドポイントに制限適用<br/>  - ログイン: 10req/分<br/>  - トークン更新: 30req/分<br/>  - ログアウト: 20req/分<br/>- AIチャットエンドポイントに制限適用<br/>  - 会話作成: 30req/分<br/>  - メッセージ送信: 30req/分<br/>- 429エラーレスポンス |
 
 ---
 
@@ -152,6 +177,21 @@ graph TB
 |---------|--------------|------|------|------|
 | POST | `/api/password/change` | 必要 | 全ユーザー | パスワード変更 |
 
+### 5.5 AIチャット API
+
+| メソッド | エンドポイント | 認証 | 権限 | 説明 |
+|---------|--------------|------|------|------|
+| GET | `/api/conversations` | 必要 | 全ユーザー | 会話一覧取得（ページネーション対応） |
+| POST | `/api/conversations` | 必要 | 全ユーザー | 新規会話作成（初期メッセージ付き） |
+| GET | `/api/conversations/{uuid}` | 必要 | 所有者のみ | 会話詳細取得（全メッセージ含む） |
+| DELETE | `/api/conversations/{uuid}` | 必要 | 所有者のみ | 会話削除 |
+| POST | `/api/conversations/{uuid}/messages` | 必要 | 所有者のみ | メッセージ送信（SSEストリーミング対応） |
+
+**ストリーミング応答:**
+- デフォルトでSSE（Server-Sent Events）ストリーミングが有効
+- `X-Stream: false` ヘッダーで非ストリーミングモードに切り替え可能
+- SSEイベント形式: `message_start`, `content_delta`, `message_end`, `error`
+
 ---
 
 ## 6. 画面一覧
@@ -161,6 +201,7 @@ graph TB
 | 画面名 | パス | 認証 | 権限 | 説明 | ファイル |
 |-------|------|------|------|------|---------|
 | ログイン画面 | `/login` | 不要 | - | ユーザー認証 | `LoginPage.tsx` |
+| チャット画面 | `/chat`, `/chat/:uuid` | 必要 | 全ユーザー | AIチャット、会話管理 | `ChatPage.tsx` |
 | 設定画面 | `/settings` | 必要 | 全ユーザー | プロフィール編集、パスワード変更 | `SettingsPage.tsx` |
 | ユーザー管理画面 | `/admin/users` | 必要 | 管理者のみ | ユーザー一覧表示、作成、削除 | `UserManagementPage.tsx` |
 
@@ -169,14 +210,17 @@ graph TB
 ```mermaid
 stateDiagram-v2
     [*] --> Login: アプリ起動
-    Login --> RoleCheck: ログイン成功
+    Login --> Chat: ログイン成功
 
-    RoleCheck --> UserManagement: 管理者
-    RoleCheck --> Settings: 一般ユーザー
+    Chat --> Settings: 設定画面へ
+    Chat --> UserManagement: ユーザー管理へ（管理者のみ）
+    Settings --> Chat: チャット画面へ
+    UserManagement --> Chat: チャット画面へ
 
     UserManagement --> Settings: 設定画面へ
     Settings --> UserManagement: ユーザー管理へ（管理者のみ）
 
+    Chat --> Login: ログアウト
     UserManagement --> Login: ログアウト
     Settings --> Login: ログアウト
 ```

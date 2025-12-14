@@ -666,3 +666,122 @@ The authentication feature demonstrates the full backend stack:
        response = client.post("/api/auth/login", json={"email": "test@example.com", "password": "password123"})
        assert response.status_code == 200
    ```
+
+## Feature Implementation Example: AI Chat
+
+The AI chat feature demonstrates integration with external AI APIs and streaming responses:
+
+### Files
+
+- **Models**: `app/models/conversation.py`, `app/models/message.py` - SQLAlchemy ORM models
+- **Schemas**: `app/schemas/conversation.py` - Pydantic request/response schemas
+- **Routes**: `app/routes/conversation_routes.py` - Flask Blueprint with endpoints
+- **Services**:
+  - `app/services/conversation_service.py` - Conversation management business logic
+  - `app/services/ai_service.py` - Claude API integration
+- **Repositories**:
+  - `app/repositories/conversation_repository.py` - Conversation data access
+  - `app/repositories/message_repository.py` - Message data access
+- **Tests**: `backend/tests/routes/test_conversation_routes.py`
+
+### API Endpoints
+
+- `GET /api/conversations` - List user's conversations (paginated)
+- `POST /api/conversations` - Create new conversation with initial message
+- `GET /api/conversations/{uuid}` - Get conversation with all messages
+- `DELETE /api/conversations/{uuid}` - Delete conversation
+- `POST /api/conversations/{uuid}/messages` - Send message and get AI response
+
+### Implementation Pattern
+
+1. **Define Models** (`app/models/`)
+   ```python
+   class Conversation(Base):
+       __tablename__ = "conversations"
+       id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+       uuid: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
+       user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+       title: Mapped[str] = mapped_column(String(255), nullable=False)
+       messages: Mapped[list["Message"]] = relationship(back_populates="conversation", cascade="all, delete-orphan")
+
+   class Message(Base):
+       __tablename__ = "messages"
+       id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+       conversation_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("conversations.id", ondelete="CASCADE"))
+       role: Mapped[str] = mapped_column(Enum("user", "assistant"), nullable=False)
+       content: Mapped[str] = mapped_column(Text, nullable=False)
+   ```
+
+2. **Define Schemas** (`app/schemas/`)
+   ```python
+   class CreateConversationRequest(BaseModel):
+       message: str = Field(..., min_length=1, max_length=32000)
+
+   class SendMessageRequest(BaseModel):
+       content: str = Field(..., min_length=1, max_length=32000)
+
+   class MessageResponse(BaseModel):
+       id: int
+       role: Literal["user", "assistant"]
+       content: str
+       created_at: datetime
+   ```
+
+3. **Implement AI Service** (`app/services/ai_service.py`)
+   ```python
+   class AIService:
+       def __init__(self):
+           self.client = Anthropic()
+           self.model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+
+       def generate_response(self, messages: list[dict], stream: bool = True) -> Generator[str] | str:
+           if stream:
+               return self._stream_response(messages)
+           return self._sync_response(messages)
+
+       def generate_title(self, first_message: str) -> str:
+           # Generate conversation title from first message
+           ...
+   ```
+
+4. **Implement Conversation Service** (`app/services/conversation_service.py`)
+   ```python
+   class ConversationService:
+       def send_message_streaming(self, uuid: str, user_id: int, content: str) -> Generator:
+           conversation = self._validate_access(uuid, user_id)
+           user_message = self._create_user_message(conversation, content)
+           yield ("start", {"user_message_id": user_message.id})
+
+           for chunk in self.ai_service.generate_response(messages, stream=True):
+               yield ("delta", {"delta": chunk})
+
+           assistant_message = self._save_assistant_message(conversation, full_content)
+           yield ("end", {"assistant_message_id": assistant_message.id, "content": full_content})
+   ```
+
+5. **Implement Routes with SSE** (`app/routes/conversation_routes.py`)
+   ```python
+   @conversation_bp.post("/<uuid>/messages")
+   @require_auth
+   @limiter.limit("30/minute")
+   def send_message(uuid):
+       is_streaming = request.headers.get("X-Stream", "true").lower() != "false"
+
+       if is_streaming:
+           def generate():
+               for event_type, data in service.send_message_streaming(uuid, g.user_id, content):
+                   # Map service events to SSE event names
+                   sse_event = {"start": "message_start", "delta": "content_delta", "end": "message_end"}[event_type]
+                   yield f"event: {sse_event}\ndata: {json.dumps(data)}\n\n"
+           return Response(stream_with_context(generate()), mimetype="text/event-stream")
+       else:
+           return jsonify(service.send_message(uuid, g.user_id, content))
+   ```
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `ANTHROPIC_API_KEY` | Yes | - | Anthropic API key |
+| `CLAUDE_MODEL` | No | `claude-sonnet-4-5-20250929` | Claude model to use |
+| `CLAUDE_MAX_TOKENS` | No | `4096` | Maximum tokens for AI response |

@@ -1,8 +1,8 @@
 # システム構成設計書
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-11-23
-**バージョン:** 1.1
+**最終更新:** 2025-12-14
+**バージョン:** 1.2
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -18,6 +18,7 @@
 - **フルスタックモノレポ構成**: フロントエンドとバックエンドを単一リポジトリで管理
 - **モダンな技術スタック**: React + TypeScript (フロントエンド)、Flask + SQLAlchemy (バックエンド)
 - **セキュアな認証**: JWT トークンによる認証（httpOnly Cookie）
+- **AIチャット機能**: Claude API を活用したリアルタイムストリーミング対応AIチャット
 - **Docker による開発環境**: 環境構築を簡素化し、開発者間の環境差異を最小化
 - **包括的なロギング**: リクエストトレーシング、パフォーマンス測定、センシティブデータマスキング
 
@@ -68,6 +69,7 @@ flowchart TD
 src/
 ├── pages/              # ページコンポーネント
 │   ├── LoginPage.tsx
+│   ├── ChatPage.tsx    # AIチャットページ
 │   ├── SettingsPage.tsx
 │   ├── admin/          # Admin関連ページ
 │   │   └── UserManagementPage.tsx
@@ -79,15 +81,18 @@ src/
 │   │   ├── Alert.tsx   # 通知・エラー表示コンポーネント
 │   │   ├── Modal.tsx   # モーダルダイアログコンポーネント
 │   │   └── index.ts    # 共通エクスポート (各コンポーネントの再エクスポート)
+│   ├── chat/           # AIチャット関連コンポーネント
+│   │   ├── ChatSidebar.tsx     # 会話一覧サイドバー
+│   │   ├── ChatInput.tsx       # メッセージ入力フォーム
+│   │   ├── MessageList.tsx     # メッセージ表示リスト
+│   │   ├── MessageItem.tsx     # 個別メッセージ
+│   │   └── StreamingMessage.tsx # ストリーミング表示
 │   ├── admin/          # Admin固有コンポーネント
 │   │   ├── UserCreateForm.tsx
 │   │   └── UserList.tsx
 │   ├── settings/       # Settings固有コンポーネント
 │   │   ├── PasswordChangeForm.tsx
 │   │   └── ProfileUpdateForm.tsx
-│   ├── TodoForm.tsx
-│   ├── TodoList.tsx
-│   ├── TodoItem.tsx
 │   └── ...
 ├── contexts/           # React Context (グローバル状態管理)
 │   └── AuthContext.tsx
@@ -108,17 +113,25 @@ app/
 ├── routes/             # APIエンドポイント定義
 │   ├── __init__.py     # Blueprintの統合
 │   ├── auth_routes.py  # 認証関連エンドポイント
+│   ├── conversation_routes.py  # AIチャット関連エンドポイント
 │   └── health.py       # ヘルスチェックエンドポイント
 ├── services/           # ビジネスロジック
-│   └── auth_service.py
+│   ├── auth_service.py
+│   ├── ai_service.py           # Claude API連携サービス
+│   └── conversation_service.py # 会話管理サービス
 ├── repositories/       # データアクセス層
 │   ├── user_repository.py
-│   └── refresh_token_repository.py
+│   ├── refresh_token_repository.py
+│   ├── conversation_repository.py  # 会話リポジトリ
+│   └── message_repository.py       # メッセージリポジトリ
 ├── models/             # SQLAlchemy ORM モデル
 │   ├── user.py
-│   └── refresh_token.py
+│   ├── refresh_token.py
+│   ├── conversation.py     # 会話モデル
+│   └── message.py          # メッセージモデル
 ├── schemas/            # Pydantic スキーマ (バリデーション)
-│   └── auth.py
+│   ├── auth.py
+│   └── conversation.py     # 会話関連スキーマ
 ├── utils/              # ユーティリティ
 │   ├── auth_decorator.py  # 認証デコレータ
 │   └── password.py        # パスワードハッシュ化
@@ -217,6 +230,7 @@ app/
 | フォーマッター        | black + isort           | -         | コード整形                      |
 | レート制限            | Flask-Limiter           | 3.x       | APIレート制限                  |
 | キャッシュ            | Redis                   | 7.x       | レート制限バックエンド          |
+| AI連携               | Anthropic Python SDK    | 0.x       | Claude API連携                 |
 
 ### 3.3 データベース
 
@@ -349,6 +363,11 @@ FLASK_ENV=development
 DATABASE_URL=mysql+pymysql://user:password@db:3306/app_db
 LOG_LEVEL=DEBUG
 LOG_DIR=backend/logs
+
+# AI Configuration
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
+CLAUDE_MODEL=claude-sonnet-4-5-20250929
+CLAUDE_MAX_TOKENS=4096
 ```
 
 #### Docker Compose (infra/.env.development)

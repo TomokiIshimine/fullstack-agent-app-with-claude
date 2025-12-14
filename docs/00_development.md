@@ -1,8 +1,8 @@
 # 開発環境ガイド
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-11-23
-**バージョン:** 1.1
+**最終更新:** 2025-12-14
+**バージョン:** 1.2
 
 ---
 
@@ -65,6 +65,27 @@ FLASK_ENV=development
 LOG_LEVEL=DEBUG
 JWT_SECRET_KEY=your-secret-key-here
 ```
+
+### AI機能関連の環境変数
+
+AIチャット機能を使用するには、以下の環境変数を設定する必要があります:
+
+| 環境変数 | 必須 | デフォルト | 説明 |
+|---------|------|-----------|------|
+| `ANTHROPIC_API_KEY` | はい | - | Anthropic APIキー |
+| `CLAUDE_MODEL` | いいえ | `claude-sonnet-4-5-20250929` | 使用するClaudeモデル |
+| `CLAUDE_MAX_TOKENS` | いいえ | `4096` | AI応答の最大トークン数 |
+
+**設定例:**
+```env
+ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+CLAUDE_MODEL=claude-sonnet-4-5-20250929
+CLAUDE_MAX_TOKENS=4096
+```
+
+**注意:**
+- `ANTHROPIC_API_KEY` はAnthropicコンソール（https://console.anthropic.com/）から取得できます
+- APIキーは機密情報のため、`.env` ファイルはGitにコミットしないでください
 
 ### Cloud SQL 接続設定（本番環境向け）
 

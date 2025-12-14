@@ -5,7 +5,7 @@ import { getDefaultPathForRole } from '@/lib/utils/routing'
 /**
  * Component that redirects to the appropriate page based on user role
  * - Admin users are redirected to /admin/users
- * - Regular users are redirected to /settings
+ * - Regular users are redirected to /chat
  * - Unauthenticated users are redirected to /login
  */
 export function RoleBasedRedirect() {
