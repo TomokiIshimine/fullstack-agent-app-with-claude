@@ -1,7 +1,5 @@
 """Tests for conversation routes."""
 
-from flask import Flask
-
 
 class TestConversationRoutes:
     """Test conversation API routes."""

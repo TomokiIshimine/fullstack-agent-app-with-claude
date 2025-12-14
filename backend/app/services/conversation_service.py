@@ -246,8 +246,10 @@ class ConversationService:
         # Build message history for AI
         messages = self._build_message_history(conversation.messages, content)
 
-        # Generate AI response
+        # Generate AI response (stream=False returns str)
         ai_response = self.ai_service.generate_response(messages, stream=False)
+        if not isinstance(ai_response, str):
+            raise RuntimeError("Expected string response from AI service")
 
         # Save assistant message
         assistant_message = self.message_repo.create(

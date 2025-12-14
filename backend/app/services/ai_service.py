@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Generator
+from typing import Generator, cast
 
 from anthropic import Anthropic
+from anthropic.types import MessageParam, TextBlock
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class AIService:
 
     def generate_response(
         self,
-        messages: list[dict],
+        messages: list[dict[str, str]],
         stream: bool = True,
     ) -> Generator[str, None, None] | str:
         """
@@ -47,7 +48,7 @@ class AIService:
         else:
             return self._sync_response(messages)
 
-    def _stream_response(self, messages: list[dict]) -> Generator[str, None, None]:
+    def _stream_response(self, messages: list[dict[str, str]]) -> Generator[str, None, None]:
         """
         Generate streaming AI response.
 
@@ -62,7 +63,7 @@ class AIService:
                 model=self.model,
                 max_tokens=self.max_tokens,
                 system=self.system_prompt,
-                messages=messages,
+                messages=cast(list[MessageParam], messages),
             ) as stream:
                 for text in stream.text_stream:
                     yield text
@@ -70,7 +71,7 @@ class AIService:
             logger.error(f"Error streaming AI response: {e}")
             raise
 
-    def _sync_response(self, messages: list[dict]) -> str:
+    def _sync_response(self, messages: list[dict[str, str]]) -> str:
         """
         Generate non-streaming AI response.
 
@@ -85,9 +86,13 @@ class AIService:
                 model=self.model,
                 max_tokens=self.max_tokens,
                 system=self.system_prompt,
-                messages=messages,
+                messages=cast(list[MessageParam], messages),
             )
-            return response.content[0].text
+            # Extract text from first content block
+            first_block = response.content[0]
+            if isinstance(first_block, TextBlock):
+                return first_block.text
+            return ""
         except Exception as e:
             logger.error(f"Error generating AI response: {e}")
             raise
