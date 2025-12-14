@@ -65,6 +65,7 @@ export function ChatPage() {
         try {
           const newUuid = await createConversation({ message: content })
           navigate(`/chat/${newUuid}`, { replace: true })
+          await sendMessage(content, newUuid)
         } finally {
           setIsCreating(false)
         }

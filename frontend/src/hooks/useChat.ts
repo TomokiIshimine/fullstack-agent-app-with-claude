@@ -20,14 +20,20 @@ export function useChat(options: UseChatOptions) {
   const [streamingContent, setStreamingContent] = useState('')
   const { error, handleError, clearError } = useErrorHandler()
 
-  const loadConversation = useCallback(async () => {
+  const loadConversation = useCallback(async (conversationUuid?: string) => {
+    const targetUuid = conversationUuid ?? uuid
+
+    if (!targetUuid) {
+      return
+    }
+
     setIsLoading(true)
     clearError()
     try {
-      const data = await fetchConversation(uuid)
+      const data = await fetchConversation(targetUuid)
       setConversation(toConversation(data.conversation))
       setMessages(data.messages.map(toMessage))
-      logger.info('Conversation loaded', { uuid, messageCount: data.messages.length })
+      logger.info('Conversation loaded', { uuid: targetUuid, messageCount: data.messages.length })
     } catch (err) {
       handleError(err, 'Failed to load conversation')
     } finally {
@@ -36,7 +42,13 @@ export function useChat(options: UseChatOptions) {
   }, [uuid, clearError, handleError])
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, conversationUuid?: string) => {
+      const targetUuid = conversationUuid ?? uuid
+
+      if (!targetUuid) {
+        throw new Error('Conversation UUID is required to send a message')
+      }
+
       if (isStreaming) return
 
       const request: SendMessageRequest = { content }
@@ -61,7 +73,7 @@ export function useChat(options: UseChatOptions) {
         let finalContent = ''
         let assistantMessageId = 0
 
-        await sendMessageStreaming(uuid, request, {
+        await sendMessageStreaming(targetUuid, request, {
           onStart: userMessageId => {
             // Update the temp user message with real ID
             realUserMessageId = userMessageId
@@ -100,15 +112,15 @@ export function useChat(options: UseChatOptions) {
         setMessages(prev => [...prev, assistantMessage])
         setStreamingContent('')
 
-        logger.info('Message sent successfully', { uuid })
+        logger.info('Message sent successfully', { uuid: targetUuid })
       } catch (err) {
         if (userMessagePersisted) {
           // Message was saved on server - reload conversation to sync state
           logger.warn('Error after message persisted, reloading conversation', {
-            uuid,
+            uuid: targetUuid,
             realUserMessageId,
           })
-          void loadConversation()
+          void loadConversation(targetUuid)
         } else {
           // Message was not saved - safe to remove optimistic message
           setMessages(prev => prev.filter(m => m.id !== tempUserMessage.id))
