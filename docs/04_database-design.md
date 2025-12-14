@@ -29,6 +29,8 @@
 |-------------------|------------------------------|
 | users             | ユーザー情報管理              |
 | refresh_tokens    | JWT リフレッシュトークン管理  |
+| conversations     | チャット会話スレッド管理      |
+| messages          | 会話内メッセージ管理          |
 | schema_migrations | データベースマイグレーション履歴 |
 
 ---
@@ -38,6 +40,8 @@
 ```mermaid
 erDiagram
     users ||--o{ refresh_tokens : "has"
+    users ||--o{ conversations : "has"
+    conversations ||--o{ messages : "has"
 
     users {
         BIGINT id PK "ユーザーID"
@@ -57,6 +61,23 @@ erDiagram
         TINYINT is_revoked "無効化フラグ"
         TIMESTAMP created_at "作成日時"
         TIMESTAMP updated_at "更新日時"
+    }
+
+    conversations {
+        BIGINT id PK "会話ID"
+        VARCHAR uuid UK "公開UUID"
+        BIGINT user_id FK "ユーザーID"
+        VARCHAR title "会話タイトル"
+        TIMESTAMP created_at "作成日時"
+        TIMESTAMP updated_at "更新日時"
+    }
+
+    messages {
+        BIGINT id PK "メッセージID"
+        BIGINT conversation_id FK "会話ID"
+        ENUM role "送信者(user/assistant)"
+        TEXT content "本文"
+        TIMESTAMP created_at "作成日時"
     }
 ```
 
@@ -115,6 +136,57 @@ JWT リフレッシュトークンを管理するテーブル。
 - token は一意である必要がある
 - is_revoked が 1 の場合、トークンは無効化されている
 - expires_at を過ぎたトークンは無効
+
+---
+
+### 3.3 conversations テーブル
+
+チャット会話スレッドを管理するテーブル。
+
+| カラム名        | データ型           | 制約                     | 説明                        |
+|----------------|-------------------|-------------------------|----------------------------|
+| id             | BIGINT UNSIGNED   | PRIMARY KEY, AUTO_INC   | 会話ID                      |
+| uuid           | VARCHAR(36)       | NOT NULL, UNIQUE        | 公開用 UUID                 |
+| user_id        | BIGINT UNSIGNED   | NOT NULL, FOREIGN KEY   | ユーザーID (users.id)       |
+| title          | VARCHAR(255)      | NOT NULL                | 会話タイトル（初回メッセージから生成） |
+| created_at     | TIMESTAMP         | NOT NULL, DEFAULT NOW   | レコード作成日時             |
+| updated_at     | TIMESTAMP         | NOT NULL, ON UPDATE NOW | レコード更新日時             |
+
+**インデックス:**
+- `idx_conversations_user_id` on `user_id`
+- `idx_conversations_updated_at` on `updated_at`
+
+**外部キー:**
+- `user_id` → `users.id` (ON DELETE CASCADE)
+
+**ビジネスルール:**
+- uuid は公開用で一意
+- ユーザーごとの所有権を検証し、他ユーザーはアクセス不可
+
+---
+
+### 3.4 messages テーブル
+
+会話内の各メッセージを管理するテーブル。
+
+| カラム名        | データ型           | 制約                     | 説明                        |
+|----------------|-------------------|-------------------------|----------------------------|
+| id             | BIGINT UNSIGNED   | PRIMARY KEY, AUTO_INC   | メッセージID                |
+| conversation_id| BIGINT UNSIGNED   | NOT NULL, FOREIGN KEY   | 会話ID (conversations.id)   |
+| role           | ENUM('user','assistant') | NOT NULL             | 送信者ロール                |
+| content        | TEXT              | NOT NULL                | メッセージ本文              |
+| created_at     | TIMESTAMP         | NOT NULL, DEFAULT NOW   | レコード作成日時             |
+
+**インデックス:**
+- `idx_messages_conversation_id` on `conversation_id`
+- `idx_messages_created_at` on `created_at`
+
+**外部キー:**
+- `conversation_id` → `conversations.id` (ON DELETE CASCADE)
+
+**ビジネスルール:**
+- role は `user` もしくは `assistant`
+- 会話削除時に関連メッセージは一括削除
 
 ---
 

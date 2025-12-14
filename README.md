@@ -1,6 +1,6 @@
 # Full Stack App Monorepo
 
-React + TypeScript フロントエンドと Flask + SQLAlchemy バックエンドを含むフルスタックモノレポです。ユーザー認証機能を持つWebアプリケーションを実装しており、Docker Compose を使用した MySQL によるローカル開発環境を提供しています。
+React + TypeScript フロントエンドと Flask + SQLAlchemy バックエンドを含むフルスタックモノレポです。ユーザー認証と AI チャット機能を備えた Web アプリケーションを実装しており、Docker Compose を使用した MySQL + Redis によるローカル開発環境を提供しています。
 
 ## ディレクトリ構造
 
@@ -52,7 +52,7 @@ make setup                # 完全な環境セットアップ
 ### スタックの起動
 
 ```bash
-make up                   # Docker コンテナを起動（MySQL、frontend、backend）
+make up                   # Docker コンテナを起動（MySQL、Redis、frontend、backend）
 make down                 # Docker コンテナを停止
 ```
 
@@ -192,9 +192,33 @@ poetry -C backend run python backend/scripts/generate_admin_hash.py
 
 ## Docker Compose セットアップ
 
-3つのサービスが Docker で実行されます：`frontend` (Node 20)、`backend` (Python 3.12)、`db` (MySQL 8.0)。サービスは `app-network` ブリッジネットワークで通信します。
+4つのサービスが Docker で実行されます：`frontend` (Node 20)、`backend` (Python 3.12)、`db` (MySQL 8.0)、`redis` (Redis 7)。サービスは `app-network` ブリッジネットワークで通信します。レート制限キャッシュとして Redis を使用するため、`REDIS_PASSWORD` などの環境変数を `.env` または `infra/docker-compose.yml` に設定してください。
 
 詳細なアーキテクチャと設定については、[docs/01_system-architecture.md](docs/01_system-architecture.md) を参照してください。
+
+## AI チャット機能
+
+Anthropic Claude API を利用したチャット機能を提供しています。会話の一覧取得、作成、削除、メッセージ送受信（SSE ストリーミング対応）をサポートし、フロントエンドの `/chat` 画面から利用できます。
+
+### 必要な環境変数
+
+`backend/.env` に以下を設定してください：
+
+```env
+ANTHROPIC_API_KEY=your-api-key
+CLAUDE_MODEL=claude-3-5-sonnet-20241022  # 任意、デフォルト値あり
+CLAUDE_MAX_TOKENS=4096                   # 任意
+```
+
+### 主なエンドポイント
+
+- `GET /api/conversations` - 自分の会話一覧
+- `POST /api/conversations` - 新規会話作成（初回メッセージ必須）
+- `GET /api/conversations/{uuid}` - 会話詳細とメッセージ履歴
+- `DELETE /api/conversations/{uuid}` - 会話削除
+- `POST /api/conversations/{uuid}/messages` - メッセージ送信（`X-Stream: false` で非ストリーミング）
+
+詳細は [docs/03_feature-list.md](docs/03_feature-list.md) と [docs/04_database-design.md](docs/04_database-design.md) を参照してください。
 
 ## プロジェクト規約
 

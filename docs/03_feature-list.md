@@ -25,6 +25,7 @@ graph TB
 
     System --> Auth["認証機能"]
     System --> UserMgmt["ユーザー管理機能"]
+    System --> Chat["チャット機能"]
     System --> Common["共通機能"]
 
     Auth --> Login["ログイン"]
@@ -36,6 +37,10 @@ graph TB
     UserMgmt --> ProfileUpdate["プロフィール更新"]
     UserMgmt --> UserDelete["ユーザー削除"]
     UserMgmt --> PasswordChange["パスワード変更"]
+
+    Chat --> ConversationList["会話一覧"]
+    Chat --> ConversationDetail["会話詳細"]
+    Chat --> ChatSend["メッセージ送受信 (SSE)"]
 
     Common --> Logging["ロギング"]
     Common --> ErrorHandle["エラーハンドリング"]
@@ -74,7 +79,19 @@ graph TB
 
 ---
 
-### 3.3 共通機能
+### 3.3 チャット機能
+
+| 機能 | エンドポイント | 実装箇所 | 主な仕様 |
+|------|--------------|---------|---------|
+| **会話一覧取得** | `GET /api/conversations` | FE: `useConversations.ts` / `ChatSidebar.tsx`<br/>BE: `conversation_routes.py` | - ログインユーザーの会話をページング取得<br/>- メッセージ数と更新日時を表示 |
+| **会話作成** | `POST /api/conversations` | FE: `useConversations.ts`<br/>BE: `conversation_routes.py` | - 初回メッセージからタイトル自動生成<br/>- 作成直後にチャット画面へ遷移 |
+| **会話詳細取得** | `GET /api/conversations/{uuid}` | FE: `useChat.ts` / `MessageList.tsx`<br/>BE: `conversation_routes.py` | - 既存メッセージ履歴を取得 |
+| **メッセージ送受信** | `POST /api/conversations/{uuid}/messages` | FE: `useChat.ts` / `StreamingMessage.tsx`<br/>BE: `conversation_routes.py` | - Anthropic Claude API を使用<br/>- デフォルトで SSE ストリーミング応答<br/>- `X-Stream: false` ヘッダーで非ストリーミング応答を選択 |
+| **会話削除** | `DELETE /api/conversations/{uuid}` | FE: `useConversations.ts`<br/>BE: `conversation_routes.py` | - 会話と関連メッセージをまとめて削除 |
+
+---
+
+### 3.4 共通機能
 
 | 機能 | 実装箇所 | 主な仕様 |
 |------|---------|---------|
@@ -100,6 +117,11 @@ graph TB
 | ユーザー管理 | プロフィール更新 | ✓ | ✓ | BE: ✓, FE: ✓ |
 | ユーザー管理 | ユーザー削除 | ✓ | ✓ | BE: ✓, FE: ✓ |
 | ユーザー管理 | パスワード変更 | ✓ | ✓ | BE: ✓, FE: ✓ |
+| チャット | 会話一覧取得 | ✓ | ✓ | BE: ✓, FE: ✓ |
+| チャット | 会話作成 | ✓ | ✓ | BE: ✓, FE: ✓ |
+| チャット | 会話詳細取得 | ✓ | ✓ | BE: ✓, FE: ✓ |
+| チャット | メッセージ送受信 (SSE) | ✓ | ✓ | BE: ✓, FE: ✓ |
+| チャット | 会話削除 | ✓ | ✓ | BE: ✓, FE: ✓ |
 | 共通 | UIコンポーネントライブラリ | - | ✓ | FE: ✓ |
 | 共通 | ロギング | ✓ | ✓ | - |
 | 共通 | エラーハンドリング | ✓ | ✓ | BE: ✓, FE: ✓ |
@@ -146,7 +168,17 @@ graph TB
 | PATCH | `/api/users/me` | 必要 | 全ユーザー | プロフィール更新 |
 | DELETE | `/api/users/{id}` | 必要 | 管理者のみ | ユーザー削除 |
 
-### 5.4 パスワード管理 API
+### 5.4 チャット API
+
+| メソッド | エンドポイント | 認証 | 権限 | 説明 |
+|---------|--------------|------|------|------|
+| GET | `/api/conversations` | 必要 | 全ユーザー | 会話一覧取得（ページング対応） |
+| POST | `/api/conversations` | 必要 | 全ユーザー | 会話作成（初回メッセージ必須） |
+| GET | `/api/conversations/{uuid}` | 必要 | 全ユーザー | 会話詳細取得 |
+| DELETE | `/api/conversations/{uuid}` | 必要 | 全ユーザー | 会話削除 |
+| POST | `/api/conversations/{uuid}/messages` | 必要 | 全ユーザー | メッセージ送信（SSE/非SSE切替可） |
+
+### 5.5 パスワード管理 API
 
 | メソッド | エンドポイント | 認証 | 権限 | 説明 |
 |---------|--------------|------|------|------|
@@ -163,6 +195,7 @@ graph TB
 | ログイン画面 | `/login` | 不要 | - | ユーザー認証 | `LoginPage.tsx` |
 | 設定画面 | `/settings` | 必要 | 全ユーザー | プロフィール編集、パスワード変更 | `SettingsPage.tsx` |
 | ユーザー管理画面 | `/admin/users` | 必要 | 管理者のみ | ユーザー一覧表示、作成、削除 | `UserManagementPage.tsx` |
+| チャット画面 | `/chat` / `/chat/:uuid` | 必要 | 全ユーザー | 会話の作成・選択・メッセージ送受信 | `ChatPage.tsx` |
 
 ### 6.2 画面遷移図
 

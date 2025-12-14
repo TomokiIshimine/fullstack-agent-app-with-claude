@@ -18,8 +18,10 @@
 - **フルスタックモノレポ構成**: フロントエンドとバックエンドを単一リポジトリで管理
 - **モダンな技術スタック**: React + TypeScript (フロントエンド)、Flask + SQLAlchemy (バックエンド)
 - **セキュアな認証**: JWT トークンによる認証（httpOnly Cookie）
+- **AI チャット機能**: Anthropic Claude API によるストリーミングチャット（SSE）
 - **Docker による開発環境**: 環境構築を簡素化し、開発者間の環境差異を最小化
 - **包括的なロギング**: リクエストトレーシング、パフォーマンス測定、センシティブデータマスキング
+- **Redis ベースのレート制限**: Flask-Limiter + Redis による認証・チャットエンドポイントの保護
 
 **関連ドキュメント:**
 - [認証・認可設計書](./02_authentication-authorization.md) - 認証フロー、トークン仕様、セキュリティ対策
@@ -53,11 +55,13 @@ flowchart TD
 
     subgraph Database["データベース層"]
         DB["MySQL 8.0<br/>- InnoDB ストレージエンジン<br/>- UTF-8MB4 文字セット<br/>- トランザクション管理"]
+        Cache["Redis 7<br/>- レート制限ストレージ"]
     end
 
     Client -->|"HTTPS (本番) / HTTP (開発)<br/>Port 5174"| Frontend
     Frontend -->|"REST API (/api/*)<br/>JSON over HTTP"| Backend
-    Repository -->|"SQL over TCP/IP<br/>Port 3306"| Database
+    Repository -->|"SQL over TCP/IP<br/>Port 3306"| DB
+    Backend -->|"Redis protocol<br/>Port 6379"| Cache
 ```
 
 ### 2.2 レイヤー構成
@@ -79,22 +83,30 @@ src/
 │   │   ├── Alert.tsx   # 通知・エラー表示コンポーネント
 │   │   ├── Modal.tsx   # モーダルダイアログコンポーネント
 │   │   └── index.ts    # 共通エクスポート (各コンポーネントの再エクスポート)
+│   ├── chat/           # チャット機能コンポーネント
+│   │   ├── ChatSidebar.tsx
+│   │   ├── MessageList.tsx
+│   │   ├── MessageItem.tsx
+│   │   ├── StreamingMessage.tsx
+│   │   ├── ChatInput.tsx
+│   │   └── index.ts
 │   ├── admin/          # Admin固有コンポーネント
 │   │   ├── UserCreateForm.tsx
 │   │   └── UserList.tsx
 │   ├── settings/       # Settings固有コンポーネント
 │   │   ├── PasswordChangeForm.tsx
 │   │   └── ProfileUpdateForm.tsx
-│   ├── TodoForm.tsx
-│   ├── TodoList.tsx
-│   ├── TodoItem.tsx
+│   ├── ErrorBoundary.tsx  # 例外ハンドリング
+│   ├── PageHeader.tsx     # バージョン表示付きヘッダー
 │   └── ...
 ├── contexts/           # React Context (グローバル状態管理)
 │   └── AuthContext.tsx
 ├── hooks/              # カスタムフック
+│   ├── useChat.ts      # SSE 対応のチャット送受信
+│   └── useConversations.ts # 会話一覧・作成・削除
 ├── lib/                # ユーティリティライブラリ
 │   ├── logger.ts       # ロギング
-│   └── ...
+│   └── api/            # API クライアント（会話/認証/ユーザー）
 ├── types/              # TypeScript型定義
 ├── styles/             # CSSファイル
 ├── App.tsx             # ルートコンポーネント
@@ -108,23 +120,36 @@ app/
 ├── routes/             # APIエンドポイント定義
 │   ├── __init__.py     # Blueprintの統合
 │   ├── auth_routes.py  # 認証関連エンドポイント
+│   ├── user_routes.py  # ユーザー管理
+│   ├── password_routes.py # パスワード変更
+│   ├── conversation_routes.py # チャット会話/メッセージ（SSE対応）
 │   └── health.py       # ヘルスチェックエンドポイント
 ├── services/           # ビジネスロジック
-│   └── auth_service.py
+│   ├── auth_service.py
+│   ├── conversation_service.py
+│   └── ai_service.py   # Anthropic Claude 連携
 ├── repositories/       # データアクセス層
 │   ├── user_repository.py
-│   └── refresh_token_repository.py
+│   ├── refresh_token_repository.py
+│   ├── conversation_repository.py
+│   └── message_repository.py
 ├── models/             # SQLAlchemy ORM モデル
 │   ├── user.py
-│   └── refresh_token.py
+│   ├── refresh_token.py
+│   ├── conversation.py
+│   ├── message.py
+│   └── schema_migration.py
 ├── schemas/            # Pydantic スキーマ (バリデーション)
-│   └── auth.py
+│   ├── auth.py
+│   ├── password.py
+│   ├── user.py
+│   └── conversation.py
 ├── utils/              # ユーティリティ
 │   ├── auth_decorator.py  # 認証デコレータ
 │   └── password.py        # パスワードハッシュ化
 ├── database.py         # データベース接続管理
 ├── logger.py           # ロギング設定
-├── limiter.py          # レート制限設定
+├── limiter.py          # レート制限設定（Redis 使用）
 ├── config.py           # 設定管理
 └── main.py             # Flaskアプリケーションエントリーポイント
 ```
