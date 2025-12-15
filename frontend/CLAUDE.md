@@ -821,7 +821,10 @@ components/chat/
 
 ```typescript
 // Non-streaming API call
-export async function sendMessage(uuid: string, data: SendMessageRequest): Promise<SendMessageResponse> {
+export async function sendMessage(
+  uuid: string,
+  data: SendMessageRequest
+): Promise<SendMessageResponse> {
   const response = await fetch(`/api/conversations/${uuid}/messages`, {
     method: 'POST',
     headers: {

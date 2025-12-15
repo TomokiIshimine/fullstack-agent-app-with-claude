@@ -30,7 +30,6 @@ export function ChatPage() {
     isStreaming,
     streamingContent,
     error: chatError,
-    loadConversation,
     sendMessage,
   } = useChat({ uuid: uuid || '', autoLoad: !!uuid })
 
@@ -68,13 +67,12 @@ export function ChatPage() {
         try {
           const newUuid = await createConversation({ message: content })
           navigate(`/chat/${newUuid}`, { replace: true })
-          await loadConversation(newUuid)
         } finally {
           setIsCreating(false)
         }
       }
     },
-    [uuid, isStreaming, isCreating, sendMessage, createConversation, navigate, loadConversation]
+    [uuid, isStreaming, isCreating, sendMessage, createConversation, navigate]
   )
 
   // Reload conversations when a new one is created
