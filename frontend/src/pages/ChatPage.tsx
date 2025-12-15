@@ -30,6 +30,7 @@ export function ChatPage() {
     isStreaming,
     streamingContent,
     error: chatError,
+    loadConversation,
     sendMessage,
   } = useChat({ uuid: uuid || '', autoLoad: !!uuid })
 
