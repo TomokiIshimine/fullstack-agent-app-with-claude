@@ -100,6 +100,7 @@ class CreateConversationResponse(BaseModel):
 
     conversation: ConversationResponse
     message: MessageResponse
+    assistant_message: MessageResponse
 
 
 class SendMessageResponse(BaseModel):

@@ -67,13 +67,13 @@ export function ChatPage() {
         try {
           const newUuid = await createConversation({ message: content })
           navigate(`/chat/${newUuid}`, { replace: true })
-          await sendMessage(content, newUuid)
+          await loadConversation(newUuid)
         } finally {
           setIsCreating(false)
         }
       }
     },
-    [uuid, isStreaming, isCreating, sendMessage, createConversation, navigate]
+    [uuid, isStreaming, isCreating, sendMessage, createConversation, navigate, loadConversation]
   )
 
   // Reload conversations when a new one is created

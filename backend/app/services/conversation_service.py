@@ -149,11 +149,34 @@ class ConversationService:
             content=first_message,
         )
 
+        # Generate AI response for the first message
+        ai_response = self.ai_service.generate_response(
+            [
+                {
+                    "role": "user",
+                    "content": first_message,
+                }
+            ],
+            stream=False,
+        )
+        if not isinstance(ai_response, str):
+            raise RuntimeError("Expected string response from AI service")
+
+        assistant_message = self.message_repo.create(
+            conversation_id=conversation.id,
+            role="assistant",
+            content=ai_response,
+        )
+
+        # Update conversation timestamp after assistant reply
+        self.conversation_repo.touch(conversation)
+
         logger.info(f"Created conversation {conversation.uuid} for user {user_id}")
 
         return CreateConversationResponse(
             conversation=ConversationResponse.model_validate(conversation),
             message=MessageResponse.model_validate(message),
+            assistant_message=MessageResponse.model_validate(assistant_message),
         )
 
     def delete_conversation(
