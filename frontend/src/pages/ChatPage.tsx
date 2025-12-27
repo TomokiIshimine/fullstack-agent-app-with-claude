@@ -79,6 +79,8 @@ export function ChatPage() {
         // New conversation
         try {
           const { uuid: createdUuid } = await createNewConversation(content)
+          // Reload sidebar to include new conversation
+          void loadConversations()
           navigate(`/chat/${createdUuid}`, { replace: true })
         } catch (err) {
           // Check if we should navigate despite error
@@ -87,21 +89,16 @@ export function ChatPage() {
             logger.warn('Error after message persisted, navigating to conversation', {
               uuid: error.uuid,
             })
+            // Reload sidebar even on error if conversation was created
+            void loadConversations()
             navigate(`/chat/${error.uuid}`, { replace: true })
           }
           // Error is already set in hook state
         }
       }
     },
-    [uuid, isStreaming, newIsStreaming, sendMessage, createNewConversation, navigate]
+    [uuid, isStreaming, newIsStreaming, sendMessage, createNewConversation, loadConversations, navigate]
   )
-
-  // Reload conversations when a new one is created
-  useEffect(() => {
-    if (uuid && conversations.length > 0 && !conversations.find(c => c.uuid === uuid)) {
-      void loadConversations()
-    }
-  }, [uuid, conversations, loadConversations])
 
   const error = conversationsError || chatError || newConversationError
   const isInputDisabled = isStreaming || newIsStreaming

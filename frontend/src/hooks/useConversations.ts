@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   createConversation as createConversationApi,
-  createConversationStreaming as createConversationStreamingApi,
   deleteConversation as deleteConversationApi,
   fetchConversations,
-  type CreateConversationStreamCallbacks,
 } from '@/lib/api/conversations'
 import { useErrorHandler } from './useErrorHandler'
 import type { ConversationWithCount, CreateConversationRequest, PaginationMeta } from '@/types/chat'
@@ -59,24 +57,6 @@ export function useConversations(options: UseConversationsOptions = {}) {
     [handleError, loadConversations]
   )
 
-  const createConversationStreaming = useCallback(
-    async (
-      payload: CreateConversationRequest,
-      callbacks: CreateConversationStreamCallbacks
-    ): Promise<void> => {
-      try {
-        await createConversationStreamingApi(payload, callbacks)
-        logger.info('Conversation created with streaming')
-        // Reload conversations to include the new one
-        await loadConversations()
-      } catch (err) {
-        handleError(err, 'Failed to create conversation')
-        throw err
-      }
-    },
-    [handleError, loadConversations]
-  )
-
   const deleteConversation = useCallback(
     async (uuid: string) => {
       try {
@@ -106,7 +86,6 @@ export function useConversations(options: UseConversationsOptions = {}) {
     clearError,
     loadConversations,
     createConversation,
-    createConversationStreaming,
     deleteConversation,
   }
 }
