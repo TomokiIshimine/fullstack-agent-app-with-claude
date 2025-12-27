@@ -23,8 +23,7 @@ describe('SSE Utilities', () => {
     })
 
     it('should parse multiple events in a single chunk', async () => {
-      const mockSSEData =
-        'event: first\ndata: {"id":1}\n\n' + 'event: second\ndata: {"id":2}\n\n'
+      const mockSSEData = 'event: first\ndata: {"id":1}\n\n' + 'event: second\ndata: {"id":2}\n\n'
 
       const encoder = new TextEncoder()
       const stream = new ReadableStream({
@@ -48,10 +47,7 @@ describe('SSE Utilities', () => {
       const stream = new ReadableStream({
         pull(controller) {
           // Simulate multiple chunks, each containing complete events
-          const chunks = [
-            'event: first\ndata: {"id":1}\n\n',
-            'event: second\ndata: {"id":2}\n\n',
-          ]
+          const chunks = ['event: first\ndata: {"id":1}\n\n', 'event: second\ndata: {"id":2}\n\n']
           if (enqueueCount < chunks.length) {
             controller.enqueue(encoder.encode(chunks[enqueueCount]))
             enqueueCount++
@@ -154,8 +150,7 @@ describe('SSE Utilities', () => {
 
     it('should fetch and parse SSE stream', async () => {
       const mockSSEData =
-        'event: message\ndata: {"text":"Hello"}\n\n' +
-        'event: message\ndata: {"text":"World"}\n\n'
+        'event: message\ndata: {"text":"Hello"}\n\n' + 'event: message\ndata: {"text":"World"}\n\n'
 
       const encoder = new TextEncoder()
       const stream = new ReadableStream({

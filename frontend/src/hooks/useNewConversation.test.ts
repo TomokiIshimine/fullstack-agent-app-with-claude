@@ -41,10 +41,7 @@ describe('useNewConversation', () => {
   it('should add optimistic user message when creating conversation', async () => {
     const mockStreaming = vi.mocked(createConversationStreaming)
     mockStreaming.mockImplementation(async (_request, callbacks) => {
-      callbacks.onCreated?.(
-        { uuid: 'test-uuid', title: 'Test', created_at: '', updated_at: '' },
-        1
-      )
+      callbacks.onCreated?.({ uuid: 'test-uuid', title: 'Test', created_at: '', updated_at: '' }, 1)
       callbacks.onEnd?.(2, 'Hello!')
     })
 
@@ -62,10 +59,7 @@ describe('useNewConversation', () => {
   it('should update streaming content during delta events', async () => {
     const mockStreaming = vi.mocked(createConversationStreaming)
     mockStreaming.mockImplementation(async (_request, callbacks) => {
-      callbacks.onCreated?.(
-        { uuid: 'test-uuid', title: 'Test', created_at: '', updated_at: '' },
-        1
-      )
+      callbacks.onCreated?.({ uuid: 'test-uuid', title: 'Test', created_at: '', updated_at: '' }, 1)
       callbacks.onDelta?.('Hello')
       callbacks.onDelta?.(' World')
       callbacks.onEnd?.(2, 'Hello World')
@@ -130,10 +124,7 @@ describe('useNewConversation', () => {
   it('should reset state correctly', async () => {
     const mockStreaming = vi.mocked(createConversationStreaming)
     mockStreaming.mockImplementation(async (_request, callbacks) => {
-      callbacks.onCreated?.(
-        { uuid: 'test-uuid', title: 'Test', created_at: '', updated_at: '' },
-        1
-      )
+      callbacks.onCreated?.({ uuid: 'test-uuid', title: 'Test', created_at: '', updated_at: '' }, 1)
       callbacks.onEnd?.(2, 'Response')
     })
 
@@ -182,10 +173,7 @@ describe('useNewConversation', () => {
     const mockStreaming = vi.mocked(createConversationStreaming)
 
     mockStreaming.mockImplementation(async (_request, callbacks) => {
-      callbacks.onCreated?.(
-        { uuid: 'test-uuid', title: 'Test', created_at: '', updated_at: '' },
-        1
-      )
+      callbacks.onCreated?.({ uuid: 'test-uuid', title: 'Test', created_at: '', updated_at: '' }, 1)
       // Simulate error during streaming by rejecting after onCreated
       throw new Error('AI error')
     })
@@ -221,7 +209,7 @@ describe('useNewConversation', () => {
 
     const { result } = renderHook(() => useNewConversation())
 
-    let caughtError: Error & { uuid?: string; userMessagePersisted?: boolean } | undefined
+    let caughtError: (Error & { uuid?: string; userMessagePersisted?: boolean }) | undefined
     await act(async () => {
       try {
         await result.current.createConversation('Hello')
@@ -240,10 +228,7 @@ describe('useNewConversation', () => {
 
     let resolveStreaming: () => void
     mockStreaming.mockImplementation(async (_request, callbacks) => {
-      callbacks.onCreated?.(
-        { uuid: 'test-uuid', title: 'Test', created_at: '', updated_at: '' },
-        1
-      )
+      callbacks.onCreated?.({ uuid: 'test-uuid', title: 'Test', created_at: '', updated_at: '' }, 1)
       // Wait for external signal
       await new Promise<void>(resolve => {
         resolveStreaming = resolve
