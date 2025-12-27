@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.models.message import Message
 from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.message_repository import MessageRepository
+from app.repositories.tool_call_repository import ToolCallRepository
 from app.schemas.conversation import (
     ConversationDetailResponse,
     ConversationListResponse,
@@ -21,7 +22,13 @@ from app.schemas.conversation import (
     PaginationMeta,
     SendMessageResponse,
 )
-from app.services.ai_service import AIService
+from app.services.agent_service import (
+    AgentService,
+    MessageCompleteEvent,
+    TextDeltaEvent,
+    ToolCallEvent,
+    ToolResultEvent,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +41,8 @@ class ConversationService:
         self.session = session
         self.conversation_repo = ConversationRepository(session)
         self.message_repo = MessageRepository(session)
-        self.ai_service = AIService()
+        self.tool_call_repo = ToolCallRepository(session)
+        self.agent_service = AgentService()
 
     def list_conversations(
         self,
@@ -134,7 +142,7 @@ class ConversationService:
             CreateConversationResponse with conversation and message
         """
         # Generate title from first message
-        title = self.ai_service.generate_title(first_message)
+        title = self.agent_service.generate_title(first_message)
 
         # Create conversation
         conversation = self.conversation_repo.create(
@@ -160,7 +168,7 @@ class ConversationService:
         self,
         user_id: int,
         first_message: str,
-    ) -> Generator[tuple[Literal["created", "delta", "end"], dict], None, None]:
+    ) -> Generator[tuple[Literal["created", "delta", "end", "tool_call_start", "tool_call_end"], dict], None, None]:
         """
         Create a new conversation with AI response streaming.
 
@@ -171,11 +179,13 @@ class ConversationService:
         Yields:
             Tuples of (event_type, data) for SSE events:
             - ("created", {conversation, user_message_id}): Conversation created
+            - ("tool_call_start", {tool_call_id, tool_name, input}): Tool call started
+            - ("tool_call_end", {tool_call_id, output, error}): Tool call completed
             - ("delta", {delta}): AI response chunk
             - ("end", {assistant_message_id, content}): Streaming complete
         """
         # Generate title from first message
-        title = self.ai_service.generate_title(first_message)
+        title = self.agent_service.generate_title(first_message)
 
         # Create conversation
         conversation = self.conversation_repo.create(
@@ -206,18 +216,59 @@ class ConversationService:
         # Build message history for AI (just the first message)
         messages = [{"role": "user", "content": first_message}]
 
-        # Generate and stream AI response
-        full_response = ""
-        for chunk in self.ai_service.generate_response(messages, stream=True):
-            full_response += chunk
-            yield ("delta", {"delta": chunk})
-
-        # Save assistant message
+        # Create placeholder for assistant message (will be updated after streaming)
         assistant_message = self.message_repo.create(
             conversation_id=conversation.id,
             role="assistant",
-            content=full_response,
+            content="",
         )
+        self.session.flush()
+
+        # Generate and stream AI response
+        full_response = ""
+        for event in self.agent_service.generate_response(messages, stream=True):
+            if isinstance(event, ToolCallEvent):
+                # Save tool call to database
+                self.tool_call_repo.create(
+                    message_id=assistant_message.id,
+                    tool_call_id=event.tool_call_id,
+                    tool_name=event.tool_name,
+                    input_data=event.input,
+                )
+                yield (
+                    "tool_call_start",
+                    {
+                        "tool_call_id": event.tool_call_id,
+                        "tool_name": event.tool_name,
+                        "input": event.input,
+                    },
+                )
+            elif isinstance(event, ToolResultEvent):
+                # Update tool call with result
+                status = "error" if event.error else "success"
+                self.tool_call_repo.update_completed(
+                    tool_call_id=event.tool_call_id,
+                    output=event.output,
+                    error=event.error,
+                    status=status,
+                )
+                yield (
+                    "tool_call_end",
+                    {
+                        "tool_call_id": event.tool_call_id,
+                        "output": event.output,
+                        "error": event.error,
+                    },
+                )
+            elif isinstance(event, TextDeltaEvent):
+                full_response = event.delta
+                yield ("delta", {"delta": event.delta})
+            elif isinstance(event, MessageCompleteEvent):
+                full_response = event.content
+
+        # Update assistant message with final content
+        assistant_message.content = full_response
+        self.session.flush()
 
         # Update conversation timestamp
         self.conversation_repo.touch(conversation)
@@ -323,17 +374,40 @@ class ConversationService:
         # Build message history for AI
         messages = self._build_message_history(conversation.messages, content)
 
-        # Generate AI response (stream=False returns str)
-        ai_response = self.ai_service.generate_response(messages, stream=False)
-        if not isinstance(ai_response, str):
-            raise RuntimeError("Expected string response from AI service")
-
-        # Save assistant message
+        # Create assistant message placeholder
         assistant_message = self.message_repo.create(
             conversation_id=conversation.id,
             role="assistant",
-            content=ai_response,
+            content="",
         )
+        self.session.flush()
+
+        # Generate AI response using agent
+        full_response = ""
+        for event in self.agent_service.generate_response(messages, stream=True):
+            if isinstance(event, ToolCallEvent):
+                # Save tool call to database
+                self.tool_call_repo.create(
+                    message_id=assistant_message.id,
+                    tool_call_id=event.tool_call_id,
+                    tool_name=event.tool_name,
+                    input_data=event.input,
+                )
+            elif isinstance(event, ToolResultEvent):
+                # Update tool call with result
+                status = "error" if event.error else "success"
+                self.tool_call_repo.update_completed(
+                    tool_call_id=event.tool_call_id,
+                    output=event.output,
+                    error=event.error,
+                    status=status,
+                )
+            elif isinstance(event, MessageCompleteEvent):
+                full_response = event.content
+
+        # Update assistant message with final content
+        assistant_message.content = full_response
+        self.session.flush()
 
         # Update conversation timestamp
         self.conversation_repo.touch(conversation)
@@ -350,7 +424,7 @@ class ConversationService:
         uuid: str,
         user_id: int,
         content: str,
-    ) -> Generator[tuple[Literal["start", "delta", "end"], dict], None, None]:
+    ) -> Generator[tuple[Literal["start", "delta", "end", "tool_call_start", "tool_call_end"], dict], None, None]:
         """
         Send a message and get streaming AI response.
 
@@ -360,7 +434,12 @@ class ConversationService:
             content: Message content
 
         Yields:
-            Tuples of (event_type, data) for SSE events
+            Tuples of (event_type, data) for SSE events:
+            - ("start", {user_message_id}): User message saved
+            - ("tool_call_start", {tool_call_id, tool_name, input}): Tool call started
+            - ("tool_call_end", {tool_call_id, output, error}): Tool call completed
+            - ("delta", {delta}): AI response chunk
+            - ("end", {assistant_message_id, content}): Streaming complete
 
         Raises:
             ValueError: If conversation not found
@@ -389,18 +468,59 @@ class ConversationService:
         # Yield start event
         yield ("start", {"user_message_id": user_message.id})
 
-        # Generate and stream AI response
-        full_response = ""
-        for chunk in self.ai_service.generate_response(messages, stream=True):
-            full_response += chunk
-            yield ("delta", {"delta": chunk})
-
-        # Save assistant message
+        # Create placeholder for assistant message (will be updated after streaming)
         assistant_message = self.message_repo.create(
             conversation_id=conversation.id,
             role="assistant",
-            content=full_response,
+            content="",
         )
+        self.session.flush()
+
+        # Generate and stream AI response
+        full_response = ""
+        for event in self.agent_service.generate_response(messages, stream=True):
+            if isinstance(event, ToolCallEvent):
+                # Save tool call to database
+                self.tool_call_repo.create(
+                    message_id=assistant_message.id,
+                    tool_call_id=event.tool_call_id,
+                    tool_name=event.tool_name,
+                    input_data=event.input,
+                )
+                yield (
+                    "tool_call_start",
+                    {
+                        "tool_call_id": event.tool_call_id,
+                        "tool_name": event.tool_name,
+                        "input": event.input,
+                    },
+                )
+            elif isinstance(event, ToolResultEvent):
+                # Update tool call with result
+                status = "error" if event.error else "success"
+                self.tool_call_repo.update_completed(
+                    tool_call_id=event.tool_call_id,
+                    output=event.output,
+                    error=event.error,
+                    status=status,
+                )
+                yield (
+                    "tool_call_end",
+                    {
+                        "tool_call_id": event.tool_call_id,
+                        "output": event.output,
+                        "error": event.error,
+                    },
+                )
+            elif isinstance(event, TextDeltaEvent):
+                full_response = event.delta
+                yield ("delta", {"delta": event.delta})
+            elif isinstance(event, MessageCompleteEvent):
+                full_response = event.content
+
+        # Update assistant message with final content
+        assistant_message.content = full_response
+        self.session.flush()
 
         # Update conversation timestamp
         self.conversation_repo.touch(conversation)

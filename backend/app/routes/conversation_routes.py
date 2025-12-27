@@ -141,6 +141,8 @@ def create_conversation(*, data: CreateConversationRequest, conversation_service
     Streaming response (default):
         SSE events:
         - event: conversation_created, data: {"conversation": {...}, "user_message_id": 1}
+        - event: tool_call_start, data: {"tool_call_id": "...", "tool_name": "...", "input": {...}}
+        - event: tool_call_end, data: {"tool_call_id": "...", "output": "...", "error": null}
         - event: content_delta, data: {"delta": "..."}
         - event: message_end, data: {"assistant_message_id": 2, "content": "..."}
         - event: error, data: {"error": "...", "user_message_id": 1} (if AI fails after user message saved)
@@ -169,6 +171,10 @@ def create_conversation(*, data: CreateConversationRequest, conversation_service
                     if event_type == "created":
                         user_message_id = event_data.get("user_message_id")
                         yield f"event: conversation_created\ndata: {json.dumps(event_data)}\n\n"
+                    elif event_type == "tool_call_start":
+                        yield f"event: tool_call_start\ndata: {json.dumps(event_data)}\n\n"
+                    elif event_type == "tool_call_end":
+                        yield f"event: tool_call_end\ndata: {json.dumps(event_data)}\n\n"
                     elif event_type == "delta":
                         yield f"event: content_delta\ndata: {json.dumps(event_data)}\n\n"
                     elif event_type == "end":
@@ -277,6 +283,8 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
     Streaming response (default):
         SSE events:
         - event: message_start, data: {"user_message_id": 1}
+        - event: tool_call_start, data: {"tool_call_id": "...", "tool_name": "...", "input": {...}}
+        - event: tool_call_end, data: {"tool_call_id": "...", "output": "...", "error": null}
         - event: content_delta, data: {"delta": "..."}
         - event: message_end, data: {"assistant_message_id": 2, "content": "..."}
         - event: error, data: {"error": "...", "user_message_id": 1} (if AI fails after user message saved)
@@ -314,6 +322,10 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
                     if event_type == "start":
                         user_message_id = event_data.get("user_message_id")
                         yield f"event: message_start\ndata: {json.dumps(event_data)}\n\n"
+                    elif event_type == "tool_call_start":
+                        yield f"event: tool_call_start\ndata: {json.dumps(event_data)}\n\n"
+                    elif event_type == "tool_call_end":
+                        yield f"event: tool_call_end\ndata: {json.dumps(event_data)}\n\n"
                     elif event_type == "delta":
                         yield f"event: content_delta\ndata: {json.dumps(event_data)}\n\n"
                     elif event_type == "end":

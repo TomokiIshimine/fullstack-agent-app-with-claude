@@ -3,6 +3,7 @@ import { fetchConversation, sendMessageStreaming } from '@/lib/api/conversations
 import { useErrorHandler } from './useErrorHandler'
 import type { Conversation, Message, SendMessageRequest } from '@/types/chat'
 import { toConversation, toMessage } from '@/types/chat'
+import type { StreamingToolCall } from '@/types/tool'
 import { logger } from '@/lib/logger'
 
 interface UseChatOptions {
@@ -18,6 +19,7 @@ export function useChat(options: UseChatOptions) {
   const [isLoading, setIsLoading] = useState(true)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [streamingToolCalls, setStreamingToolCalls] = useState<StreamingToolCall[]>([])
   const { error, handleError, clearError } = useErrorHandler()
 
   const loadConversation = useCallback(
@@ -67,6 +69,7 @@ export function useChat(options: UseChatOptions) {
 
       setIsStreaming(true)
       setStreamingContent('')
+      setStreamingToolCalls([])
       clearError()
 
       let userMessagePersisted = false
@@ -85,6 +88,26 @@ export function useChat(options: UseChatOptions) {
               prev.map(m => (m.id === tempUserMessage.id ? { ...m, id: userMessageId } : m))
             )
             logger.debug('Streaming started', { userMessageId })
+          },
+          onToolCallStart: (toolCallId, toolName, input) => {
+            const newToolCall: StreamingToolCall = {
+              toolCallId,
+              toolName,
+              input,
+              status: 'pending',
+            }
+            setStreamingToolCalls(prev => [...prev, newToolCall])
+            logger.debug('Tool call started', { toolCallId, toolName })
+          },
+          onToolCallEnd: (toolCallId, output, error) => {
+            setStreamingToolCalls(prev =>
+              prev.map(tc =>
+                tc.toolCallId === toolCallId
+                  ? { ...tc, output, error, status: error ? 'error' : 'success' }
+                  : tc
+              )
+            )
+            logger.debug('Tool call ended', { toolCallId, hasError: !!error })
           },
           onDelta: delta => {
             finalContent += delta
@@ -133,6 +156,7 @@ export function useChat(options: UseChatOptions) {
       } finally {
         setIsStreaming(false)
         setStreamingContent('')
+        setStreamingToolCalls([])
       }
     },
     [uuid, isStreaming, clearError, handleError, loadConversation]
@@ -150,6 +174,7 @@ export function useChat(options: UseChatOptions) {
     isLoading,
     isStreaming,
     streamingContent,
+    streamingToolCalls,
     error,
     clearError,
     loadConversation,

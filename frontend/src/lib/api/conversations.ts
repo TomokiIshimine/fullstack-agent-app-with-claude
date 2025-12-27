@@ -89,6 +89,8 @@ export async function deleteConversation(uuid: string): Promise<void> {
  */
 export interface CreateConversationStreamCallbacks {
   onCreated?: (conversation: ConversationDto, userMessageId: number) => void
+  onToolCallStart?: (toolCallId: string, toolName: string, input: Record<string, unknown>) => void
+  onToolCallEnd?: (toolCallId: string, output?: string, error?: string) => void
   onDelta?: (delta: string) => void
   onEnd?: (assistantMessageId: number, content: string) => void
   onError?: (error: string, userMessageId?: number) => void
@@ -127,6 +129,20 @@ function handleCreateConversationStreamEvent(
   switch (event) {
     case 'conversation_created':
       callbacks.onCreated?.(data.conversation as ConversationDto, data.user_message_id as number)
+      break
+    case 'tool_call_start':
+      callbacks.onToolCallStart?.(
+        data.tool_call_id as string,
+        data.tool_name as string,
+        data.input as Record<string, unknown>
+      )
+      break
+    case 'tool_call_end':
+      callbacks.onToolCallEnd?.(
+        data.tool_call_id as string,
+        (data.output as string | null) ?? undefined,
+        (data.error as string | null) ?? undefined
+      )
       break
     case 'content_delta':
       callbacks.onDelta?.(data.delta as string)
@@ -169,6 +185,8 @@ export async function sendMessage(
  */
 export interface StreamCallbacks {
   onStart?: (userMessageId: number) => void
+  onToolCallStart?: (toolCallId: string, toolName: string, input: Record<string, unknown>) => void
+  onToolCallEnd?: (toolCallId: string, output?: string, error?: string) => void
   onDelta?: (delta: string) => void
   onEnd?: (assistantMessageId: number, content: string) => void
   /** Called on error. userMessageId is provided if message was persisted before error */
@@ -209,6 +227,20 @@ function handleStreamEvent(
   switch (event) {
     case 'message_start':
       callbacks.onStart?.(data.user_message_id as number)
+      break
+    case 'tool_call_start':
+      callbacks.onToolCallStart?.(
+        data.tool_call_id as string,
+        data.tool_name as string,
+        data.input as Record<string, unknown>
+      )
+      break
+    case 'tool_call_end':
+      callbacks.onToolCallEnd?.(
+        data.tool_call_id as string,
+        (data.output as string | null) ?? undefined,
+        (data.error as string | null) ?? undefined
+      )
       break
     case 'content_delta':
       callbacks.onDelta?.(data.delta as string)

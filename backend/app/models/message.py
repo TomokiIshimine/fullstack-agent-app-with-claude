@@ -12,6 +12,7 @@ from . import Base
 
 if TYPE_CHECKING:
     from .conversation import Conversation
+    from .tool_call import ToolCall
 
 
 class Message(Base):
@@ -47,6 +48,9 @@ class Message(Base):
 
     # Relationships
     conversation: Mapped["Conversation"] = relationship("Conversation", back_populates="messages")
+    tool_calls: Mapped[list["ToolCall"]] = relationship(
+        "ToolCall", back_populates="message", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"Message(id={self.id!r}, role={self.role!r})"
