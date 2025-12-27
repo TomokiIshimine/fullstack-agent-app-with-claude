@@ -22,6 +22,7 @@ export function ChatPage() {
   const [newMessages, setNewMessages] = useState<Message[]>([])
   const [newStreamingContent, setNewStreamingContent] = useState('')
   const [newIsStreaming, setNewIsStreaming] = useState(false)
+  const [newConversationError, setNewConversationError] = useState<Error | null>(null)
 
   const {
     conversations,
@@ -48,6 +49,7 @@ export function ChatPage() {
       setNewMessages([])
       setNewStreamingContent('')
       setNewIsStreaming(false)
+      setNewConversationError(null)
     } else {
       logger.debug('Ready for new chat')
     }
@@ -58,6 +60,7 @@ export function ChatPage() {
     setNewMessages([])
     setNewStreamingContent('')
     setNewIsStreaming(false)
+    setNewConversationError(null)
     navigate('/chat')
     setIsSidebarOpen(false)
   }, [navigate])
@@ -81,6 +84,7 @@ export function ChatPage() {
         // New conversation - create with streaming AI response
         setIsCreating(true)
         setNewIsStreaming(true)
+        setNewConversationError(null)
 
         // Add optimistic user message
         const tempUserMessage: Message = {
@@ -91,8 +95,10 @@ export function ChatPage() {
         }
         setNewMessages([tempUserMessage])
 
+        let userMessagePersisted = false
+        let createdUuid = ''
+
         try {
-          let createdUuid = ''
           let finalContent = ''
           let assistantMessageId = 0
 
@@ -101,6 +107,7 @@ export function ChatPage() {
             {
               onCreated: (conversationDto, userMessageId) => {
                 createdUuid = conversationDto.uuid
+                userMessagePersisted = true
                 setNewConversation(toConversation(conversationDto))
                 // Update temp message with real ID
                 setNewMessages(prev =>
@@ -118,19 +125,22 @@ export function ChatPage() {
                 logger.debug('Streaming ended', { assistantMessageId })
               },
               onError: errorMsg => {
-                logger.error('Streaming error', new Error(errorMsg))
+                // Propagate error to be caught by try-catch
+                throw new Error(errorMsg)
               },
             }
           )
 
-          // Add assistant message
-          const assistantMessage: Message = {
-            id: assistantMessageId,
-            role: 'assistant',
-            content: finalContent,
-            createdAt: new Date(),
+          // Add assistant message only if we got a valid response
+          if (assistantMessageId > 0 && finalContent) {
+            const assistantMessage: Message = {
+              id: assistantMessageId,
+              role: 'assistant',
+              content: finalContent,
+              createdAt: new Date(),
+            }
+            setNewMessages(prev => [...prev, assistantMessage])
           }
-          setNewMessages(prev => [...prev, assistantMessage])
           setNewStreamingContent('')
 
           // Navigate to the new conversation
@@ -138,7 +148,22 @@ export function ChatPage() {
             navigate(`/chat/${createdUuid}`, { replace: true })
           }
         } catch (err) {
-          logger.error('Failed to create conversation', err as Error)
+          const error = err as Error
+          logger.error('Failed to create conversation', error)
+          setNewConversationError(error)
+          setNewStreamingContent('')
+
+          if (userMessagePersisted && createdUuid) {
+            // Message was saved on server - navigate to conversation to sync state
+            logger.warn('Error after message persisted, navigating to conversation', {
+              uuid: createdUuid,
+            })
+            navigate(`/chat/${createdUuid}`, { replace: true })
+          } else {
+            // Message was not saved - remove optimistic message
+            setNewMessages([])
+            setNewConversation(null)
+          }
         } finally {
           setIsCreating(false)
           setNewIsStreaming(false)
@@ -163,7 +188,7 @@ export function ChatPage() {
     }
   }, [uuid, conversations, loadConversations])
 
-  const error = conversationsError || chatError
+  const error = conversationsError || chatError || newConversationError
   const isInputDisabled = isStreaming || isCreating || newIsStreaming
 
   // Determine which messages and streaming content to show
