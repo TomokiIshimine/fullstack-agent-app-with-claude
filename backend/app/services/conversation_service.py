@@ -156,6 +156,83 @@ class ConversationService:
             message=MessageResponse.model_validate(message),
         )
 
+    def create_conversation_streaming(
+        self,
+        user_id: int,
+        first_message: str,
+    ) -> Generator[tuple[Literal["created", "delta", "end"], dict], None, None]:
+        """
+        Create a new conversation with AI response streaming.
+
+        Args:
+            user_id: User ID
+            first_message: First user message content
+
+        Yields:
+            Tuples of (event_type, data) for SSE events:
+            - ("created", {conversation, user_message_id}): Conversation created
+            - ("delta", {delta}): AI response chunk
+            - ("end", {assistant_message_id, content}): Streaming complete
+        """
+        # Generate title from first message
+        title = self.ai_service.generate_title(first_message)
+
+        # Create conversation
+        conversation = self.conversation_repo.create(
+            user_id=user_id,
+            title=title,
+        )
+
+        # Create first message
+        user_message = self.message_repo.create(
+            conversation_id=conversation.id,
+            role="user",
+            content=first_message,
+        )
+        # Flush to get IDs
+        self.session.flush()
+
+        logger.info(f"Created conversation {conversation.uuid} for user {user_id}")
+
+        # Yield conversation created event
+        yield (
+            "created",
+            {
+                "conversation": ConversationResponse.model_validate(conversation).model_dump(mode="json"),
+                "user_message_id": user_message.id,
+            },
+        )
+
+        # Build message history for AI (just the first message)
+        messages = [{"role": "user", "content": first_message}]
+
+        # Generate and stream AI response
+        full_response = ""
+        for chunk in self.ai_service.generate_response(messages, stream=True):
+            full_response += chunk
+            yield ("delta", {"delta": chunk})
+
+        # Save assistant message
+        assistant_message = self.message_repo.create(
+            conversation_id=conversation.id,
+            role="assistant",
+            content=full_response,
+        )
+
+        # Update conversation timestamp
+        self.conversation_repo.touch(conversation)
+
+        # Yield end event
+        yield (
+            "end",
+            {
+                "assistant_message_id": assistant_message.id,
+                "content": full_response,
+            },
+        )
+
+        logger.info(f"Streaming conversation created: {conversation.uuid}")
+
     def delete_conversation(
         self,
         uuid: str,

@@ -126,38 +126,77 @@ def list_conversations(*, conversation_service: ConversationService):
 @validate_conversation_request(CreateConversationRequest)
 def create_conversation(*, data: CreateConversationRequest, conversation_service: ConversationService):
     """
-    Create a new conversation with an initial message.
+    Create a new conversation with an initial message and AI response.
+
+    Supports both streaming (SSE) and non-streaming responses.
+
+    Request headers:
+        X-Stream: "false" to disable streaming (optional, default: streaming enabled)
 
     Request body:
         {
             "message": "Hello, I need help with..."
         }
 
-    Returns:
+    Streaming response (default):
+        SSE events:
+        - event: conversation_created, data: {"conversation": {...}, "user_message_id": 1}
+        - event: content_delta, data: {"delta": "..."}
+        - event: message_end, data: {"assistant_message_id": 2, "content": "..."}
+        - event: error, data: {"error": "...", "user_message_id": 1} (if AI fails after user message saved)
+
+    Non-streaming response:
         {
-            "conversation": {
-                "uuid": "...",
-                "title": "...",
-                ...
-            },
-            "message": {
-                "id": 1,
-                "role": "user",
-                "content": "...",
-                ...
-            }
+            "conversation": {...},
+            "message": {...},
+            "assistant_message": {...}
         }
     """
     user_id = g.user_id
-    logger.info(f"POST /api/conversations - Creating conversation for user_id={user_id}")
+    stream = request.headers.get("X-Stream", "true").lower() != "false"
 
-    response = conversation_service.create_conversation(
-        user_id=user_id,
-        first_message=data.message,
-    )
+    logger.info(f"POST /api/conversations - Creating conversation for user_id={user_id}, stream={stream}")
 
-    logger.info(f"POST /api/conversations - Created conversation {response.conversation.uuid}")
-    return jsonify(response.model_dump(mode="json")), 201
+    if stream:
+        # Streaming response using SSE
+        def generate():
+            user_message_id = None
+            try:
+                for event_type, event_data in conversation_service.create_conversation_streaming(
+                    user_id=user_id,
+                    first_message=data.message,
+                ):
+                    if event_type == "created":
+                        user_message_id = event_data.get("user_message_id")
+                        yield f"event: conversation_created\ndata: {json.dumps(event_data)}\n\n"
+                    elif event_type == "delta":
+                        yield f"event: content_delta\ndata: {json.dumps(event_data)}\n\n"
+                    elif event_type == "end":
+                        yield f"event: message_end\ndata: {json.dumps(event_data)}\n\n"
+            except Exception as exc:
+                logger.error("Error during conversation creation streaming", exc_info=True)
+                error_data = {"error": str(exc) if isinstance(exc, (ValueError, PermissionError)) else "Internal server error"}
+                if user_message_id is not None:
+                    error_data["user_message_id"] = user_message_id
+                yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
+
+        return Response(
+            stream_with_context(generate()),
+            mimetype="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+                "Connection": "keep-alive",
+            },
+        )
+    else:
+        # Non-streaming response
+        response = conversation_service.create_conversation(
+            user_id=user_id,
+            first_message=data.message,
+        )
+        logger.info(f"POST /api/conversations - Created conversation {response.conversation.uuid}")
+        return jsonify(response.model_dump(mode="json")), 201
 
 
 @conversation_bp.get("/<uuid>")

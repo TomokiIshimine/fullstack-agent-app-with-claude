@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, field_validator
 
@@ -100,6 +100,7 @@ class CreateConversationResponse(BaseModel):
 
     conversation: ConversationResponse
     message: MessageResponse
+    assistant_message: Optional[MessageResponse] = None
 
 
 class SendMessageResponse(BaseModel):
