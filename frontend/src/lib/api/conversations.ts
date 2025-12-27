@@ -7,7 +7,7 @@ import type {
   SendMessageRequest,
   SendMessageResponse,
 } from '@/types/chat'
-import { ApiError, buildApiError, buildJsonHeaders, fetchWithLogging, parseJson } from './client'
+import { buildApiError, buildJsonHeaders, fetchSSE, fetchWithLogging, parseJson } from './client'
 
 const API_BASE = '/api/conversations'
 
@@ -98,56 +98,19 @@ export async function createConversationStreaming(
   data: CreateConversationRequest,
   callbacks: CreateConversationStreamCallbacks
 ): Promise<void> {
-  const response = await fetch(API_BASE, {
-    method: 'POST',
-    headers: buildJsonHeaders(),
-    body: JSON.stringify(data),
-    credentials: 'include',
-  })
-
-  if (!response.ok) {
-    const json = await parseJson(response)
-    throw buildApiError(response, json)
-  }
-
-  if (!response.body) {
-    throw new ApiError(500, 'No response body for streaming')
-  }
-
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-
-      // Parse SSE events from buffer
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || '' // Keep incomplete line in buffer
-
-      let currentEvent = ''
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          currentEvent = line.slice(7)
-        } else if (line.startsWith('data: ') && currentEvent) {
-          const eventData = line.slice(6)
-          try {
-            const parsed = JSON.parse(eventData)
-            handleCreateConversationStreamEvent(currentEvent, parsed, callbacks)
-          } catch {
-            // Ignore parse errors
-          }
-          currentEvent = ''
-        }
-      }
+  await fetchSSE(
+    API_BASE,
+    {
+      method: 'POST',
+      headers: buildJsonHeaders(),
+      body: JSON.stringify(data),
+    },
+    {
+      onEvent: (event, eventData) => {
+        handleCreateConversationStreamEvent(event, eventData, callbacks)
+      },
     }
-  } finally {
-    reader.releaseLock()
-  }
+  )
 }
 
 /**
@@ -217,56 +180,19 @@ export async function sendMessageStreaming(
   data: SendMessageRequest,
   callbacks: StreamCallbacks
 ): Promise<void> {
-  const response = await fetch(`${API_BASE}/${uuid}/messages`, {
-    method: 'POST',
-    headers: buildJsonHeaders(),
-    body: JSON.stringify(data),
-    credentials: 'include',
-  })
-
-  if (!response.ok) {
-    const json = await parseJson(response)
-    throw buildApiError(response, json)
-  }
-
-  if (!response.body) {
-    throw new ApiError(500, 'No response body for streaming')
-  }
-
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-
-      // Parse SSE events from buffer
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || '' // Keep incomplete line in buffer
-
-      let currentEvent = ''
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          currentEvent = line.slice(7)
-        } else if (line.startsWith('data: ') && currentEvent) {
-          const data = line.slice(6)
-          try {
-            const parsed = JSON.parse(data)
-            handleStreamEvent(currentEvent, parsed, callbacks)
-          } catch {
-            // Ignore parse errors
-          }
-          currentEvent = ''
-        }
-      }
+  await fetchSSE(
+    `${API_BASE}/${uuid}/messages`,
+    {
+      method: 'POST',
+      headers: buildJsonHeaders(),
+      body: JSON.stringify(data),
+    },
+    {
+      onEvent: (event, eventData) => {
+        handleStreamEvent(event, eventData, callbacks)
+      },
     }
-  } finally {
-    reader.releaseLock()
-  }
+  )
 }
 
 /**

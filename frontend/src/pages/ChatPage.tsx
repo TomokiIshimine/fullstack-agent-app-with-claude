@@ -3,11 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConversations } from '@/hooks/useConversations'
 import { useChat } from '@/hooks/useChat'
+import { useNewConversation } from '@/hooks/useNewConversation'
 import { ChatSidebar, ChatInput, MessageList } from '@/components/chat'
 import { Alert } from '@/components/ui'
 import { logger } from '@/lib/logger'
-import type { Message, Conversation } from '@/types/chat'
-import { toConversation } from '@/types/chat'
 import '@/styles/chat.css'
 
 export function ChatPage() {
@@ -15,23 +14,16 @@ export function ChatPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
 
-  // State for new conversation creation with streaming
-  const [newConversation, setNewConversation] = useState<Conversation | null>(null)
-  const [newMessages, setNewMessages] = useState<Message[]>([])
-  const [newStreamingContent, setNewStreamingContent] = useState('')
-  const [newIsStreaming, setNewIsStreaming] = useState(false)
-  const [newConversationError, setNewConversationError] = useState<Error | null>(null)
-
+  // Existing conversation management
   const {
     conversations,
     isLoading: isLoadingConversations,
     error: conversationsError,
-    createConversationStreaming,
     loadConversations,
   } = useConversations()
 
+  // Selected conversation (when uuid is present)
   const {
     conversation,
     messages,
@@ -42,28 +34,31 @@ export function ChatPage() {
     sendMessage,
   } = useChat({ uuid: uuid || '', autoLoad: !!uuid })
 
-  // Clear new conversation state when navigating to a chat with uuid
+  // New conversation creation
+  const {
+    conversation: newConversation,
+    messages: newMessages,
+    isStreaming: newIsStreaming,
+    streamingContent: newStreamingContent,
+    error: newConversationError,
+    createConversation: createNewConversation,
+    reset: resetNewConversation,
+  } = useNewConversation()
+
+  // Reset new conversation state when navigating to a chat with uuid
   useEffect(() => {
     if (uuid) {
-      setNewConversation(null)
-      setNewMessages([])
-      setNewStreamingContent('')
-      setNewIsStreaming(false)
-      setNewConversationError(null)
+      resetNewConversation()
     } else {
       logger.debug('Ready for new chat')
     }
-  }, [uuid])
+  }, [uuid, resetNewConversation])
 
   const handleNewChat = useCallback(() => {
-    setNewConversation(null)
-    setNewMessages([])
-    setNewStreamingContent('')
-    setNewIsStreaming(false)
-    setNewConversationError(null)
+    resetNewConversation()
     navigate('/chat')
     setIsSidebarOpen(false)
-  }, [navigate])
+  }, [navigate, resetNewConversation])
 
   const handleSelectConversation = useCallback(
     (selectedUuid: string) => {
@@ -75,110 +70,30 @@ export function ChatPage() {
 
   const handleSendMessage = useCallback(
     async (content: string) => {
-      if (isStreaming || isCreating || newIsStreaming) return
+      if (isStreaming || newIsStreaming) return
 
       if (uuid) {
         // Existing conversation
         await sendMessage(content)
       } else {
-        // New conversation - create with streaming AI response
-        setIsCreating(true)
-        setNewIsStreaming(true)
-        setNewConversationError(null)
-
-        // Add optimistic user message
-        const tempUserMessage: Message = {
-          id: Date.now(),
-          role: 'user',
-          content,
-          createdAt: new Date(),
-        }
-        setNewMessages([tempUserMessage])
-
-        let userMessagePersisted = false
-        let createdUuid = ''
-
+        // New conversation
         try {
-          let finalContent = ''
-          let assistantMessageId = 0
-
-          await createConversationStreaming(
-            { message: content },
-            {
-              onCreated: (conversationDto, userMessageId) => {
-                createdUuid = conversationDto.uuid
-                userMessagePersisted = true
-                setNewConversation(toConversation(conversationDto))
-                // Update temp message with real ID
-                setNewMessages(prev =>
-                  prev.map(m => (m.id === tempUserMessage.id ? { ...m, id: userMessageId } : m))
-                )
-                logger.debug('Conversation created', { uuid: createdUuid, userMessageId })
-              },
-              onDelta: delta => {
-                finalContent += delta
-                setNewStreamingContent(finalContent)
-              },
-              onEnd: (msgId, responseContent) => {
-                assistantMessageId = msgId
-                finalContent = responseContent
-                logger.debug('Streaming ended', { assistantMessageId })
-              },
-              onError: errorMsg => {
-                // Propagate error to be caught by try-catch
-                throw new Error(errorMsg)
-              },
-            }
-          )
-
-          // Add assistant message only if we got a valid response
-          if (assistantMessageId > 0 && finalContent) {
-            const assistantMessage: Message = {
-              id: assistantMessageId,
-              role: 'assistant',
-              content: finalContent,
-              createdAt: new Date(),
-            }
-            setNewMessages(prev => [...prev, assistantMessage])
-          }
-          setNewStreamingContent('')
-
-          // Navigate to the new conversation
-          if (createdUuid) {
-            navigate(`/chat/${createdUuid}`, { replace: true })
-          }
+          const { uuid: createdUuid } = await createNewConversation(content)
+          navigate(`/chat/${createdUuid}`, { replace: true })
         } catch (err) {
-          const error = err as Error
-          logger.error('Failed to create conversation', error)
-          setNewConversationError(error)
-          setNewStreamingContent('')
-
-          if (userMessagePersisted && createdUuid) {
-            // Message was saved on server - navigate to conversation to sync state
+          // Check if we should navigate despite error
+          const error = err as Error & { uuid?: string; userMessagePersisted?: boolean }
+          if (error.userMessagePersisted && error.uuid) {
             logger.warn('Error after message persisted, navigating to conversation', {
-              uuid: createdUuid,
+              uuid: error.uuid,
             })
-            navigate(`/chat/${createdUuid}`, { replace: true })
-          } else {
-            // Message was not saved - remove optimistic message
-            setNewMessages([])
-            setNewConversation(null)
+            navigate(`/chat/${error.uuid}`, { replace: true })
           }
-        } finally {
-          setIsCreating(false)
-          setNewIsStreaming(false)
+          // Error is already set in hook state
         }
       }
     },
-    [
-      uuid,
-      isStreaming,
-      isCreating,
-      newIsStreaming,
-      sendMessage,
-      createConversationStreaming,
-      navigate,
-    ]
+    [uuid, isStreaming, newIsStreaming, sendMessage, createNewConversation, navigate]
   )
 
   // Reload conversations when a new one is created
@@ -189,7 +104,7 @@ export function ChatPage() {
   }, [uuid, conversations, loadConversations])
 
   const error = conversationsError || chatError || newConversationError
-  const isInputDisabled = isStreaming || isCreating || newIsStreaming
+  const isInputDisabled = isStreaming || newIsStreaming
 
   // Determine which messages and streaming content to show
   const displayMessages = uuid ? messages : newMessages
