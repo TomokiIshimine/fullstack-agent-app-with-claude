@@ -145,7 +145,15 @@ export function ChatPage() {
         }
       }
     },
-    [uuid, isStreaming, isCreating, newIsStreaming, sendMessage, createConversationStreaming, navigate]
+    [
+      uuid,
+      isStreaming,
+      isCreating,
+      newIsStreaming,
+      sendMessage,
+      createConversationStreaming,
+      navigate,
+    ]
   )
 
   // Reload conversations when a new one is created

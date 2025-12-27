@@ -59,10 +59,7 @@ describe('API Client - conversations', () => {
 
     it('throws ApiError on failure', async () => {
       mockFetch.mockResolvedValueOnce(
-        createMockResponse(
-          { error: 'Unauthorized' },
-          { status: 401, ok: false }
-        )
+        createMockResponse({ error: 'Unauthorized' }, { status: 401, ok: false })
       )
 
       await expect(fetchConversations()).rejects.toThrow(ApiError)
@@ -103,10 +100,7 @@ describe('API Client - conversations', () => {
 
     it('throws ApiError on not found', async () => {
       mockFetch.mockResolvedValueOnce(
-        createMockResponse(
-          { error: 'Conversation not found' },
-          { status: 404, ok: false }
-        )
+        createMockResponse({ error: 'Conversation not found' }, { status: 404, ok: false })
       )
 
       await expect(fetchConversation('nonexistent')).rejects.toThrow(ApiError)
@@ -147,10 +141,7 @@ describe('API Client - conversations', () => {
 
     it('throws ApiError on validation error', async () => {
       mockFetch.mockResolvedValueOnce(
-        createMockResponse(
-          { error: 'Message is required' },
-          { status: 400, ok: false }
-        )
+        createMockResponse({ error: 'Message is required' }, { status: 400, ok: false })
       )
 
       await expect(createConversation({ message: '' })).rejects.toThrow(ApiError)
@@ -174,10 +165,7 @@ describe('API Client - conversations', () => {
 
     it('throws ApiError on not found', async () => {
       mockFetch.mockResolvedValueOnce(
-        createMockResponse(
-          { error: 'Conversation not found' },
-          { status: 404, ok: false }
-        )
+        createMockResponse({ error: 'Conversation not found' }, { status: 404, ok: false })
       )
 
       await expect(deleteConversation('nonexistent')).rejects.toThrow(ApiError)
@@ -225,10 +213,7 @@ describe('API Client - conversations', () => {
         })
       )
 
-      expect(callbacks.onCreated).toHaveBeenCalledWith(
-        { uuid: 'test-uuid', title: 'Test' },
-        1
-      )
+      expect(callbacks.onCreated).toHaveBeenCalledWith({ uuid: 'test-uuid', title: 'Test' }, 1)
       expect(callbacks.onDelta).toHaveBeenCalledTimes(2)
       expect(callbacks.onDelta).toHaveBeenCalledWith('Hello')
       expect(callbacks.onDelta).toHaveBeenCalledWith(' World')
@@ -238,10 +223,7 @@ describe('API Client - conversations', () => {
 
     it('throws ApiError on HTTP error', async () => {
       mockFetch.mockResolvedValueOnce(
-        createMockResponse(
-          { error: 'Unauthorized' },
-          { status: 401, ok: false }
-        )
+        createMockResponse({ error: 'Unauthorized' }, { status: 401, ok: false })
       )
 
       const callbacks = {
@@ -251,9 +233,9 @@ describe('API Client - conversations', () => {
         onError: vi.fn(),
       }
 
-      await expect(
-        createConversationStreaming({ message: 'Hello' }, callbacks)
-      ).rejects.toThrow(ApiError)
+      await expect(createConversationStreaming({ message: 'Hello' }, callbacks)).rejects.toThrow(
+        ApiError
+      )
     })
 
     it('throws ApiError when response body is missing', async () => {
@@ -270,9 +252,9 @@ describe('API Client - conversations', () => {
         onError: vi.fn(),
       }
 
-      await expect(
-        createConversationStreaming({ message: 'Hello' }, callbacks)
-      ).rejects.toThrow('No response body for streaming')
+      await expect(createConversationStreaming({ message: 'Hello' }, callbacks)).rejects.toThrow(
+        'No response body for streaming'
+      )
     })
 
     it('handles error events from stream', async () => {
@@ -308,4 +290,3 @@ describe('API Client - conversations', () => {
     })
   })
 })
-
