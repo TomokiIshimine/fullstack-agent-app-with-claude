@@ -55,7 +55,10 @@ export async function createConversation(
 ): Promise<CreateConversationResponse> {
   const response = await fetchWithLogging(API_BASE, {
     method: 'POST',
-    headers: buildJsonHeaders(),
+    headers: {
+      ...buildJsonHeaders(),
+      'X-Stream': 'false',
+    },
     body: JSON.stringify(data),
   })
   const json = await parseJson(response)
