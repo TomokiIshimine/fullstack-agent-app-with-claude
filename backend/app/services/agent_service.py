@@ -84,11 +84,12 @@ class AgentService:
     def _create_llm(self) -> ChatAnthropic:
         """Create LLM instance based on provider configuration."""
         if self.provider == "anthropic":
-            return ChatAnthropic(
-                model=self.model_name,
-                max_tokens=self.max_tokens,
-                streaming=True,
-            )
+            llm_kwargs: dict[str, Any] = {
+                "model_name": self.model_name,
+                "max_tokens_to_sample": self.max_tokens,
+                "streaming": True,
+            }
+            return ChatAnthropic(**llm_kwargs)
         else:
             # Future: Add support for other providers
             raise ValueError(f"Unsupported LLM provider: {self.provider}")

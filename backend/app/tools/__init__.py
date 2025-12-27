@@ -35,7 +35,8 @@ class ToolRegistry:
             tool: LangChain tool or callable decorated with @tool
         """
         # LangChain StructuredTool has 'name' attribute, regular functions have '__name__'
-        name = getattr(tool, "name", None) or getattr(tool, "__name__", str(tool))
+        raw_name = getattr(tool, "name", None) or getattr(tool, "__name__", None) or str(tool)
+        name = str(raw_name)
         self._tools[name] = tool
         logger.debug(f"Registered tool: {name}")
 

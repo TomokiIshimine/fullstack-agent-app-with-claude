@@ -115,8 +115,11 @@ export function useChat(options: UseChatOptions) {
           },
           onEnd: (msgId, content) => {
             assistantMessageId = msgId
-            finalContent = content
-            logger.debug('Streaming ended', { assistantMessageId })
+            if (content.length > 0) {
+              finalContent = content
+              setStreamingContent(content)
+            }
+            logger.debug('Streaming ended', { assistantMessageId, hasContent: content.length > 0 })
           },
           onError: (errorMsg, persistedUserMessageId) => {
             // If user message was persisted (indicated by presence of ID), mark it

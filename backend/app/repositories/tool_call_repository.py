@@ -27,12 +27,7 @@ class ToolCallRepository:
         Returns:
             Sequence of ToolCall instances
         """
-        return (
-            self.session.query(ToolCall)
-            .filter(ToolCall.message_id == message_id)
-            .order_by(ToolCall.started_at.asc())
-            .all()
-        )
+        return self.session.query(ToolCall).filter(ToolCall.message_id == message_id).order_by(ToolCall.started_at.asc()).all()
 
     def create(
         self,
@@ -83,11 +78,7 @@ class ToolCallRepository:
         Returns:
             Updated ToolCall instance, or None if not found
         """
-        tool_call = (
-            self.session.query(ToolCall)
-            .filter(ToolCall.tool_call_id == tool_call_id)
-            .first()
-        )
+        tool_call = self.session.query(ToolCall).filter(ToolCall.tool_call_id == tool_call_id).first()
         if tool_call:
             tool_call.output = output
             tool_call.error = error

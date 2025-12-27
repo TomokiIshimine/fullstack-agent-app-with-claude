@@ -48,9 +48,7 @@ class Message(Base):
 
     # Relationships
     conversation: Mapped["Conversation"] = relationship("Conversation", back_populates="messages")
-    tool_calls: Mapped[list["ToolCall"]] = relationship(
-        "ToolCall", back_populates="message", cascade="all, delete-orphan"
-    )
+    tool_calls: Mapped[list["ToolCall"]] = relationship("ToolCall", back_populates="message", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"Message(id={self.id!r}, role={self.role!r})"
