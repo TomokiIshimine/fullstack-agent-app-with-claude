@@ -36,6 +36,30 @@ class TestConversationRoutes:
         )
         assert response.status_code == 400
 
+    def test_create_conversation_non_streaming(self, auth_client, mocker):
+        """Test creating a conversation in non-streaming mode."""
+        # Mock AI service to avoid external API calls
+        mock_ai_service = mocker.patch("app.services.conversation_service.AIService")
+        mock_ai_service.return_value.generate_title.return_value = "Test Title"
+
+        response = auth_client.post(
+            "/api/conversations",
+            json={"message": "Hello, this is a test"},
+            content_type="application/json",
+            headers={"X-Stream": "false"},
+        )
+        assert response.status_code == 201
+        data = response.get_json()
+        assert "conversation" in data
+        assert "message" in data
+        assert data["conversation"]["title"] == "Test Title"
+        assert data["message"]["content"] == "Hello, this is a test"
+        assert data["message"]["role"] == "user"
+
+    # Note: Streaming tests are skipped in unit tests due to SQLite locking issues
+    # with Flask test client and SSE generators. Streaming functionality is tested
+    # via E2E tests with a real database connection.
+
     def test_get_conversation_unauthenticated(self, client):
         """Unauthenticated users should receive 401."""
         response = client.get("/api/conversations/some-uuid")

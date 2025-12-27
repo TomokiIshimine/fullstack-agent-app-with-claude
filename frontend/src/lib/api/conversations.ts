@@ -1,5 +1,6 @@
 import type {
   ConversationDetailResponse,
+  ConversationDto,
   ConversationListResponse,
   CreateConversationRequest,
   CreateConversationResponse,
@@ -77,6 +78,99 @@ export async function deleteConversation(uuid: string): Promise<void> {
   if (!response.ok) {
     const json = await parseJson(response)
     throw buildApiError(response, json)
+  }
+}
+
+/**
+ * SSE event callback types for create conversation streaming
+ */
+export interface CreateConversationStreamCallbacks {
+  onCreated?: (conversation: ConversationDto, userMessageId: number) => void
+  onDelta?: (delta: string) => void
+  onEnd?: (assistantMessageId: number, content: string) => void
+  onError?: (error: string, userMessageId?: number) => void
+}
+
+/**
+ * Create a new conversation with streaming AI response
+ */
+export async function createConversationStreaming(
+  data: CreateConversationRequest,
+  callbacks: CreateConversationStreamCallbacks
+): Promise<void> {
+  const response = await fetch(API_BASE, {
+    method: 'POST',
+    headers: buildJsonHeaders(),
+    body: JSON.stringify(data),
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    const json = await parseJson(response)
+    throw buildApiError(response, json)
+  }
+
+  if (!response.body) {
+    throw new ApiError(500, 'No response body for streaming')
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+
+      // Parse SSE events from buffer
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || '' // Keep incomplete line in buffer
+
+      let currentEvent = ''
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7)
+        } else if (line.startsWith('data: ') && currentEvent) {
+          const eventData = line.slice(6)
+          try {
+            const parsed = JSON.parse(eventData)
+            handleCreateConversationStreamEvent(currentEvent, parsed, callbacks)
+          } catch {
+            // Ignore parse errors
+          }
+          currentEvent = ''
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+/**
+ * Handle a single SSE event for create conversation streaming
+ */
+function handleCreateConversationStreamEvent(
+  event: string,
+  data: Record<string, unknown>,
+  callbacks: CreateConversationStreamCallbacks
+): void {
+  switch (event) {
+    case 'conversation_created':
+      callbacks.onCreated?.(data.conversation as ConversationDto, data.user_message_id as number)
+      break
+    case 'content_delta':
+      callbacks.onDelta?.(data.delta as string)
+      break
+    case 'message_end':
+      callbacks.onEnd?.(data.assistant_message_id as number, data.content as string)
+      break
+    case 'error':
+      callbacks.onError?.(data.error as string, data.user_message_id as number | undefined)
+      break
   }
 }
 

@@ -100,6 +100,7 @@ export interface CreateConversationRequest {
 export interface CreateConversationResponse {
   conversation: ConversationDto
   message: MessageDto
+  assistant_message?: MessageDto
 }
 
 /**

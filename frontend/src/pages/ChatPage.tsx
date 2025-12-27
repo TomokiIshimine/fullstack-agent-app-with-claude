@@ -6,6 +6,8 @@ import { useChat } from '@/hooks/useChat'
 import { ChatSidebar, ChatInput, MessageList } from '@/components/chat'
 import { Alert } from '@/components/ui'
 import { logger } from '@/lib/logger'
+import type { Message, Conversation } from '@/types/chat'
+import { toConversation } from '@/types/chat'
 import '@/styles/chat.css'
 
 export function ChatPage() {
@@ -15,11 +17,17 @@ export function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
+  // State for new conversation creation with streaming
+  const [newConversation, setNewConversation] = useState<Conversation | null>(null)
+  const [newMessages, setNewMessages] = useState<Message[]>([])
+  const [newStreamingContent, setNewStreamingContent] = useState('')
+  const [newIsStreaming, setNewIsStreaming] = useState(false)
+
   const {
     conversations,
     isLoading: isLoadingConversations,
     error: conversationsError,
-    createConversation,
+    createConversationStreaming,
     loadConversations,
   } = useConversations()
 
@@ -33,15 +41,23 @@ export function ChatPage() {
     sendMessage,
   } = useChat({ uuid: uuid || '', autoLoad: !!uuid })
 
-  // Clear chat state when navigating to a new chat
+  // Clear new conversation state when navigating to a chat with uuid
   useEffect(() => {
-    if (!uuid) {
-      // When on /chat without uuid, we're ready for a new chat
+    if (uuid) {
+      setNewConversation(null)
+      setNewMessages([])
+      setNewStreamingContent('')
+      setNewIsStreaming(false)
+    } else {
       logger.debug('Ready for new chat')
     }
   }, [uuid])
 
   const handleNewChat = useCallback(() => {
+    setNewConversation(null)
+    setNewMessages([])
+    setNewStreamingContent('')
+    setNewIsStreaming(false)
     navigate('/chat')
     setIsSidebarOpen(false)
   }, [navigate])
@@ -56,24 +72,80 @@ export function ChatPage() {
 
   const handleSendMessage = useCallback(
     async (content: string) => {
-      if (isStreaming || isCreating) return
+      if (isStreaming || isCreating || newIsStreaming) return
 
       if (uuid) {
         // Existing conversation
         await sendMessage(content)
       } else {
-        // New conversation - create it first
+        // New conversation - create with streaming AI response
         setIsCreating(true)
+        setNewIsStreaming(true)
+
+        // Add optimistic user message
+        const tempUserMessage: Message = {
+          id: Date.now(),
+          role: 'user',
+          content,
+          createdAt: new Date(),
+        }
+        setNewMessages([tempUserMessage])
+
         try {
-          const newUuid = await createConversation({ message: content })
-          navigate(`/chat/${newUuid}`, { replace: true })
-          await sendMessage(content, newUuid)
+          let createdUuid = ''
+          let finalContent = ''
+          let assistantMessageId = 0
+
+          await createConversationStreaming(
+            { message: content },
+            {
+              onCreated: (conversationDto, userMessageId) => {
+                createdUuid = conversationDto.uuid
+                setNewConversation(toConversation(conversationDto))
+                // Update temp message with real ID
+                setNewMessages(prev =>
+                  prev.map(m => (m.id === tempUserMessage.id ? { ...m, id: userMessageId } : m))
+                )
+                logger.debug('Conversation created', { uuid: createdUuid, userMessageId })
+              },
+              onDelta: delta => {
+                finalContent += delta
+                setNewStreamingContent(finalContent)
+              },
+              onEnd: (msgId, responseContent) => {
+                assistantMessageId = msgId
+                finalContent = responseContent
+                logger.debug('Streaming ended', { assistantMessageId })
+              },
+              onError: errorMsg => {
+                logger.error('Streaming error', new Error(errorMsg))
+              },
+            }
+          )
+
+          // Add assistant message
+          const assistantMessage: Message = {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: finalContent,
+            createdAt: new Date(),
+          }
+          setNewMessages(prev => [...prev, assistantMessage])
+          setNewStreamingContent('')
+
+          // Navigate to the new conversation
+          if (createdUuid) {
+            navigate(`/chat/${createdUuid}`, { replace: true })
+          }
+        } catch (err) {
+          logger.error('Failed to create conversation', err as Error)
         } finally {
           setIsCreating(false)
+          setNewIsStreaming(false)
         }
       }
     },
-    [uuid, isStreaming, isCreating, sendMessage, createConversation, navigate]
+    [uuid, isStreaming, isCreating, newIsStreaming, sendMessage, createConversationStreaming, navigate]
   )
 
   // Reload conversations when a new one is created
@@ -84,7 +156,18 @@ export function ChatPage() {
   }, [uuid, conversations, loadConversations])
 
   const error = conversationsError || chatError
-  const isInputDisabled = isStreaming || isCreating
+  const isInputDisabled = isStreaming || isCreating || newIsStreaming
+
+  // Determine which messages and streaming content to show
+  const displayMessages = uuid ? messages : newMessages
+  const displayStreamingContent = uuid ? streamingContent : newStreamingContent
+  const displayIsStreaming = uuid ? isStreaming : newIsStreaming
+  const displayTitle = uuid
+    ? conversation?.title || '読み込み中...'
+    : newConversation?.title || '新しいチャット'
+
+  // Show message list if we have messages or are streaming (new or existing conversation)
+  const hasContent = displayMessages.length > 0 || displayIsStreaming
 
   return (
     <div className="chat-layout">
@@ -123,9 +206,7 @@ export function ChatPage() {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <h1 className="chat-main__title">
-            {uuid ? conversation?.title || '読み込み中...' : '新しいチャット'}
-          </h1>
+          <h1 className="chat-main__title">{displayTitle}</h1>
         </header>
 
         {error && (
@@ -134,19 +215,17 @@ export function ChatPage() {
           </div>
         )}
 
-        {uuid ? (
-          isLoadingChat ? (
-            <div className="chat-main__empty">読み込み中...</div>
-          ) : (
-            <div className="chat-main__messages">
-              <MessageList
-                messages={messages}
-                isStreaming={isStreaming}
-                streamingContent={streamingContent}
-                userName={user?.name || undefined}
-              />
-            </div>
-          )
+        {uuid && isLoadingChat ? (
+          <div className="chat-main__empty">読み込み中...</div>
+        ) : hasContent ? (
+          <div className="chat-main__messages">
+            <MessageList
+              messages={displayMessages}
+              isStreaming={displayIsStreaming}
+              streamingContent={displayStreamingContent}
+              userName={user?.name || undefined}
+            />
+          </div>
         ) : (
           <div className="chat-main__empty">メッセージを入力して新しい会話を始めましょう</div>
         )}
