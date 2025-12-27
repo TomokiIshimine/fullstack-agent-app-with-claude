@@ -1,11 +1,12 @@
 # CI/CD環境構築ガイド
 
 **作成日:** 2025-11-10
-**最終更新:** 2025-11-23
-**バージョン:** 1.1
+**最終更新:** 2025-12-27
+**バージョン:** 1.2
 **対象システム:** フルスタックWebアプリケーション
 
 **更新履歴:**
+- v1.2 (2025-12-27): 管理者パスワードの生成手順を最新化
 - v1.1 (2025-11-23): 最終更新日の更新
 - v1.0 (2025-11-10): 初版作成
 
@@ -343,10 +344,10 @@ GitHub リポジトリの Settings > Secrets and variables > Actions から、�
 
 ```bash
 # Backend ディレクトリで実行
-poetry -C backend run python -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('your_admin_password'))"
+poetry -C backend run python backend/scripts/generate_admin_hash.py
 ```
 
-出力されたハッシュ値（`scrypt:32768:8:1$...` の形式）を `ADMIN_PASSWORD_HASH` に設定します。
+出力された bcrypt ハッシュ（`$2b$...` 形式）を `ADMIN_PASSWORD_HASH` に設定します。
 
 ### 4.4 Terraform 変数の設定
 

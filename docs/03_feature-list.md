@@ -1,8 +1,8 @@
 # 機能一覧
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-12-14
-**バージョン:** 1.2
+**最終更新:** 2025-12-27
+**バージョン:** 1.3
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -190,7 +190,8 @@ graph TB
 **ストリーミング応答:**
 - デフォルトでSSE（Server-Sent Events）ストリーミングが有効
 - `X-Stream: false` ヘッダーで非ストリーミングモードに切り替え可能
-- SSEイベント形式: `message_start`, `content_delta`, `message_end`, `error`
+- 会話作成 (`POST /api/conversations`): `conversation_created`, `content_delta`, `message_end`, `error`
+- メッセージ送信 (`POST /api/conversations/{uuid}/messages`): `message_start`, `content_delta`, `message_end`, `error`
 
 ---
 
@@ -209,8 +210,10 @@ graph TB
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Login: アプリ起動
-    Login --> Chat: ログイン成功
+    [*] --> Root: アプリ起動 (/)
+    Root --> Login: 未認証
+    Root --> Chat: 認証済みユーザー
+    Root --> UserManagement: 管理者
 
     Chat --> Settings: 設定画面へ
     Chat --> UserManagement: ユーザー管理へ（管理者のみ）

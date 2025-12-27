@@ -1,8 +1,8 @@
 # 開発環境ガイド
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-12-14
-**バージョン:** 1.2
+**最終更新:** 2025-12-27
+**バージョン:** 1.3
 
 ---
 
@@ -37,7 +37,8 @@ make setup                # インストール後の完了メッセージを表�
 
 ### Docker Compose 環境変数
 
-- Docker Compose 全体の環境変数は `infra/.env.development` にまとめています。
+- Docker Compose 全体の環境変数は `infra/.env.development` にまとめます。
+- `infra/.env.example` をコピーして作成してください（このファイルは Git 管理外です）。
 - データベース接続情報（`MYSQL_DATABASE`、`MYSQL_USER`、`MYSQL_PASSWORD`）や Flask の `FLASK_APP` が含まれます。
 - 変更した場合は `make down && make up` で再起動してください。
 
@@ -57,13 +58,29 @@ make setup                # インストール後の完了メッセージを表�
 
 ### バックエンドローカル環境変数（オプション）
 
-`backend/.env` ファイルを作成して、ローカル開発用の環境変数を設定できます:
+`backend/.env` ファイルを作成して、ローカル開発用の環境変数を設定できます。テンプレートは `backend/.env.example` です:
 
 ```env
 DATABASE_URL=mysql+pymysql://user:password@localhost:3306/app_db
 FLASK_ENV=development
 LOG_LEVEL=DEBUG
 JWT_SECRET_KEY=your-secret-key-here
+```
+
+### 管理者ユーザー初期設定
+
+アプリケーション起動時に管理者ユーザーを自動作成するため、`ADMIN_EMAIL` と `ADMIN_PASSWORD_HASH`（または `ADMIN_PASSWORD`）を設定できます。
+
+```env
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD_HASH=$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5UpCCaa70.MYW
+# または開発用途のみ: ADMIN_PASSWORD=YourSecurePassword123
+```
+
+bcrypt ハッシュの生成は以下のスクリプトを利用してください:
+
+```bash
+poetry -C backend run python backend/scripts/generate_admin_hash.py
 ```
 
 ### AI機能関連の環境変数
@@ -456,6 +473,7 @@ Terraform の状態がロックされている場合、`terraform-unlock.yml` �
 1. コンテナを起動: `make up`
 2. フロントエンド開発サーバー起動（オプション）:
    ```bash
+   # Docker のポートに合わせたい場合は 5174 を指定
    pnpm --dir frontend run dev --host 0.0.0.0 --port 5174
    ```
 3. バックエンド開発サーバー起動（オプション）:
@@ -466,6 +484,7 @@ Terraform の状態がロックされている場合、`terraform-unlock.yml` �
 5. 終了時: `make down`
 
 **注**: Docker Compose 起動時（`make up`）にフロントエンドとバックエンドも自動起動されます。開発サーバーを手動起動するのは、個別に再起動したい場合やデバッグ時のみです。
+**補足**: Docker Compose 環境ではバックエンドはホスト側の `http://localhost:5001` に公開されます（コンテナ内は `:5000`）。
 
 ## トラブルシューティング
 
