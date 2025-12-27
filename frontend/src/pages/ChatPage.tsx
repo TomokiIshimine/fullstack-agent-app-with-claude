@@ -97,7 +97,15 @@ export function ChatPage() {
         }
       }
     },
-    [uuid, isStreaming, newIsStreaming, sendMessage, createNewConversation, loadConversations, navigate]
+    [
+      uuid,
+      isStreaming,
+      newIsStreaming,
+      sendMessage,
+      createNewConversation,
+      loadConversations,
+      navigate,
+    ]
   )
 
   const error = conversationsError || chatError || newConversationError
