@@ -22,13 +22,7 @@ from app.schemas.conversation import (
     PaginationMeta,
     SendMessageResponse,
 )
-from app.services.agent_service import (
-    AgentService,
-    MessageCompleteEvent,
-    TextDeltaEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-)
+from app.services.agent_service import AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 
 logger = logging.getLogger(__name__)
 
