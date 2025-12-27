@@ -66,5 +66,17 @@ class MessageRepository:
         """
         return self.session.query(Message).filter(Message.conversation_id == conversation_id).count()
 
+    def delete_by_conversation_id(self, conversation_id: int) -> int:
+        """
+        Delete all messages for a conversation.
+
+        Args:
+            conversation_id: Conversation ID to delete messages for
+
+        Returns:
+            Number of messages deleted
+        """
+        return self.session.query(Message).filter(Message.conversation_id == conversation_id).delete(synchronize_session=False)
+
 
 __all__ = ["MessageRepository"]
