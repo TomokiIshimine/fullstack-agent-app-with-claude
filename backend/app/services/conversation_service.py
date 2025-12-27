@@ -32,6 +32,8 @@ from app.services.agent_service import (
 
 logger = logging.getLogger(__name__)
 
+ToolCallStatus = Literal["success", "error"]
+
 
 class ConversationService:
     """Service for conversation operations."""
@@ -245,7 +247,7 @@ class ConversationService:
                 )
             elif isinstance(event, ToolResultEvent):
                 # Update tool call with result
-                status = "error" if event.error else "success"
+                status: ToolCallStatus = "error" if event.error else "success"
                 self.tool_call_repo.update_completed(
                     tool_call_id=event.tool_call_id,
                     output=event.output,
@@ -395,7 +397,7 @@ class ConversationService:
                 )
             elif isinstance(event, ToolResultEvent):
                 # Update tool call with result
-                status = "error" if event.error else "success"
+                status: ToolCallStatus = "error" if event.error else "success"
                 self.tool_call_repo.update_completed(
                     tool_call_id=event.tool_call_id,
                     output=event.output,
@@ -497,7 +499,7 @@ class ConversationService:
                 )
             elif isinstance(event, ToolResultEvent):
                 # Update tool call with result
-                status = "error" if event.error else "success"
+                status: ToolCallStatus = "error" if event.error else "success"
                 self.tool_call_repo.update_completed(
                     tool_call_id=event.tool_call_id,
                     output=event.output,

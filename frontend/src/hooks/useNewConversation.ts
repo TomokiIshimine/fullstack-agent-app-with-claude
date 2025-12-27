@@ -142,7 +142,10 @@ export function useNewConversation() {
               finalContent = responseContent
               setStreamingContent(responseContent)
             }
-            logger.debug('Streaming ended', { assistantMessageId, hasContent: responseContent.length > 0 })
+            logger.debug('Streaming ended', {
+              assistantMessageId,
+              hasContent: responseContent.length > 0,
+            })
           },
           onError: errorMsg => {
             throw new Error(errorMsg)

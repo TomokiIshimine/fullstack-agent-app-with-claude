@@ -18,7 +18,12 @@ function getStatusIcon(status: ToolCallStatus): string {
   }
 }
 
-export function ToolCallExpander({ toolName, status, isExpanded, onToggle }: ToolCallExpanderProps) {
+export function ToolCallExpander({
+  toolName,
+  status,
+  isExpanded,
+  onToggle,
+}: ToolCallExpanderProps) {
   return (
     <button
       type="button"
@@ -28,7 +33,9 @@ export function ToolCallExpander({ toolName, status, isExpanded, onToggle }: Too
     >
       <span className="tool-call-expander__status">{getStatusIcon(status)}</span>
       <span className="tool-call-expander__name">{toolName}</span>
-      <span className={`tool-call-expander__chevron ${isExpanded ? 'tool-call-expander__chevron--open' : ''}`}>
+      <span
+        className={`tool-call-expander__chevron ${isExpanded ? 'tool-call-expander__chevron--open' : ''}`}
+      >
         ▶
       </span>
     </button>
