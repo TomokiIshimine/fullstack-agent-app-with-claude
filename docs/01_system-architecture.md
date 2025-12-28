@@ -1,8 +1,8 @@
 # システム構成設計書
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-12-14
-**バージョン:** 1.2
+**最終更新:** 2025-12-27
+**バージョン:** 1.3
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -299,7 +299,7 @@ services:
 
   backend:
     - Image: python:3.12-slim
-    - Port: 5000
+    - Port: 5000 (Host: 5001)
     - Environment: DATABASE_URL, FLASK_ENV
 
   db:
@@ -323,7 +323,7 @@ networks:
 
 ```mermaid
 graph TB
-    Host["Host<br/>:5174"]
+    Host["Host<br/>:5174 (frontend)<br/>:5001 (backend)"]
 
     subgraph Docker["Docker Network (app-network)"]
         Frontend["frontend<br/>:5174"]
@@ -336,6 +336,7 @@ graph TB
     end
 
     Host --> Frontend
+    Host -.-> Backend
 
     style Docker fill:#f0f0f0,stroke:#333,stroke-width:2px
 ```
@@ -344,17 +345,20 @@ graph TB
 
 1. クライアント → フロントエンド (http://localhost:5174)
 2. フロントエンド → バックエンド (http://backend:5000/api/*)
-3. バックエンド → データベース (mysql://db:3306/app_db)
+3. 直接アクセス時のバックエンド → (http://localhost:5001/api/*)
+4. バックエンド → データベース (mysql://db:3306/app_db)
 
 ### 4.3 環境変数
 
 #### フロントエンド (.env)
 
 ```env
-VITE_API_PROXY=http://localhost:5000
+VITE_API_PROXY=http://localhost:5001
 VITE_LOG_LEVEL=DEBUG
 VITE_ENABLE_API_LOGGING=true
 ```
+
+**補足:** Docker Compose ではフロントエンドコンテナ内の `VITE_API_PROXY` は `http://backend:5000` に設定されます。
 
 #### バックエンド (.env)
 
@@ -371,6 +375,8 @@ CLAUDE_MAX_TOKENS=4096
 ```
 
 #### Docker Compose (infra/.env.development)
+
+`infra/.env.example` をコピーして作成します（Git 管理外）。
 
 ```env
 # MySQL（データベース）

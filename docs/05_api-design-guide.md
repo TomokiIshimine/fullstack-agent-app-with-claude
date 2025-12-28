@@ -1,8 +1,8 @@
 # API設計ガイド
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-11-23
-**バージョン:** 1.1
+**最終更新:** 2025-12-27
+**バージョン:** 1.2
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -439,10 +439,10 @@ GET /api/users?sort_by=email&order=asc
 - `order`: `asc` (昇順) または `desc` (降順)
 - デフォルト: `created_at` 降順（最新が先頭）
 
-### 6.3 ページネーション（将来実装予定）
+### 6.3 ページネーション（実装済み）
 
 ```
-GET /api/users?page=2&per_page=20
+GET /api/conversations?page=2&per_page=20
 ```
 
 **ルール:**
@@ -452,11 +452,13 @@ GET /api/users?page=2&per_page=20
 **レスポンス例:**
 ```json
 {
-  "items": [...],
-  "total": 100,
-  "page": 2,
-  "per_page": 20,
-  "total_pages": 5
+  "conversations": [...],
+  "meta": {
+    "total": 100,
+    "page": 2,
+    "per_page": 20,
+    "total_pages": 5
+  }
 }
 ```
 
@@ -474,8 +476,8 @@ GET /api/users?page=2&per_page=20
 
 #### URLバージョニング（推奨）
 ```
-/api/v1/todos
-/api/v2/todos
+/api/v1/conversations
+/api/v2/conversations
 ```
 
 **メリット:**
@@ -485,7 +487,7 @@ GET /api/users?page=2&per_page=20
 
 #### ヘッダーバージョニング
 ```
-GET /api/todos
+GET /api/conversations
 Accept: application/vnd.myapp.v2+json
 ```
 

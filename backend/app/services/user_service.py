@@ -6,6 +6,9 @@ import logging
 
 from sqlalchemy.orm import Session
 
+from app.repositories.conversation_repository import ConversationRepository
+from app.repositories.message_repository import MessageRepository
+from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import UserResponse
 from app.schemas.user import UserCreateResponse
@@ -49,6 +52,9 @@ class UserService:
         """Initialize service with database session."""
         self.session = session
         self.user_repo = UserRepository(session)
+        self.refresh_token_repo = RefreshTokenRepository(session)
+        self.conversation_repo = ConversationRepository(session)
+        self.message_repo = MessageRepository(session)
 
     def list_users(self) -> list[UserResponse]:
         """Get all users."""
@@ -125,6 +131,12 @@ class UserService:
             logger.warning(f"User deletion failed: cannot delete admin user - id={user_id}, email={user.email}")
             raise CannotDeleteAdminError()
 
+        conversations = self.conversation_repo.find_all_by_user_id(user_id)
+        for conversation in conversations:
+            self.message_repo.delete_by_conversation_id(conversation.id)
+            self.conversation_repo.delete(conversation)
+
+        self.refresh_token_repo.delete_all_for_user(user_id)
         self.user_repo.delete(user)
         logger.info(f"User deleted successfully: id={user_id}, email={user.email}")
 

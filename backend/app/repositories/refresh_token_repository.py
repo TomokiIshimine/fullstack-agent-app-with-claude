@@ -81,5 +81,17 @@ class RefreshTokenRepository:
         self.session.commit()
         return count
 
+    def delete_all_for_user(self, user_id: int) -> int:
+        """
+        Delete all refresh tokens for a user.
+
+        Args:
+            user_id: User ID whose tokens should be deleted
+
+        Returns:
+            Number of tokens deleted
+        """
+        return self.session.query(RefreshToken).filter(RefreshToken.user_id == user_id).delete(synchronize_session=False)
+
 
 __all__ = ["RefreshTokenRepository"]

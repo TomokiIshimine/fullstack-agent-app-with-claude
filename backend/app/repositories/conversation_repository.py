@@ -68,6 +68,18 @@ class ConversationRepository:
 
         return conversations, total
 
+    def find_all_by_user_id(self, user_id: int) -> Sequence[Conversation]:
+        """
+        Find all conversations for a user.
+
+        Args:
+            user_id: User ID to filter by
+
+        Returns:
+            Sequence of Conversation instances
+        """
+        return self.session.query(Conversation).filter(Conversation.user_id == user_id).all()
+
     def find_by_user_id_with_message_count(
         self,
         user_id: int,
