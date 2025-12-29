@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from langchain_core.messages import AIMessageChunk, ToolMessage
 
 from app.services.agent_service import SYSTEM_PROMPT, AgentConfig, AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 from app.tools import ToolRegistry
@@ -193,13 +194,12 @@ class TestAgentServiceGenerateResponse:
         mock_llm = MagicMock()
         mock_chat_anthropic.return_value = mock_llm
 
-        # Mock agent with text response
+        # Mock agent with text response using "messages" stream mode format
         mock_agent = MagicMock()
-        mock_message = MagicMock()
-        mock_message.tool_calls = None
-        mock_message.content = "Hello, world!"
+        ai_message_chunk = AIMessageChunk(content="Hello, world!")
 
-        mock_agent.stream.return_value = iter([{"agent": {"messages": [mock_message]}}])
+        # New format: ("messages", (message_chunk, metadata))
+        mock_agent.stream.return_value = iter([("messages", (ai_message_chunk, {}))])
         mock_create_agent.return_value = mock_agent
 
         service = AgentService()
@@ -218,13 +218,12 @@ class TestAgentServiceGenerateResponse:
         mock_llm = MagicMock()
         mock_chat_anthropic.return_value = mock_llm
 
-        # Mock agent with text response
+        # Mock agent with text response using "messages" stream mode format
         mock_agent = MagicMock()
-        mock_message = MagicMock()
-        mock_message.tool_calls = None
-        mock_message.content = "Response text"
+        ai_message_chunk = AIMessageChunk(content="Response text")
 
-        mock_agent.stream.return_value = iter([{"agent": {"messages": [mock_message]}}])
+        # New format: ("messages", (message_chunk, metadata))
+        mock_agent.stream.return_value = iter([("messages", (ai_message_chunk, {}))])
         mock_create_agent.return_value = mock_agent
 
         service = AgentService()
@@ -243,13 +242,14 @@ class TestAgentServiceGenerateResponse:
         mock_llm = MagicMock()
         mock_chat_anthropic.return_value = mock_llm
 
-        # Mock agent with tool call
+        # Mock agent with tool call using "updates" stream mode format
         mock_agent = MagicMock()
         mock_message = MagicMock()
         mock_message.tool_calls = [{"id": "call_123", "name": "add", "args": {"a": 1, "b": 2}}]
         mock_message.content = ""
 
-        mock_agent.stream.return_value = iter([{"agent": {"messages": [mock_message]}}])
+        # New format: ("updates", {"agent": {"messages": [...]}})
+        mock_agent.stream.return_value = iter([("updates", {"agent": {"messages": [mock_message]}})])
         mock_create_agent.return_value = mock_agent
 
         service = AgentService()
@@ -278,7 +278,8 @@ class TestAgentServiceGenerateResponse:
         mock_tool_message.content = "3"
 
         mock_agent = MagicMock()
-        mock_agent.stream.return_value = iter([{"tools": {"messages": [mock_tool_message]}}])
+        # New format: ("updates", {"tools": {"messages": [...]}})
+        mock_agent.stream.return_value = iter([("updates", {"tools": {"messages": [mock_tool_message]}})])
         mock_create_agent.return_value = mock_agent
 
         service = AgentService()
@@ -354,6 +355,198 @@ class TestAgentServiceConvertMessages:
         assert isinstance(result[0], HumanMessage)
         assert isinstance(result[1], AIMessage)
         assert isinstance(result[2], HumanMessage)
+
+
+class TestAgentServiceHelperMethods:
+    """Tests for AgentService helper methods."""
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_extract_text_content_from_string(self, mock_chat_anthropic, mock_create_agent):
+        """Test _extract_text_content with string input."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        result = service._extract_text_content("Hello, world!")
+
+        assert result == "Hello, world!"
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_extract_text_content_from_list_of_dicts(self, mock_chat_anthropic, mock_create_agent):
+        """Test _extract_text_content with list of dicts input."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        content = [
+            {"type": "text", "text": "Hello, "},
+            {"type": "text", "text": "world!"},
+        ]
+        result = service._extract_text_content(content)
+
+        assert result == "Hello, world!"
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_extract_text_content_from_list_of_strings(self, mock_chat_anthropic, mock_create_agent):
+        """Test _extract_text_content with list of strings input."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        content = ["Hello, ", "world!"]
+        result = service._extract_text_content(content)
+
+        assert result == "Hello, world!"
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_extract_text_content_empty(self, mock_chat_anthropic, mock_create_agent):
+        """Test _extract_text_content with empty/invalid input."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+
+        assert service._extract_text_content(None) == ""
+        assert service._extract_text_content(123) == ""
+        assert service._extract_text_content([]) == ""
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_handle_messages_stream_with_valid_ai_message(self, mock_chat_anthropic, mock_create_agent):
+        """Test _handle_messages_stream with valid AIMessageChunk data."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        ai_chunk = AIMessageChunk(content="Hello!")
+        data = (ai_chunk, {})
+
+        result = service._handle_messages_stream(data)
+
+        assert result == "Hello!"
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_handle_messages_stream_with_invalid_data(self, mock_chat_anthropic, mock_create_agent):
+        """Test _handle_messages_stream with invalid data."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+
+        assert service._handle_messages_stream(None) is None
+        assert service._handle_messages_stream(("single",)) is None
+        assert service._handle_messages_stream("not a tuple") is None
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_handle_messages_stream_with_empty_content(self, mock_chat_anthropic, mock_create_agent):
+        """Test _handle_messages_stream with empty content."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        ai_chunk = AIMessageChunk(content="")
+        data = (ai_chunk, {})
+
+        result = service._handle_messages_stream(data)
+
+        assert result is None
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_handle_messages_stream_ignores_tool_messages(self, mock_chat_anthropic, mock_create_agent):
+        """Test _handle_messages_stream ignores ToolMessage to prevent tool output leakage."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        # ToolMessage should be ignored even if it has content
+        tool_msg = ToolMessage(content="Tool output: 42", tool_call_id="call_123")
+        data = (tool_msg, {})
+
+        result = service._handle_messages_stream(data)
+
+        assert result is None
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_handle_messages_stream_ignores_non_ai_messages(self, mock_chat_anthropic, mock_create_agent):
+        """Test _handle_messages_stream ignores non-AIMessageChunk types."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        # Generic MagicMock (not AIMessageChunk) should be ignored
+        mock_chunk = MagicMock()
+        mock_chunk.content = "This should be ignored"
+        data = (mock_chunk, {})
+
+        result = service._handle_messages_stream(data)
+
+        assert result is None
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_process_agent_node_with_tool_calls(self, mock_chat_anthropic, mock_create_agent):
+        """Test _process_agent_node emits ToolCallEvents."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        mock_message = MagicMock()
+        mock_message.tool_calls = [{"id": "call_1", "name": "add", "args": {"a": 1}}]
+        node_output = {"messages": [mock_message]}
+        emitted = set()
+
+        events = list(service._process_agent_node(node_output, emitted))
+
+        assert len(events) == 1
+        assert events[0].tool_call_id == "call_1"
+        assert "call_1" in emitted
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_process_agent_node_deduplicates_tool_calls(self, mock_chat_anthropic, mock_create_agent):
+        """Test _process_agent_node doesn't emit duplicate tool calls."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        mock_message = MagicMock()
+        mock_message.tool_calls = [{"id": "call_1", "name": "add", "args": {}}]
+        node_output = {"messages": [mock_message]}
+        emitted = {"call_1"}  # Already emitted
+
+        events = list(service._process_agent_node(node_output, emitted))
+
+        assert len(events) == 0
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_process_tools_node(self, mock_chat_anthropic, mock_create_agent):
+        """Test _process_tools_node emits ToolResultEvents."""
+        from langchain_core.messages import ToolMessage
+
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        mock_tool_msg = MagicMock(spec=ToolMessage)
+        mock_tool_msg.tool_call_id = "call_1"
+        mock_tool_msg.content = "42"
+        node_output = {"messages": [mock_tool_msg]}
+
+        events = list(service._process_tools_node(node_output))
+
+        assert len(events) == 1
+        assert events[0].tool_call_id == "call_1"
+        assert events[0].output == "42"
+        assert events[0].error is None
 
 
 class TestEventDataclasses:
