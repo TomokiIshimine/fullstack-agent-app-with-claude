@@ -1,5 +1,6 @@
 import type { Message } from '@/types/chat'
 import { ToolCallItem } from './ToolCallItem'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface MessageItemProps {
   message: Message
@@ -22,7 +23,7 @@ export function MessageItem({ message, userName }: MessageItemProps) {
             ))}
           </div>
         )}
-        {message.content}
+        <MarkdownRenderer content={message.content} />
       </div>
     </div>
   )

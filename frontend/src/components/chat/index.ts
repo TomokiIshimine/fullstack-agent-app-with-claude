@@ -1,5 +1,7 @@
 export { ChatInput } from './ChatInput'
 export { ChatSidebar } from './ChatSidebar'
+export { CodeBlock } from './CodeBlock'
+export { MarkdownRenderer } from './MarkdownRenderer'
 export { MessageItem } from './MessageItem'
 export { MessageList } from './MessageList'
 export { StreamingMessage } from './StreamingMessage'
