@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
 from langchain_core.tools import tool
 
 from app.tools import CALCULATOR_TOOLS, ToolRegistry, get_tool_registry

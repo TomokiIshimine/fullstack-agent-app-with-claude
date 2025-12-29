@@ -148,7 +148,16 @@ export function useChat(options: UseChatOptions) {
         resetToolCalls()
       }
     },
-    [uuid, isStreaming, clearError, handleError, loadConversation, addToolCall, completeToolCall, resetToolCalls]
+    [
+      uuid,
+      isStreaming,
+      clearError,
+      handleError,
+      loadConversation,
+      addToolCall,
+      completeToolCall,
+      resetToolCalls,
+    ]
   )
 
   useEffect(() => {

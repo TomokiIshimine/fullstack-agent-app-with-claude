@@ -42,7 +42,9 @@ export function ToolCallItem({ toolCall }: ToolCallItemProps) {
           {toolCall.error && (
             <div className="tool-call-item__section tool-call-item__section--error">
               <div className="tool-call-item__label">Error:</div>
-              <pre className="tool-call-item__code tool-call-item__code--error">{toolCall.error}</pre>
+              <pre className="tool-call-item__code tool-call-item__code--error">
+                {toolCall.error}
+              </pre>
             </div>
           )}
         </div>

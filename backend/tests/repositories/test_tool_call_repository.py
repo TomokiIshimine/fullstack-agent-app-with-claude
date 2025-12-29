@@ -229,7 +229,7 @@ class TestToolCallRepositoryUpdateCompleted:
     def test_update_completed_success_sets_output(self, app, tool_call_repo, sample_message):
         """Test that update_completed sets output for successful execution."""
         with app.app_context():
-            tool_call = tool_call_repo.create(
+            tool_call_repo.create(
                 message_id=sample_message,
                 tool_call_id="tool_call_123",
                 tool_name="add",

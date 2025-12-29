@@ -42,18 +42,15 @@ export function useStreamingToolCalls() {
   /**
    * Complete a tool call with output or error
    */
-  const completeToolCall = useCallback(
-    (toolCallId: string, output?: string, error?: string) => {
-      setStreamingToolCalls(prev =>
-        prev.map(tc =>
-          tc.toolCallId === toolCallId
-            ? { ...tc, output, error, status: error ? 'error' : 'success' }
-            : tc
-        )
+  const completeToolCall = useCallback((toolCallId: string, output?: string, error?: string) => {
+    setStreamingToolCalls(prev =>
+      prev.map(tc =>
+        tc.toolCallId === toolCallId
+          ? { ...tc, output, error, status: error ? 'error' : 'success' }
+          : tc
       )
-    },
-    []
-  )
+    )
+  }, [])
 
   /**
    * Reset all tool calls
