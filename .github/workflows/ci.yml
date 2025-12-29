@@ -92,4 +92,3 @@ jobs:
 
       - name: Run security audits
         run: make security
-        continue-on-error: true
