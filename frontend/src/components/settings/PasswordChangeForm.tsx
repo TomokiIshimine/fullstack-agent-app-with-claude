@@ -67,7 +67,7 @@ export function PasswordChangeForm({ onSuccess }: PasswordChangeFormProps) {
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
-      <h2 className="text-2xl font-semibold text-gray-900 mb-6">パスワード変更</h2>
+      <h2 className="text-2xl font-semibold text-slate-900 mb-6">パスワード変更</h2>
       <form onSubmit={handleSubmit} className="space-y-4" aria-label="パスワード変更フォーム">
         {error && (
           <Alert variant="error" onDismiss={() => setError(null)}>

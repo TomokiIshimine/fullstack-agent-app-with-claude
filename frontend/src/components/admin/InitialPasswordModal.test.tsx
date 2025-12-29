@@ -142,30 +142,26 @@ describe('InitialPasswordModal', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when clicking outside modal', () => {
-      const { container } = render(
+    it('should not close when clicking modal content (password section)', () => {
+      render(
         <InitialPasswordModal email={mockEmail} password={mockPassword} onClose={mockOnClose} />
       )
 
-      const overlay = container.querySelector('.modal-overlay')
-      expect(overlay).toBeInTheDocument()
-
-      fireEvent.click(overlay!)
-
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not close when clicking modal content', () => {
-      const { container } = render(
-        <InitialPasswordModal email={mockEmail} password={mockPassword} onClose={mockOnClose} />
-      )
-
-      const modalContent = container.querySelector('.modal-content')
-      expect(modalContent).toBeInTheDocument()
-
-      fireEvent.click(modalContent!)
+      // Click on the password text inside the modal
+      const passwordElement = screen.getByText(mockPassword)
+      fireEvent.click(passwordElement)
 
       expect(mockOnClose).not.toHaveBeenCalled()
+    })
+
+    it('should close modal via Escape key', () => {
+      render(
+        <InitialPasswordModal email={mockEmail} password={mockPassword} onClose={mockOnClose} />
+      )
+
+      fireEvent.keyDown(document, { key: 'Escape' })
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -180,6 +176,14 @@ describe('InitialPasswordModal', () => {
 
       expect(copyButton).toBeInTheDocument()
       expect(closeButton).toBeInTheDocument()
+    })
+
+    it('should have dialog role', () => {
+      render(
+        <InitialPasswordModal email={mockEmail} password={mockPassword} onClose={mockOnClose} />
+      )
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
   })
 })

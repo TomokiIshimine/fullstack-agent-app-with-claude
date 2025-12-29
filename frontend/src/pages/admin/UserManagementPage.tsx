@@ -23,7 +23,7 @@ export function UserManagementPage() {
   } = useUserManagement()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
+    <div className="min-h-screen bg-slate-100">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <PageHeader
           title="ユーザー管理"
@@ -49,7 +49,7 @@ export function UserManagementPage() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-gray-600 text-lg">読み込み中...</div>
+            <div className="text-slate-600 text-lg">読み込み中...</div>
           </div>
         ) : (
           <div className="space-y-6">

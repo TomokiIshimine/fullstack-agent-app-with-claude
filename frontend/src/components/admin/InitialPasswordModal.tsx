@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { logger } from '@/lib/logger'
+import { Modal, Button } from '@/components/ui'
 
 interface InitialPasswordModalProps {
   email: string
@@ -23,36 +24,38 @@ export function InitialPasswordModal({ email, password, onClose }: InitialPasswo
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="initial-password-modal">
-          <h2 className="initial-password-modal__title">ユーザーを作成しました</h2>
-          <p className="initial-password-modal__email">
-            <strong>メールアドレス:</strong> {email}
-          </p>
-          <div className="initial-password-modal__password-section">
-            <label className="initial-password-modal__label">初期パスワード:</label>
-            <div className="initial-password-modal__password">{password}</div>
-            <button
-              onClick={handleCopy}
-              className="initial-password-modal__copy-button"
-              disabled={copied}
-            >
-              {copied ? 'コピーしました' : 'コピー'}
-            </button>
+    <Modal isOpen={true} onClose={onClose} title="ユーザーを作成しました" size="sm" showCloseButton={false}>
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600">
+          <span className="font-semibold">メールアドレス:</span> {email}
+        </p>
+
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+          <label className="block text-sm font-medium text-slate-600 mb-2">初期パスワード:</label>
+          <div className="font-mono text-xl font-semibold text-slate-900 p-3 bg-white border-2 border-blue-500 rounded-md text-center tracking-wider mb-3">
+            {password}
           </div>
-          <div className="initial-password-modal__warning">
-            <p>
-              <strong>重要:</strong>
-              このパスワードをユーザーに伝えてください。
-            </p>
-            <p>この画面を閉じると再表示できません。</p>
-          </div>
-          <button onClick={onClose} className="initial-password-modal__close-button">
-            閉じる
-          </button>
+          <Button
+            onClick={handleCopy}
+            disabled={copied}
+            variant="success"
+            fullWidth
+          >
+            {copied ? 'コピーしました' : 'コピー'}
+          </Button>
         </div>
+
+        <div className="p-4 bg-amber-50 border border-amber-300 rounded-lg text-amber-800 text-sm">
+          <p className="mb-2">
+            <span className="font-semibold">重要:</span> このパスワードをユーザーに伝えてください。
+          </p>
+          <p className="m-0">この画面を閉じると再表示できません。</p>
+        </div>
+
+        <Button onClick={onClose} fullWidth>
+          閉じる
+        </Button>
       </div>
-    </div>
+    </Modal>
   )
 }
