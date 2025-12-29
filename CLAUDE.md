@@ -133,6 +133,8 @@ Examples: `feat(chat): add streaming support`, `fix(auth): handle expired tokens
 DATABASE_URL=mysql+pymysql://user:password@db:3306/app_db
 JWT_SECRET_KEY=your-secret-key
 ANTHROPIC_API_KEY=sk-ant-...  # For AI chat feature
+LLM_PROVIDER=anthropic        # LLM provider (default: anthropic)
+LLM_MODEL=claude-sonnet-4-5-20250929  # Claude model to use
 ```
 
 ### Frontend (`frontend/.env`)

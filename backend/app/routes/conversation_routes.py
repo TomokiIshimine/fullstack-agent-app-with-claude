@@ -11,6 +11,7 @@ from flask import Blueprint, Response, g, jsonify, request, stream_with_context
 from pydantic import BaseModel, ValidationError
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
+from app.constants.sse_events import SERVICE_TO_SSE_EVENT_MAP, SSEEvent
 from app.database import get_session
 from app.limiter import limiter
 from app.schemas.conversation import CreateConversationRequest, SendMessageRequest
@@ -170,21 +171,15 @@ def create_conversation(*, data: CreateConversationRequest, conversation_service
                 ):
                     if event_type == "created":
                         user_message_id = event_data.get("user_message_id")
-                        yield f"event: conversation_created\ndata: {json.dumps(event_data)}\n\n"
-                    elif event_type == "tool_call_start":
-                        yield f"event: tool_call_start\ndata: {json.dumps(event_data)}\n\n"
-                    elif event_type == "tool_call_end":
-                        yield f"event: tool_call_end\ndata: {json.dumps(event_data)}\n\n"
-                    elif event_type == "delta":
-                        yield f"event: content_delta\ndata: {json.dumps(event_data)}\n\n"
-                    elif event_type == "end":
-                        yield f"event: message_end\ndata: {json.dumps(event_data)}\n\n"
+                    sse_event = SERVICE_TO_SSE_EVENT_MAP.get(event_type)
+                    if sse_event:
+                        yield f"event: {sse_event}\ndata: {json.dumps(event_data)}\n\n"
             except Exception as exc:
                 logger.error("Error during conversation creation streaming", exc_info=True)
                 error_data = {"error": str(exc) if isinstance(exc, (ValueError, PermissionError)) else "Internal server error"}
                 if user_message_id is not None:
                     error_data["user_message_id"] = user_message_id
-                yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
+                yield f"event: {SSEEvent.ERROR}\ndata: {json.dumps(error_data)}\n\n"
 
         return Response(
             stream_with_context(generate()),
@@ -321,22 +316,16 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
                 ):
                     if event_type == "start":
                         user_message_id = event_data.get("user_message_id")
-                        yield f"event: message_start\ndata: {json.dumps(event_data)}\n\n"
-                    elif event_type == "tool_call_start":
-                        yield f"event: tool_call_start\ndata: {json.dumps(event_data)}\n\n"
-                    elif event_type == "tool_call_end":
-                        yield f"event: tool_call_end\ndata: {json.dumps(event_data)}\n\n"
-                    elif event_type == "delta":
-                        yield f"event: content_delta\ndata: {json.dumps(event_data)}\n\n"
-                    elif event_type == "end":
-                        yield f"event: message_end\ndata: {json.dumps(event_data)}\n\n"
+                    sse_event = SERVICE_TO_SSE_EVENT_MAP.get(event_type)
+                    if sse_event:
+                        yield f"event: {sse_event}\ndata: {json.dumps(event_data)}\n\n"
             except Exception as exc:
                 logger.error("Error during streaming", exc_info=True)
                 # Include user_message_id in error so client knows data was persisted
                 error_data = {"error": str(exc) if isinstance(exc, (ValueError, PermissionError)) else "Internal server error"}
                 if user_message_id is not None:
                     error_data["user_message_id"] = user_message_id
-                yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
+                yield f"event: {SSEEvent.ERROR}\ndata: {json.dumps(error_data)}\n\n"
 
         return Response(
             stream_with_context(generate()),

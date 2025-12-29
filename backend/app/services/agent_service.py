@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass
-from typing import Any, Generator
+from dataclasses import dataclass, field
+from typing import Any, Callable, Generator
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.tools import BaseTool as LangChainBaseTool
 from langgraph.prebuilt import create_react_agent
 
-from app.tools import get_tool_registry
+from app.tools import ToolRegistry, get_tool_registry
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,30 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = """You are a helpful AI assistant. You have access to calculator tools for arithmetic operations.
 When the user asks for calculations, use the appropriate tool (add, subtract, multiply, divide).
 Please respond in the same language as the user."""
+
+
+@dataclass
+class AgentConfig:
+    """Configuration for the AI agent.
+
+    This class encapsulates all configuration needed for the agent,
+    allowing for easy testing and dependency injection.
+    """
+
+    provider: str = "anthropic"
+    model_name: str = "claude-sonnet-4-5-20250929"
+    max_tokens: int = 4096
+    system_prompt: str = SYSTEM_PROMPT
+
+    @classmethod
+    def from_env(cls) -> "AgentConfig":
+        """Create configuration from environment variables."""
+        return cls(
+            provider=os.getenv("LLM_PROVIDER", "anthropic"),
+            model_name=os.getenv("LLM_MODEL", "claude-sonnet-4-5-20250929"),
+            max_tokens=int(os.getenv("CLAUDE_MAX_TOKENS", "4096")),
+            system_prompt=SYSTEM_PROMPT,
+        )
 
 
 @dataclass
@@ -59,39 +84,46 @@ AgentEvent = ToolCallEvent | ToolResultEvent | TextDeltaEvent | MessageCompleteE
 class AgentService:
     """Service for AI agent functionality using LangGraph ReAct pattern."""
 
-    def __init__(self) -> None:
-        """Initialize agent service with LLM and tools."""
-        self.provider = os.getenv("LLM_PROVIDER", "anthropic")
-        self.model_name = os.getenv("LLM_MODEL", "claude-sonnet-4-5-20250929")
-        self.max_tokens = int(os.getenv("CLAUDE_MAX_TOKENS", "4096"))
+    def __init__(
+        self,
+        config: AgentConfig | None = None,
+        tool_registry: ToolRegistry | None = None,
+    ) -> None:
+        """Initialize agent service with LLM and tools.
+
+        Args:
+            config: Agent configuration. If None, loads from environment variables.
+            tool_registry: Tool registry instance. If None, uses global registry.
+        """
+        self.config = config or AgentConfig.from_env()
 
         # Initialize LLM based on provider
         self.llm = self._create_llm()
 
         # Get tools from registry
-        registry = get_tool_registry()
+        registry = tool_registry or get_tool_registry()
         self.tools = registry.get_all_tools()
 
         # Create ReAct agent graph
         self.agent = create_react_agent(
             self.llm,
             tools=self.tools,
-            prompt=SYSTEM_PROMPT,
+            prompt=self.config.system_prompt,
         )
 
         logger.info(f"AgentService initialized with {len(self.tools)} tools")
 
     def _create_llm(self) -> ChatAnthropic:
         """Create LLM instance based on provider configuration."""
-        if self.provider == "anthropic":
+        if self.config.provider == "anthropic":
             return ChatAnthropic(
-                model=self.model_name,
-                max_tokens=self.max_tokens,
+                model=self.config.model_name,
+                max_tokens=self.config.max_tokens,
                 streaming=True,
             )
         else:
             # Future: Add support for other providers
-            raise ValueError(f"Unsupported LLM provider: {self.provider}")
+            raise ValueError(f"Unsupported LLM provider: {self.config.provider}")
 
     def _convert_messages(self, messages: list[dict[str, str]]) -> list[HumanMessage | AIMessage]:
         """Convert simple message dicts to LangChain message objects."""
@@ -205,6 +237,7 @@ class AgentService:
 
 
 __all__ = [
+    "AgentConfig",
     "AgentService",
     "AgentEvent",
     "ToolCallEvent",

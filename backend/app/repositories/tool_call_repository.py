@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal, Sequence
 
 from sqlalchemy.orm import Session
@@ -92,7 +92,7 @@ class ToolCallRepository:
             tool_call.output = output
             tool_call.error = error
             tool_call.status = status
-            tool_call.completed_at = datetime.utcnow()
+            tool_call.completed_at = datetime.now(timezone.utc)
             self.session.flush()
         return tool_call
 

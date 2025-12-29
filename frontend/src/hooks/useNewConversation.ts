@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react'
 import { createConversationStreaming } from '@/lib/api/conversations'
 import { useErrorHandler } from './useErrorHandler'
+import { useStreamingToolCalls } from './useStreamingToolCalls'
 import type { Conversation, Message, CreateConversationRequest } from '@/types/chat'
 import { toConversation } from '@/types/chat'
-import type { StreamingToolCall } from '@/types/tool'
 import { logger } from '@/lib/logger'
 
 /**
@@ -50,7 +50,8 @@ export function useNewConversation() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
-  const [streamingToolCalls, setStreamingToolCalls] = useState<StreamingToolCall[]>([])
+  const { streamingToolCalls, addToolCall, completeToolCall, resetToolCalls } =
+    useStreamingToolCalls()
   const { error, handleError, clearError } = useErrorHandler()
 
   /**
@@ -60,10 +61,10 @@ export function useNewConversation() {
     setConversation(null)
     setMessages([])
     setStreamingContent('')
-    setStreamingToolCalls([])
+    resetToolCalls()
     setIsStreaming(false)
     clearError()
-  }, [clearError])
+  }, [clearError, resetToolCalls])
 
   /**
    * Create a new conversation with streaming AI response
@@ -80,7 +81,7 @@ export function useNewConversation() {
 
       setIsStreaming(true)
       setStreamingContent('')
-      setStreamingToolCalls([])
+      resetToolCalls()
       clearError()
 
       // Add optimistic user message
@@ -113,23 +114,11 @@ export function useNewConversation() {
             logger.debug('Conversation created', { uuid: createdUuid, userMessageId })
           },
           onToolCallStart: (toolCallId, toolName, input) => {
-            const newToolCall: StreamingToolCall = {
-              toolCallId,
-              toolName,
-              input,
-              status: 'pending',
-            }
-            setStreamingToolCalls(prev => [...prev, newToolCall])
+            addToolCall(toolCallId, toolName, input)
             logger.debug('Tool call started', { toolCallId, toolName })
           },
           onToolCallEnd: (toolCallId, output, error) => {
-            setStreamingToolCalls(prev =>
-              prev.map(tc =>
-                tc.toolCallId === toolCallId
-                  ? { ...tc, output, error, status: error ? 'error' : 'success' }
-                  : tc
-              )
-            )
+            completeToolCall(toolCallId, output, error)
             logger.debug('Tool call ended', { toolCallId, hasError: !!error })
           },
           onDelta: delta => {
@@ -184,10 +173,10 @@ export function useNewConversation() {
         throw enhancedError
       } finally {
         setIsStreaming(false)
-        setStreamingToolCalls([])
+        resetToolCalls()
       }
     },
-    [isStreaming, clearError, handleError]
+    [isStreaming, clearError, handleError, addToolCall, completeToolCall, resetToolCalls]
   )
 
   return {

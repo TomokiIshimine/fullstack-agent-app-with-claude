@@ -783,5 +783,6 @@ The AI chat feature demonstrates integration with external AI APIs and streaming
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | - | Anthropic API key |
-| `CLAUDE_MODEL` | No | `claude-sonnet-4-5-20250929` | Claude model to use |
+| `LLM_PROVIDER` | No | `anthropic` | LLM provider (currently only `anthropic` is supported) |
+| `LLM_MODEL` | No | `claude-sonnet-4-5-20250929` | Claude model to use |
 | `CLAUDE_MAX_TOKENS` | No | `4096` | Maximum tokens for AI response |

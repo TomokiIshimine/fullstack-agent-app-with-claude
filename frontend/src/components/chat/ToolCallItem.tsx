@@ -1,21 +1,11 @@
 import { useState } from 'react'
 
-import type { ToolCall } from '@/types/tool'
+import type { ToolCall, StreamingToolCall } from '@/types/tool'
 
 import { ToolCallExpander } from './ToolCallExpander'
 
 interface ToolCallItemProps {
-  toolCall: ToolCall | StreamingToolCallDisplay
-}
-
-/** Streaming tool call compatible interface */
-interface StreamingToolCallDisplay {
-  toolCallId: string
-  toolName: string
-  input: Record<string, unknown>
-  output?: string
-  error?: string
-  status: 'pending' | 'success' | 'error'
+  toolCall: ToolCall | StreamingToolCall
 }
 
 export function ToolCallItem({ toolCall }: ToolCallItemProps) {

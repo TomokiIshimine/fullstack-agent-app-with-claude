@@ -167,7 +167,7 @@ export function ChatPage() {
 
         {error && (
           <div className="p-4">
-            <Alert variant="error">{error.message}</Alert>
+            <Alert variant="error">{error}</Alert>
           </div>
         )}
 
