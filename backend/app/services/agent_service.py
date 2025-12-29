@@ -134,6 +134,120 @@ class AgentService:
                 result.append(AIMessage(content=msg["content"]))
         return result
 
+    def _extract_text_content(self, content: Any) -> str:
+        """Extract text content from various message content formats.
+
+        Args:
+            content: Message content (str, list of dicts, or list of strings)
+
+        Returns:
+            Extracted text content as a single string
+        """
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text_parts.append(item.get("text", ""))
+                elif isinstance(item, str):
+                    text_parts.append(item)
+            return "".join(text_parts)
+        return ""
+
+    def _handle_messages_stream(self, data: tuple[Any, Any]) -> str | None:
+        """Handle messages stream mode chunk.
+
+        Args:
+            data: Tuple of (message_chunk, metadata) from messages stream
+
+        Returns:
+            Extracted text content or None if no content
+        """
+        if not isinstance(data, tuple) or len(data) != 2:
+            return None
+
+        message_chunk, _ = data
+        if hasattr(message_chunk, "content") and message_chunk.content:
+            text_content = self._extract_text_content(message_chunk.content)
+            return text_content if text_content else None
+        return None
+
+    def _handle_updates_stream(
+        self,
+        data: dict[str, Any],
+        emitted_tool_calls: set[str],
+    ) -> Generator[ToolCallEvent | ToolResultEvent, None, None]:
+        """Handle updates stream mode chunk.
+
+        Args:
+            data: Dict containing node outputs
+            emitted_tool_calls: Set of already emitted tool call IDs (modified in place)
+
+        Yields:
+            ToolCallEvent or ToolResultEvent instances
+        """
+        for node_name, node_output in data.items():
+            if node_name == "agent":
+                yield from self._process_agent_node(node_output, emitted_tool_calls)
+            elif node_name == "tools":
+                yield from self._process_tools_node(node_output)
+
+    def _process_agent_node(
+        self,
+        node_output: dict[str, Any],
+        emitted_tool_calls: set[str],
+    ) -> Generator[ToolCallEvent, None, None]:
+        """Process agent node output for tool calls.
+
+        Args:
+            node_output: Output from agent node
+            emitted_tool_calls: Set of already emitted tool call IDs
+
+        Yields:
+            ToolCallEvent for each new tool call
+        """
+        agent_messages = node_output.get("messages", [])
+        for msg in agent_messages:
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                for tool_call in msg.tool_calls:
+                    tool_call_id = tool_call["id"]
+                    if tool_call_id not in emitted_tool_calls:
+                        emitted_tool_calls.add(tool_call_id)
+                        yield ToolCallEvent(
+                            tool_call_id=tool_call_id,
+                            tool_name=tool_call["name"],
+                            input=tool_call["args"],
+                        )
+
+    def _process_tools_node(
+        self,
+        node_output: dict[str, Any],
+    ) -> Generator[ToolResultEvent, None, None]:
+        """Process tools node output for results.
+
+        Args:
+            node_output: Output from tools node
+
+        Yields:
+            ToolResultEvent for each tool result
+        """
+        tool_messages = node_output.get("messages", [])
+        for msg in tool_messages:
+            if isinstance(msg, ToolMessage):
+                error = None
+                output = str(msg.content) if msg.content else None
+
+                if hasattr(msg, "status") and msg.status == "error":
+                    error = output
+                    output = None
+
+                yield ToolResultEvent(
+                    tool_call_id=msg.tool_call_id,
+                    output=output,
+                    error=error,
+                )
+
     def generate_response(
         self,
         messages: list[dict[str, str]],
@@ -151,67 +265,31 @@ class AgentService:
         """
         logger.debug(f"Generating agent response with {len(messages)} messages")
 
-        # Convert messages to LangChain format
         langchain_messages = self._convert_messages(messages)
         inputs = {"messages": langchain_messages}
 
-        # Track accumulated content for final message
         full_content = ""
+        emitted_tool_calls: set[str] = set()
 
-        # Stream agent execution
+        # Stream with both modes:
+        # - "messages": token-by-token streaming from LLM
+        # - "updates": node completion events (tool calls/results)
         try:
-            for chunk in self.agent.stream(inputs, stream_mode="updates"):
-                # Process each node's output
-                for node_name, node_output in chunk.items():
-                    if node_name == "agent":
-                        # LLM response - may contain tool calls or text
-                        agent_messages = node_output.get("messages", [])
-                        for msg in agent_messages:
-                            if hasattr(msg, "tool_calls") and msg.tool_calls:
-                                # Emit tool call events
-                                for tool_call in msg.tool_calls:
-                                    yield ToolCallEvent(
-                                        tool_call_id=tool_call["id"],
-                                        tool_name=tool_call["name"],
-                                        input=tool_call["args"],
-                                    )
-                            # Changed from elif to if: process content even if tool_calls exist
-                            if hasattr(msg, "content") and msg.content:
-                                # Text content - handle both str and list formats
-                                text_content = ""
-                                if isinstance(msg.content, str):
-                                    text_content = msg.content
-                                elif isinstance(msg.content, list):
-                                    # LangChain may return content as list of dicts
-                                    for item in msg.content:
-                                        if isinstance(item, dict) and item.get("type") == "text":
-                                            text_content += item.get("text", "")
-                                        elif isinstance(item, str):
-                                            text_content += item
-                                if text_content.strip():
-                                    full_content += text_content
-                                    yield TextDeltaEvent(delta=text_content)
+            for chunk in self.agent.stream(inputs, stream_mode=["messages", "updates"]):
+                if not isinstance(chunk, tuple) or len(chunk) != 2:
+                    continue
 
-                    elif node_name == "tools":
-                        # Tool execution results
-                        tool_messages = node_output.get("messages", [])
-                        for msg in tool_messages:
-                            if isinstance(msg, ToolMessage):
-                                error = None
-                                output = str(msg.content) if msg.content else None
+                stream_mode, data = chunk
 
-                                # Check for error in tool response
-                                if hasattr(msg, "status") and msg.status == "error":
-                                    error = output
-                                    output = None
+                if stream_mode == "messages":
+                    text_content = self._handle_messages_stream(data)
+                    if text_content:
+                        full_content += text_content
+                        yield TextDeltaEvent(delta=text_content)
 
-                                yield ToolResultEvent(
-                                    tool_call_id=msg.tool_call_id,
-                                    output=output,
-                                    error=error,
-                                )
+                elif stream_mode == "updates" and isinstance(data, dict):
+                    yield from self._handle_updates_stream(data, emitted_tool_calls)
 
-            # Emit final message complete event
             yield MessageCompleteEvent(content=full_content)
 
         except Exception as e:
