@@ -146,6 +146,7 @@ export async function parseSSEStream<T extends Record<string, unknown> = Record<
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let currentEvent = ''
 
   try {
     while (true) {
@@ -158,12 +159,12 @@ export async function parseSSEStream<T extends Record<string, unknown> = Record<
       const lines = buffer.split('\n')
       buffer = lines.pop() || '' // Keep incomplete line in buffer
 
-      let currentEvent = ''
       for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          currentEvent = line.slice(7)
-        } else if (line.startsWith('data: ') && currentEvent) {
-          const eventData = line.slice(6)
+        const cleanedLine = line.replace(/\r$/, '')
+        if (cleanedLine.startsWith('event: ')) {
+          currentEvent = cleanedLine.slice(7)
+        } else if (cleanedLine.startsWith('data: ') && currentEvent) {
+          const eventData = cleanedLine.slice(6)
           try {
             const parsed = JSON.parse(eventData) as T
             options.onEvent(currentEvent, parsed)
