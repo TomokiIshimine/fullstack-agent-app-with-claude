@@ -1,4 +1,4 @@
-.PHONY: install setup up down lint format format-check test test-frontend test-backend test-fast test-cov test-parallel pre-commit-install pre-commit-run pre-commit-update db-init db-create-user db-reset
+.PHONY: install setup up down lint format format-check test test-frontend test-backend test-fast test-cov test-parallel ci pre-commit-install pre-commit-run pre-commit-update db-init db-create-user db-reset
 
 PNPM ?= pnpm --dir frontend
 POETRY ?= poetry -C backend
@@ -24,8 +24,8 @@ lint:
 	$(POETRY) run mypy app
 
 test:
-	$(PNPM) run test -- --runInBand
-	$(POETRY) run pytest --cov=app --cov-report=term-missing
+	$(PNPM) run test:coverage
+	$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html
 
 test-frontend:
 	$(PNPM) run test -- --runInBand
@@ -52,9 +52,11 @@ format:
 	$(POETRY) run black app tests
 
 format-check:
-	$(PNPM) exec node scripts/format.mjs --check
+	$(PNPM) exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md}"
 	$(POETRY) run isort --check-only app tests
 	$(POETRY) run black --check app tests
+
+ci: lint format-check test
 
 pre-commit-install:
 	$(POETRY) run pre-commit install
