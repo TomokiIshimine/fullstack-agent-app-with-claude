@@ -1,4 +1,4 @@
-import type { ToolCall, ToolCallDto } from './tool'
+import type { ToolCall, ToolCallDto, StreamingToolCall } from './tool'
 import { toToolCall } from './tool'
 
 /**
@@ -24,7 +24,7 @@ export interface Message {
   id: number
   role: MessageRole
   content: string
-  toolCalls?: ToolCall[]
+  toolCalls?: (ToolCall | StreamingToolCall)[]
   createdAt: Date
 }
 
