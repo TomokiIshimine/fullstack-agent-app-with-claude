@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { StreamingToolCall } from '@/types/tool'
 
 /**
@@ -22,6 +22,12 @@ import type { StreamingToolCall } from '@/types/tool'
  */
 export function useStreamingToolCalls() {
   const [streamingToolCalls, setStreamingToolCalls] = useState<StreamingToolCall[]>([])
+  const toolCallsRef = useRef<StreamingToolCall[]>([])
+
+  // Keep ref in sync with state to avoid stale closure issues
+  useEffect(() => {
+    toolCallsRef.current = streamingToolCalls
+  }, [streamingToolCalls])
 
   /**
    * Add a new tool call with pending status
@@ -59,10 +65,16 @@ export function useStreamingToolCalls() {
     setStreamingToolCalls([])
   }, [])
 
+  /**
+   * Get current tool calls (avoids stale closure in async callbacks)
+   */
+  const getToolCalls = useCallback(() => toolCallsRef.current, [])
+
   return {
     streamingToolCalls,
     addToolCall,
     completeToolCall,
     resetToolCalls,
+    getToolCalls,
   }
 }

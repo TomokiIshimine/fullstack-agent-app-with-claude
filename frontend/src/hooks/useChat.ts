@@ -19,7 +19,7 @@ export function useChat(options: UseChatOptions) {
   const [isLoading, setIsLoading] = useState(true)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
-  const { streamingToolCalls, addToolCall, completeToolCall, resetToolCalls } =
+  const { streamingToolCalls, addToolCall, completeToolCall, resetToolCalls, getToolCalls } =
     useStreamingToolCalls()
   const { error, handleError, clearError } = useErrorHandler()
 
@@ -117,11 +117,13 @@ export function useChat(options: UseChatOptions) {
           },
         })
 
-        // Add assistant message
+        // Add assistant message with accumulated tool calls
+        const toolCalls = getToolCalls()
         const assistantMessage: Message = {
           id: assistantMessageId,
           role: 'assistant',
           content: finalContent,
+          toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
           createdAt: new Date(),
         }
         setMessages(prev => [...prev, assistantMessage])
@@ -157,6 +159,7 @@ export function useChat(options: UseChatOptions) {
       addToolCall,
       completeToolCall,
       resetToolCalls,
+      getToolCalls,
     ]
   )
 

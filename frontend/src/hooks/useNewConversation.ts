@@ -50,7 +50,7 @@ export function useNewConversation() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
-  const { streamingToolCalls, addToolCall, completeToolCall, resetToolCalls } =
+  const { streamingToolCalls, addToolCall, completeToolCall, resetToolCalls, getToolCalls } =
     useStreamingToolCalls()
   const { error, handleError, clearError } = useErrorHandler()
 
@@ -135,12 +135,14 @@ export function useNewConversation() {
           },
         })
 
-        // Add assistant message only if we got a valid response
-        if (assistantMessageId > 0 && finalContent) {
+        // Add assistant message if we got a valid response or tool calls
+        const toolCalls = getToolCalls()
+        if (assistantMessageId > 0 && (finalContent || toolCalls.length > 0)) {
           const assistantMessage: Message = {
             id: assistantMessageId,
             role: 'assistant',
             content: finalContent,
+            toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
             createdAt: new Date(),
           }
           setMessages(prev => [...prev, assistantMessage])
@@ -176,7 +178,7 @@ export function useNewConversation() {
         resetToolCalls()
       }
     },
-    [isStreaming, clearError, handleError, addToolCall, completeToolCall, resetToolCalls]
+    [isStreaming, clearError, handleError, addToolCall, completeToolCall, resetToolCalls, getToolCalls]
   )
 
   return {
