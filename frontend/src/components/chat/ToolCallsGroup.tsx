@@ -9,13 +9,13 @@ interface ToolCallsGroupProps {
 }
 
 function getGroupStatus(toolCalls: (ToolCall | StreamingToolCall)[]): ToolCallStatus {
-  // If any tool is pending, the group is pending
-  if (toolCalls.some(tc => tc.status === 'pending')) {
-    return 'pending'
-  }
-  // If any tool has an error, the group shows error
+  // Prioritize error status so users immediately see failures
   if (toolCalls.some(tc => tc.status === 'error')) {
     return 'error'
+  }
+  // If any tool is still pending, show pending
+  if (toolCalls.some(tc => tc.status === 'pending')) {
+    return 'pending'
   }
   // All tools succeeded
   return 'success'
