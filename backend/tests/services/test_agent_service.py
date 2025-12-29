@@ -6,15 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.agent_service import (
-    AgentConfig,
-    AgentService,
-    MessageCompleteEvent,
-    SYSTEM_PROMPT,
-    TextDeltaEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-)
+from app.services.agent_service import SYSTEM_PROMPT, AgentConfig, AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 from app.tools import ToolRegistry
 
 
@@ -207,9 +199,7 @@ class TestAgentServiceGenerateResponse:
         mock_message.tool_calls = None
         mock_message.content = "Hello, world!"
 
-        mock_agent.stream.return_value = iter([
-            {"agent": {"messages": [mock_message]}}
-        ])
+        mock_agent.stream.return_value = iter([{"agent": {"messages": [mock_message]}}])
         mock_create_agent.return_value = mock_agent
 
         service = AgentService()
@@ -234,9 +224,7 @@ class TestAgentServiceGenerateResponse:
         mock_message.tool_calls = None
         mock_message.content = "Response text"
 
-        mock_agent.stream.return_value = iter([
-            {"agent": {"messages": [mock_message]}}
-        ])
+        mock_agent.stream.return_value = iter([{"agent": {"messages": [mock_message]}}])
         mock_create_agent.return_value = mock_agent
 
         service = AgentService()
@@ -258,14 +246,10 @@ class TestAgentServiceGenerateResponse:
         # Mock agent with tool call
         mock_agent = MagicMock()
         mock_message = MagicMock()
-        mock_message.tool_calls = [
-            {"id": "call_123", "name": "add", "args": {"a": 1, "b": 2}}
-        ]
+        mock_message.tool_calls = [{"id": "call_123", "name": "add", "args": {"a": 1, "b": 2}}]
         mock_message.content = ""
 
-        mock_agent.stream.return_value = iter([
-            {"agent": {"messages": [mock_message]}}
-        ])
+        mock_agent.stream.return_value = iter([{"agent": {"messages": [mock_message]}}])
         mock_create_agent.return_value = mock_agent
 
         service = AgentService()
@@ -294,9 +278,7 @@ class TestAgentServiceGenerateResponse:
         mock_tool_message.content = "3"
 
         mock_agent = MagicMock()
-        mock_agent.stream.return_value = iter([
-            {"tools": {"messages": [mock_tool_message]}}
-        ])
+        mock_agent.stream.return_value = iter([{"tools": {"messages": [mock_tool_message]}}])
         mock_create_agent.return_value = mock_agent
 
         service = AgentService()

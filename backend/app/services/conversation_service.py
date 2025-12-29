@@ -23,14 +23,7 @@ from app.schemas.conversation import (
     SendMessageResponse,
 )
 from app.schemas.tool_call import ToolCallResponse
-from app.services.agent_service import (
-    AgentEvent,
-    AgentService,
-    MessageCompleteEvent,
-    TextDeltaEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-)
+from app.services.agent_service import AgentEvent, AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 
 logger = logging.getLogger(__name__)
 
@@ -257,9 +250,7 @@ class ConversationService:
 
         # Get tool calls for response
         tool_calls = self.tool_call_repo.find_by_message_id(assistant_message.id)
-        tool_calls_data = [
-            ToolCallResponse.model_validate(tc).model_dump(mode="json") for tc in tool_calls
-        ]
+        tool_calls_data = [ToolCallResponse.model_validate(tc).model_dump(mode="json") for tc in tool_calls]
 
         # Yield end event
         yield (
@@ -471,9 +462,7 @@ class ConversationService:
 
         # Get tool calls for response
         tool_calls = self.tool_call_repo.find_by_message_id(assistant_message.id)
-        tool_calls_data = [
-            ToolCallResponse.model_validate(tc).model_dump(mode="json") for tc in tool_calls
-        ]
+        tool_calls_data = [ToolCallResponse.model_validate(tc).model_dump(mode="json") for tc in tool_calls]
 
         # Yield end event
         yield (
@@ -603,9 +592,7 @@ class ConversationService:
         """
         full_response = ""
         for event in self.agent_service.generate_response(messages, stream=True):
-            streaming_event, text_content = self._process_agent_event(
-                event, assistant_message_id
-            )
+            streaming_event, text_content = self._process_agent_event(event, assistant_message_id)
             if streaming_event is not None:
                 yield streaming_event
             if text_content is not None:
