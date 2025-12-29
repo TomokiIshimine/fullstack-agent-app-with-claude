@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import type { Components } from 'react-markdown'
 import { CodeBlock } from './CodeBlock'
 
@@ -59,7 +60,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
   return (
     <div className={`markdown-content ${className}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
         {content}
       </ReactMarkdown>
     </div>
