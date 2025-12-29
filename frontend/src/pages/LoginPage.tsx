@@ -33,10 +33,10 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-200 px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-12">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-xl shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 text-center mb-8">ログイン</h1>
+          <h1 className="text-3xl font-bold text-slate-900 text-center mb-8">ログイン</h1>
           <form onSubmit={handleSubmit} className="space-y-6" aria-label="ログインフォーム">
             {error && (
               <Alert variant="error" onDismiss={clearError}>

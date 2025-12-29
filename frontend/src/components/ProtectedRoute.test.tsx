@@ -61,12 +61,15 @@ describe('ProtectedRoute', () => {
 
       const { container } = renderProtectedRoute()
 
-      const loadingContainer = container.querySelector('.loading-container')
+      // Check for full-screen centered loading UI (Tailwind classes)
+      const loadingContainer = container.querySelector(
+        '.min-h-screen.flex.justify-center.items-center'
+      )
       expect(loadingContainer).toBeInTheDocument()
 
-      const loadingSpinner = container.querySelector('.loading-spinner')
-      expect(loadingSpinner).toBeInTheDocument()
-      expect(loadingSpinner?.textContent).toBe('読み込み中...')
+      // Check loading text is present
+      const loadingText = screen.getByText('読み込み中...')
+      expect(loadingText).toBeInTheDocument()
     })
 
     it('does not render children during loading', () => {

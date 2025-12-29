@@ -66,7 +66,7 @@ export function ProfileUpdateForm({ user, onSuccess }: ProfileUpdateFormProps) {
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
-      <h2 className="text-2xl font-semibold text-gray-900 mb-6">プロフィール</h2>
+      <h2 className="text-2xl font-semibold text-slate-900 mb-6">プロフィール</h2>
       <form className="space-y-4" onSubmit={handleSubmit} aria-label="プロフィール更新フォーム">
         {error && (
           <Alert variant="error" onDismiss={() => setError(null)}>

@@ -157,22 +157,13 @@ export function ChatSidebar({
             </button>
             {isMenuOpen && (
               <div
-                className="page-header__dropdown"
+                className="absolute right-0 bottom-full mb-2 min-w-[10rem] bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden"
                 role="menu"
-                style={{
-                  position: 'absolute',
-                  top: 'auto',
-                  bottom: '100%',
-                  right: 0,
-                  marginTop: 0,
-                  marginBottom: '0.5rem',
-                  minWidth: '10rem',
-                }}
               >
                 <button
                   type="button"
                   role="menuitem"
-                  className="page-header__dropdown-button"
+                  className="block w-full px-4 py-3 text-left text-sm text-slate-700 bg-transparent border-none cursor-pointer transition-colors hover:bg-slate-50"
                   onClick={() => {
                     navigate('/settings')
                     setIsMenuOpen(false)

@@ -48,7 +48,7 @@ export function UserList({ users, onDeleteUser }: UserListProps) {
   if (users.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-md p-8 text-center">
-        <p className="text-gray-600">ユーザーが登録されていません</p>
+        <p className="text-slate-600">ユーザーが登録されていません</p>
       </div>
     )
   }
@@ -58,32 +58,32 @@ export function UserList({ users, onDeleteUser }: UserListProps) {
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                   メールアドレス
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                   名前
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                   ロール
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                   作成日
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                   操作
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-slate-200">
               {users.map(user => (
-                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                     {user.email}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                     {user.name || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -97,12 +97,12 @@ export function UserList({ users, onDeleteUser }: UserListProps) {
                       {user.role === 'admin' ? '管理者' : 'ユーザー'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                     {new Date(user.created_at).toLocaleDateString('ja-JP')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {user.role === 'admin' ? (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-slate-400">-</span>
                     ) : (
                       <Button
                         onClick={() => handleDeleteClick(user)}
@@ -134,7 +134,7 @@ export function UserList({ users, onDeleteUser }: UserListProps) {
             </Alert>
           </div>
         )}
-        <p className="text-gray-700 mb-4">
+        <p className="text-slate-700 mb-4">
           <span className="font-semibold">{deleteTarget?.email}</span> を削除しますか？
         </p>
         <p className="text-sm text-red-600 font-medium">この操作は取り消せません。</p>

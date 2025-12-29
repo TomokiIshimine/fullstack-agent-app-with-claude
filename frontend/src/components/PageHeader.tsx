@@ -64,17 +64,22 @@ export function PageHeader({
   const displayName = user?.name || user?.email
 
   return (
-    <div className="page-header">
+    <div className="flex items-center justify-between mb-8 py-4 gap-4 flex-wrap sm:flex-nowrap">
       {onBack && (
-        <button type="button" onClick={onBack} className="page-header__back" aria-label="戻る">
+        <button
+          type="button"
+          onClick={onBack}
+          className="px-4 py-2 bg-slate-500 text-white border-none rounded text-sm cursor-pointer transition-colors hover:bg-slate-600 order-first sm:order-none"
+          aria-label="戻る"
+        >
           ← 戻る
         </button>
       )}
-      <h1 className="page-header__title">{title}</h1>
-      <div className="page-header__menu-container" ref={menuRef}>
+      <h1 className="text-2xl font-bold text-slate-800 flex-1 m-0">{title}</h1>
+      <div className="relative" ref={menuRef}>
         <button
           type="button"
-          className="page-header__menu-button"
+          className="flex items-center justify-center w-11 h-11 bg-transparent border-none rounded-lg cursor-pointer text-slate-700 transition-colors hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           aria-expanded={isMenuOpen}
           aria-haspopup="menu"
@@ -96,18 +101,21 @@ export function PageHeader({
           </svg>
         </button>
         {isMenuOpen && (
-          <div className="page-header__dropdown" role="menu">
-            <div className="page-header__dropdown-info">
+          <div
+            className="absolute right-0 top-full mt-2 min-w-[200px] bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden"
+            role="menu"
+          >
+            <div className="px-4 py-3 border-b border-slate-200">
               {!isLoading && version && (
-                <div className="page-header__dropdown-version">{version}</div>
+                <div className="text-xs text-slate-400 mb-1">{version}</div>
               )}
-              {displayName && <div className="page-header__dropdown-name">{displayName}</div>}
+              {displayName && <div className="text-sm text-slate-700 break-all">{displayName}</div>}
             </div>
             {showSettings && (
               <button
                 type="button"
                 role="menuitem"
-                className="page-header__dropdown-button"
+                className="block w-full px-4 py-3 text-left text-sm text-slate-700 bg-transparent border-none cursor-pointer transition-colors hover:bg-slate-50"
                 onClick={() => {
                   navigate('/settings')
                   setIsMenuOpen(false)
@@ -120,7 +128,7 @@ export function PageHeader({
               <button
                 type="button"
                 role="menuitem"
-                className="page-header__dropdown-button page-header__dropdown-button--danger"
+                className="block w-full px-4 py-3 text-left text-sm text-red-600 bg-transparent border-none cursor-pointer transition-colors hover:bg-red-50"
                 onClick={() => {
                   handleLogout()
                   setIsMenuOpen(false)

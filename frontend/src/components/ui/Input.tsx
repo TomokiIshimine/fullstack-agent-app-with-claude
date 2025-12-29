@@ -47,14 +47,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const containerClassName = fullWidth ? 'w-full' : ''
 
     const inputClassName = [
-      'block w-full px-3 py-2 border rounded-lg text-gray-900 placeholder-gray-400',
+      'block w-full px-3 py-2 border rounded-lg text-slate-900 placeholder-slate-400',
       'transition-colors duration-200',
       'focus:outline-none focus:ring-2 focus:ring-offset-0',
-      'disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-500',
+      'disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500',
       'min-h-[2.75rem]', // 44px tap target
       error
         ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-        : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200',
+        : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
       isPassword ? 'pr-10' : '',
       className,
     ]
@@ -64,7 +64,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={containerClassName}>
         {label && (
-          <label htmlFor={generatedId} className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor={generatedId} className="block text-sm font-medium text-slate-700 mb-1">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -89,7 +89,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             <button
               type="button"
               onClick={togglePasswordVisibility}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 focus:outline-none focus:text-gray-700 transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-700 focus:outline-none focus:text-slate-700 transition-colors"
               aria-label={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
               tabIndex={-1}
             >
@@ -161,7 +161,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
 
         {!error && helperText && (
-          <p id={`${generatedId}-helper`} className="mt-1 text-sm text-gray-500">
+          <p id={`${generatedId}-helper`} className="mt-1 text-sm text-slate-500">
             {helperText}
           </p>
         )}
