@@ -261,7 +261,7 @@ class ConversationService:
                     },
                 )
             elif isinstance(event, TextDeltaEvent):
-                full_response = event.delta
+                full_response += event.delta
                 yield ("delta", {"delta": event.delta})
             elif isinstance(event, MessageCompleteEvent):
                 full_response = event.content
@@ -513,7 +513,7 @@ class ConversationService:
                     },
                 )
             elif isinstance(event, TextDeltaEvent):
-                full_response = event.delta
+                full_response += event.delta
                 yield ("delta", {"delta": event.delta})
             elif isinstance(event, MessageCompleteEvent):
                 full_response = event.content

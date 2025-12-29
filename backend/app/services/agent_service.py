@@ -144,11 +144,22 @@ class AgentService:
                                         tool_name=tool_call["name"],
                                         input=tool_call["args"],
                                     )
-                            elif hasattr(msg, "content") and msg.content:
-                                # Text content
+                            # Changed from elif to if: process content even if tool_calls exist
+                            if hasattr(msg, "content") and msg.content:
+                                # Text content - handle both str and list formats
+                                text_content = ""
                                 if isinstance(msg.content, str):
-                                    full_content = msg.content
-                                    yield TextDeltaEvent(delta=msg.content)
+                                    text_content = msg.content
+                                elif isinstance(msg.content, list):
+                                    # LangChain may return content as list of dicts
+                                    for item in msg.content:
+                                        if isinstance(item, dict) and item.get("type") == "text":
+                                            text_content += item.get("text", "")
+                                        elif isinstance(item, str):
+                                            text_content += item
+                                if text_content.strip():
+                                    full_content += text_content
+                                    yield TextDeltaEvent(delta=text_content)
 
                     elif node_name == "tools":
                         # Tool execution results
