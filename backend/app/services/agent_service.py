@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Generator
 
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 
 from app.tools import ToolRegistry, get_tool_registry
@@ -158,16 +158,22 @@ class AgentService:
     def _handle_messages_stream(self, data: tuple[Any, Any]) -> str | None:
         """Handle messages stream mode chunk.
 
+        Only processes AIMessageChunk instances to avoid including tool outputs
+        in the assistant's text response.
+
         Args:
             data: Tuple of (message_chunk, metadata) from messages stream
 
         Returns:
-            Extracted text content or None if no content
+            Extracted text content or None if no content or non-AI message
         """
         if not isinstance(data, tuple) or len(data) != 2:
             return None
 
         message_chunk, _ = data
+        # Filter to only process AI message chunks, ignoring ToolMessage and other types
+        if not isinstance(message_chunk, AIMessageChunk):
+            return None
         if hasattr(message_chunk, "content") and message_chunk.content:
             text_content = self._extract_text_content(message_chunk.content)
             return text_content if text_content else None

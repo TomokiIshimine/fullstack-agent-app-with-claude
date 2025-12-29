@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from langchain_core.messages import AIMessageChunk, ToolMessage
 
 from app.services.agent_service import SYSTEM_PROMPT, AgentConfig, AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 from app.tools import ToolRegistry
@@ -195,11 +196,10 @@ class TestAgentServiceGenerateResponse:
 
         # Mock agent with text response using "messages" stream mode format
         mock_agent = MagicMock()
-        mock_message_chunk = MagicMock()
-        mock_message_chunk.content = "Hello, world!"
+        ai_message_chunk = AIMessageChunk(content="Hello, world!")
 
         # New format: ("messages", (message_chunk, metadata))
-        mock_agent.stream.return_value = iter([("messages", (mock_message_chunk, {}))])
+        mock_agent.stream.return_value = iter([("messages", (ai_message_chunk, {}))])
         mock_create_agent.return_value = mock_agent
 
         service = AgentService()
@@ -220,11 +220,10 @@ class TestAgentServiceGenerateResponse:
 
         # Mock agent with text response using "messages" stream mode format
         mock_agent = MagicMock()
-        mock_message_chunk = MagicMock()
-        mock_message_chunk.content = "Response text"
+        ai_message_chunk = AIMessageChunk(content="Response text")
 
         # New format: ("messages", (message_chunk, metadata))
-        mock_agent.stream.return_value = iter([("messages", (mock_message_chunk, {}))])
+        mock_agent.stream.return_value = iter([("messages", (ai_message_chunk, {}))])
         mock_create_agent.return_value = mock_agent
 
         service = AgentService()
@@ -417,15 +416,14 @@ class TestAgentServiceHelperMethods:
 
     @patch("app.services.agent_service.create_react_agent")
     @patch("app.services.agent_service.ChatAnthropic")
-    def test_handle_messages_stream_with_valid_data(self, mock_chat_anthropic, mock_create_agent):
-        """Test _handle_messages_stream with valid tuple data."""
+    def test_handle_messages_stream_with_valid_ai_message(self, mock_chat_anthropic, mock_create_agent):
+        """Test _handle_messages_stream with valid AIMessageChunk data."""
         mock_llm = MagicMock()
         mock_chat_anthropic.return_value = mock_llm
 
         service = AgentService()
-        mock_chunk = MagicMock()
-        mock_chunk.content = "Hello!"
-        data = (mock_chunk, {})
+        ai_chunk = AIMessageChunk(content="Hello!")
+        data = (ai_chunk, {})
 
         result = service._handle_messages_stream(data)
 
@@ -452,8 +450,40 @@ class TestAgentServiceHelperMethods:
         mock_chat_anthropic.return_value = mock_llm
 
         service = AgentService()
+        ai_chunk = AIMessageChunk(content="")
+        data = (ai_chunk, {})
+
+        result = service._handle_messages_stream(data)
+
+        assert result is None
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_handle_messages_stream_ignores_tool_messages(self, mock_chat_anthropic, mock_create_agent):
+        """Test _handle_messages_stream ignores ToolMessage to prevent tool output leakage."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        # ToolMessage should be ignored even if it has content
+        tool_msg = ToolMessage(content="Tool output: 42", tool_call_id="call_123")
+        data = (tool_msg, {})
+
+        result = service._handle_messages_stream(data)
+
+        assert result is None
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.ChatAnthropic")
+    def test_handle_messages_stream_ignores_non_ai_messages(self, mock_chat_anthropic, mock_create_agent):
+        """Test _handle_messages_stream ignores non-AIMessageChunk types."""
+        mock_llm = MagicMock()
+        mock_chat_anthropic.return_value = mock_llm
+
+        service = AgentService()
+        # Generic MagicMock (not AIMessageChunk) should be ignored
         mock_chunk = MagicMock()
-        mock_chunk.content = ""
+        mock_chunk.content = "This should be ignored"
         data = (mock_chunk, {})
 
         result = service._handle_messages_stream(data)
