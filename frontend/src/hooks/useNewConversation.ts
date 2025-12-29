@@ -178,7 +178,15 @@ export function useNewConversation() {
         resetToolCalls()
       }
     },
-    [isStreaming, clearError, handleError, addToolCall, completeToolCall, resetToolCalls, getToolCalls]
+    [
+      isStreaming,
+      clearError,
+      handleError,
+      addToolCall,
+      completeToolCall,
+      resetToolCalls,
+      getToolCalls,
+    ]
   )
 
   return {
