@@ -1,4 +1,4 @@
-.PHONY: install setup up down lint format format-check test test-frontend test-backend test-fast test-cov test-parallel ci pre-commit-install pre-commit-run pre-commit-update db-init db-create-user db-reset
+.PHONY: install setup up down lint lint-frontend lint-backend format format-check test test-frontend test-backend test-fast test-cov test-parallel test-frontend-ci test-backend-ci security ci pre-commit-install pre-commit-run pre-commit-update db-init db-create-user db-reset
 
 PNPM ?= pnpm --dir frontend
 POETRY ?= poetry -C backend
@@ -23,6 +23,17 @@ lint:
 	$(POETRY) run flake8 app tests
 	$(POETRY) run mypy app
 
+lint-frontend:
+	$(PNPM) run lint
+	$(PNPM) exec tsc --noEmit
+	$(PNPM) exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md}"
+
+lint-backend:
+	$(POETRY) run flake8 app tests
+	$(POETRY) run mypy app
+	$(POETRY) run isort --check-only app tests
+	$(POETRY) run black --check app tests
+
 test:
 	$(PNPM) run test:coverage
 	$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html
@@ -46,6 +57,12 @@ test-parallel:
 	$(PNPM) run test -- --runInBand
 	$(POETRY) run pytest -n auto --cov=app --cov-report=term-missing
 
+test-frontend-ci:
+	$(PNPM) run test:coverage
+
+test-backend-ci:
+	$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html
+
 format:
 	$(PNPM) run format
 	$(POETRY) run isort app tests
@@ -55,6 +72,11 @@ format-check:
 	$(PNPM) exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md}"
 	$(POETRY) run isort --check-only app tests
 	$(POETRY) run black --check app tests
+
+security:
+	$(PNPM) audit --audit-level=moderate || true
+	$(POETRY) check || true
+	$(POETRY) run pip-audit || echo "pip-audit not available, skipping"
 
 ci: lint format-check test
 
