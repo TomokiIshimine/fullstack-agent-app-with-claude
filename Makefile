@@ -74,9 +74,11 @@ format-check:
 	$(POETRY) run black --check app tests
 
 security:
-	$(PNPM) audit --audit-level=moderate || true
-	$(POETRY) check || true
-	$(POETRY) run pip-audit || echo "pip-audit not available, skipping"
+	@EXIT_CODE=0; \
+	$(PNPM) audit --audit-level=moderate || EXIT_CODE=$$?; \
+	$(POETRY) check || EXIT_CODE=$$?; \
+	$(POETRY) run pip-audit || EXIT_CODE=$$?; \
+	exit $$EXIT_CODE
 
 ci: lint format-check test
 

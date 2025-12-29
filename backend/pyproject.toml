@@ -43,7 +43,8 @@ dev = [
     "black (>=24.10,<25.0)",
     "isort (>=5.13,<6.0)",
     "flake8 (>=7.1,<8.0)",
-    "pre-commit (>=3.8,<4.0)"
+    "pre-commit (>=3.8,<4.0)",
+    "pip-audit (>=2.7,<3.0)"
 ]
 
 [tool.black]
