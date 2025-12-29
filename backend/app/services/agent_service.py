@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass, field
-from typing import Any, Callable, Generator
+from dataclasses import dataclass
+from typing import Any, Generator
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
-from langchain_core.tools import BaseTool as LangChainBaseTool
 from langgraph.prebuilt import create_react_agent
 
 from app.tools import ToolRegistry, get_tool_registry
@@ -117,8 +116,8 @@ class AgentService:
         """Create LLM instance based on provider configuration."""
         if self.config.provider == "anthropic":
             return ChatAnthropic(
-                model=self.config.model_name,
-                max_tokens=self.config.max_tokens,
+                model_name=self.config.model_name,  # type: ignore[call-arg]
+                max_tokens_to_sample=self.config.max_tokens,  # type: ignore[call-arg]
                 streaming=True,
             )
         else:
