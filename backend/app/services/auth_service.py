@@ -6,6 +6,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import NoReturn
 
 import jwt
 from sqlalchemy.orm import Session
@@ -95,26 +96,24 @@ class AuthService:
             # Check if refresh token exists in database and is not revoked
             token_record = self.refresh_token_repo.find_by_token(refresh_token)
             if not token_record:
-                logger.warning(f"Refresh token not found in database: user_id={user_id}")
-                raise ValueError("リフレッシュトークンが無効です")
+                self._raise_invalid_refresh_token(f"Refresh token not found in database: user_id={user_id}")
+            assert token_record is not None
 
             if token_record.is_revoked:
-                logger.warning(f"Refresh token is revoked: user_id={user_id}")
-                raise ValueError("リフレッシュトークンが無効です")
+                self._raise_invalid_refresh_token(f"Refresh token is revoked: user_id={user_id}")
 
             # Compare timezone-aware datetimes (database returns naive datetime, treat as UTC)
             expires_at_utc = (
                 token_record.expires_at.replace(tzinfo=timezone.utc) if token_record.expires_at.tzinfo is None else token_record.expires_at
             )
             if expires_at_utc < datetime.now(timezone.utc):
-                logger.warning(f"Refresh token expired: user_id={user_id}")
-                raise ValueError("リフレッシュトークンが無効です")
+                self._raise_invalid_refresh_token(f"Refresh token expired: user_id={user_id}")
 
             # Get user
             user = self.user_repo.find_by_id(user_id)
             if not user:
-                logger.warning(f"User not found during token refresh: user_id={user_id}")
-                raise ValueError("リフレッシュトークンが無効です")
+                self._raise_invalid_refresh_token(f"User not found during token refresh: user_id={user_id}")
+            assert user is not None
 
             # Generate new tokens
             new_access_token = self._generate_access_token(user.id, user.email, user.role)
@@ -132,11 +131,9 @@ class AuthService:
             return new_access_token, new_refresh_token, user
 
         except jwt.ExpiredSignatureError:
-            logger.warning("Refresh token expired (JWT)")
-            raise ValueError("リフレッシュトークンが無効です")
+            self._raise_invalid_refresh_token("Refresh token expired (JWT)")
         except jwt.InvalidTokenError as e:
-            logger.warning(f"Invalid refresh token (JWT): {e}")
-            raise ValueError("リフレッシュトークンが無効です")
+            self._raise_invalid_refresh_token(f"Invalid refresh token (JWT): {e}")
 
     def logout(self, refresh_token: str) -> None:
         """
@@ -159,6 +156,11 @@ class AuthService:
         expires_at = datetime.now(timezone.utc) + timedelta(days=self.refresh_token_expire_days)
         payload = {"user_id": user_id, "jti": str(uuid.uuid4()), "exp": expires_at}
         return jwt.encode(payload, self.jwt_secret, algorithm=self.jwt_algorithm)
+
+    @staticmethod
+    def _raise_invalid_refresh_token(message: str) -> NoReturn:
+        logger.warning(message)
+        raise ValueError("リフレッシュトークンが無効です")
 
 
 __all__ = ["AuthService"]
