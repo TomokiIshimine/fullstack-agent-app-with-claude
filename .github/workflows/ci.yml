@@ -18,13 +18,7 @@ jobs:
         uses: ./.github/actions/setup-frontend
 
       - name: Run ESLint
-        run: pnpm --dir frontend run lint
-
-      - name: Check TypeScript
-        run: pnpm --dir frontend exec tsc --noEmit
-
-      - name: Check formatting
-        run: pnpm --dir frontend exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md}"
+        run: make lint-frontend
 
   test-frontend:
     name: Test Frontend
@@ -37,7 +31,7 @@ jobs:
         uses: ./.github/actions/setup-frontend
 
       - name: Run tests with coverage
-        run: pnpm --dir frontend run test:coverage
+        run: make test-frontend-ci
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -59,16 +53,7 @@ jobs:
         uses: ./.github/actions/setup-backend
 
       - name: Run flake8
-        run: poetry -C backend run flake8 app tests
-
-      - name: Run mypy
-        run: poetry -C backend run mypy app
-
-      - name: Check formatting (isort)
-        run: poetry -C backend run isort --check-only app tests
-
-      - name: Check formatting (black)
-        run: poetry -C backend run black --check app tests
+        run: make lint-backend
 
   test-backend:
     name: Test Backend
@@ -81,7 +66,7 @@ jobs:
         uses: ./.github/actions/setup-backend
 
       - name: Run tests with coverage
-        run: poetry -C backend run pytest --cov=app --cov-report=term-missing --cov-report=html
+        run: make test-backend-ci
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -106,13 +91,4 @@ jobs:
         uses: ./.github/actions/setup-backend
 
       - name: Check frontend dependencies
-        run: pnpm --dir frontend audit --audit-level=moderate
-        continue-on-error: true
-
-      - name: Check backend dependencies
-        run: poetry -C backend check
-        continue-on-error: true
-
-      - name: Check for known security issues
-        run: poetry -C backend run pip-audit || echo "pip-audit not available, skipping"
-        continue-on-error: true
+        run: make security
