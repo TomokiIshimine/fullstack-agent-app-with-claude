@@ -32,12 +32,7 @@ const markdownComponents: Components = {
 
   a({ href, children }) {
     return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="markdown-link"
-      >
+      <a href={href} target="_blank" rel="noopener noreferrer" className="markdown-link">
         {children}
       </a>
     )

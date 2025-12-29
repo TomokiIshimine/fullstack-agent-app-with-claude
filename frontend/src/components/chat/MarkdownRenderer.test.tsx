@@ -132,9 +132,7 @@ plain text code
     })
 
     it('applies custom className', () => {
-      const { container } = render(
-        <MarkdownRenderer content="Test" className="custom-class" />
-      )
+      const { container } = render(<MarkdownRenderer content="Test" className="custom-class" />)
       expect(container.firstChild).toHaveClass('markdown-content', 'custom-class')
     })
 

@@ -41,9 +41,7 @@ describe('CodeBlock', () => {
 
     it('calls clipboard API when copy button clicked', async () => {
       const user = userEvent.setup()
-      const writeTextSpy = vi
-        .spyOn(navigator.clipboard, 'writeText')
-        .mockResolvedValue(undefined)
+      const writeTextSpy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
 
       render(<CodeBlock language="javascript">const x = 1;</CodeBlock>)
 
