@@ -14,8 +14,8 @@ export function RoleBasedRedirect() {
   // Show loading state while checking authentication
   if (isLoading) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner">読み込み中...</div>
+      <div className="min-h-screen flex justify-center items-center bg-slate-100">
+        <div className="text-slate-600">読み込み中...</div>
       </div>
     )
   }
