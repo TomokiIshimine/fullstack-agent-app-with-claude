@@ -109,9 +109,7 @@ export function PageHeader({
               {!isLoading && version && (
                 <div className="text-xs text-slate-400 mb-1">{version}</div>
               )}
-              {displayName && (
-                <div className="text-sm text-slate-700 break-all">{displayName}</div>
-              )}
+              {displayName && <div className="text-sm text-slate-700 break-all">{displayName}</div>}
             </div>
             {showSettings && (
               <button

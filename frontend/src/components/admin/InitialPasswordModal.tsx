@@ -24,7 +24,13 @@ export function InitialPasswordModal({ email, password, onClose }: InitialPasswo
   }
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="ユーザーを作成しました" size="sm" showCloseButton={false}>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="ユーザーを作成しました"
+      size="sm"
+      showCloseButton={false}
+    >
       <div className="space-y-4">
         <p className="text-sm text-slate-600">
           <span className="font-semibold">メールアドレス:</span> {email}
@@ -35,12 +41,7 @@ export function InitialPasswordModal({ email, password, onClose }: InitialPasswo
           <div className="font-mono text-xl font-semibold text-slate-900 p-3 bg-white border-2 border-blue-500 rounded-md text-center tracking-wider mb-3">
             {password}
           </div>
-          <Button
-            onClick={handleCopy}
-            disabled={copied}
-            variant="success"
-            fullWidth
-          >
+          <Button onClick={handleCopy} disabled={copied} variant="success" fullWidth>
             {copied ? 'コピーしました' : 'コピー'}
           </Button>
         </div>

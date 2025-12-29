@@ -261,7 +261,9 @@ describe('RoleBasedRedirect', () => {
       const { container } = renderWithRouter(false, true, null)
 
       // Check for full-screen centered loading UI (Tailwind classes)
-      expect(container.querySelector('.min-h-screen.flex.justify-center.items-center')).toBeInTheDocument()
+      expect(
+        container.querySelector('.min-h-screen.flex.justify-center.items-center')
+      ).toBeInTheDocument()
       expect(screen.getByText('読み込み中...')).toBeInTheDocument()
     })
   })

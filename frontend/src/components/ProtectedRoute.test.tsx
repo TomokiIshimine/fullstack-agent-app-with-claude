@@ -62,7 +62,9 @@ describe('ProtectedRoute', () => {
       const { container } = renderProtectedRoute()
 
       // Check for full-screen centered loading UI (Tailwind classes)
-      const loadingContainer = container.querySelector('.min-h-screen.flex.justify-center.items-center')
+      const loadingContainer = container.querySelector(
+        '.min-h-screen.flex.justify-center.items-center'
+      )
       expect(loadingContainer).toBeInTheDocument()
 
       // Check loading text is present
