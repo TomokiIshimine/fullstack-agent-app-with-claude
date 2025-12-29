@@ -1,5 +1,6 @@
 import type { StreamingToolCall } from '@/types/tool'
 import { ToolCallItem } from './ToolCallItem'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface StreamingMessageProps {
   content: string
@@ -43,7 +44,7 @@ export function StreamingMessage({ content, toolCalls = [] }: StreamingMessagePr
         )}
         {hasContent && (
           <>
-            {content}
+            <MarkdownRenderer content={content} />
             <span className="streaming-message__cursor" />
           </>
         )}
