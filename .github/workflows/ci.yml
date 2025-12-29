@@ -18,13 +18,13 @@ jobs:
         uses: ./.github/actions/setup-frontend
 
       - name: Run ESLint
-        run: pnpm --dir frontend run lint
+        run: make ci-frontend-lint
 
       - name: Check TypeScript
-        run: pnpm --dir frontend exec tsc --noEmit
+        run: make ci-frontend-typescript
 
       - name: Check formatting
-        run: pnpm --dir frontend exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md}"
+        run: make ci-frontend-format
 
   test-frontend:
     name: Test Frontend
@@ -37,7 +37,7 @@ jobs:
         uses: ./.github/actions/setup-frontend
 
       - name: Run tests with coverage
-        run: pnpm --dir frontend run test:coverage
+        run: make ci-frontend-test
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -59,16 +59,16 @@ jobs:
         uses: ./.github/actions/setup-backend
 
       - name: Run flake8
-        run: poetry -C backend run flake8 app tests
+        run: make ci-backend-flake8
 
       - name: Run mypy
-        run: poetry -C backend run mypy app
+        run: make ci-backend-mypy
 
       - name: Check formatting (isort)
-        run: poetry -C backend run isort --check-only app tests
+        run: make ci-backend-isort
 
       - name: Check formatting (black)
-        run: poetry -C backend run black --check app tests
+        run: make ci-backend-black
 
   test-backend:
     name: Test Backend
@@ -81,7 +81,7 @@ jobs:
         uses: ./.github/actions/setup-backend
 
       - name: Run tests with coverage
-        run: poetry -C backend run pytest --cov=app --cov-report=term-missing --cov-report=html
+        run: make ci-backend-test
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -106,13 +106,13 @@ jobs:
         uses: ./.github/actions/setup-backend
 
       - name: Check frontend dependencies
-        run: pnpm --dir frontend audit --audit-level=moderate
+        run: make ci-security-frontend
         continue-on-error: true
 
       - name: Check backend dependencies
-        run: poetry -C backend check
+        run: make ci-security-backend
         continue-on-error: true
 
       - name: Check for known security issues
-        run: poetry -C backend run pip-audit || echo "pip-audit not available, skipping"
+        run: make ci-security-pip-audit
         continue-on-error: true
