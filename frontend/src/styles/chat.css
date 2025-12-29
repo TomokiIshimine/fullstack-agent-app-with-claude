@@ -530,6 +530,71 @@
   color: #dc2626;
 }
 
+/* Tool Calls Group */
+.tool-calls-group {
+  margin: 0.5rem 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background-color: #f8fafc;
+  overflow: hidden;
+}
+
+.tool-calls-group__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #475569;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+
+.tool-calls-group__header:hover {
+  background-color: #e2e8f0;
+}
+
+.tool-calls-group__status {
+  font-size: 0.875rem;
+}
+
+.tool-calls-group__text {
+  flex: 1;
+  font-weight: 500;
+}
+
+.tool-calls-group__chevron {
+  font-size: 0.625rem;
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+
+.tool-calls-group__chevron--open {
+  transform: rotate(90deg);
+}
+
+.tool-calls-group__content {
+  padding: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+  background-color: white;
+}
+
+.tool-calls-group__content .tool-call-item {
+  margin: 0.25rem 0;
+}
+
+.tool-calls-group__content .tool-call-item:first-child {
+  margin-top: 0;
+}
+
+.tool-calls-group__content .tool-call-item:last-child {
+  margin-bottom: 0;
+}
+
 /* Tool calls in message */
 .message-item__tool-calls {
   margin-top: 0.75rem;
