@@ -14,6 +14,7 @@ from .conversation import Conversation  # noqa: E402, F401
 from .message import Message  # noqa: E402, F401
 from .refresh_token import RefreshToken  # noqa: E402, F401
 from .schema_migration import SchemaMigration  # noqa: E402, F401
+from .tool_call import ToolCall  # noqa: E402, F401
 from .user import User  # noqa: E402, F401
 
-__all__ = ["Base", "User", "RefreshToken", "SchemaMigration", "Conversation", "Message"]
+__all__ = ["Base", "User", "RefreshToken", "SchemaMigration", "Conversation", "Message", "ToolCall"]

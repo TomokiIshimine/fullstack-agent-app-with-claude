@@ -30,6 +30,7 @@ export function ChatPage() {
     isLoading: isLoadingChat,
     isStreaming,
     streamingContent,
+    streamingToolCalls,
     error: chatError,
     sendMessage,
   } = useChat({ uuid: uuid || '', autoLoad: !!uuid })
@@ -40,6 +41,7 @@ export function ChatPage() {
     messages: newMessages,
     isStreaming: newIsStreaming,
     streamingContent: newStreamingContent,
+    streamingToolCalls: newStreamingToolCalls,
     error: newConversationError,
     createConversation: createNewConversation,
     reset: resetNewConversation,
@@ -114,6 +116,7 @@ export function ChatPage() {
   // Determine which messages and streaming content to show
   const displayMessages = uuid ? messages : newMessages
   const displayStreamingContent = uuid ? streamingContent : newStreamingContent
+  const displayStreamingToolCalls = uuid ? streamingToolCalls : newStreamingToolCalls
   const displayIsStreaming = uuid ? isStreaming : newIsStreaming
   const displayTitle = uuid
     ? conversation?.title || '読み込み中...'
@@ -164,7 +167,7 @@ export function ChatPage() {
 
         {error && (
           <div className="p-4">
-            <Alert variant="error">{error.message}</Alert>
+            <Alert variant="error">{error}</Alert>
           </div>
         )}
 
@@ -176,6 +179,7 @@ export function ChatPage() {
               messages={displayMessages}
               isStreaming={displayIsStreaming}
               streamingContent={displayStreamingContent}
+              streamingToolCalls={displayStreamingToolCalls}
               userName={user?.name || undefined}
             />
           </div>

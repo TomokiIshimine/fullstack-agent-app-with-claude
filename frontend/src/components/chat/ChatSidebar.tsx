@@ -161,8 +161,10 @@ export function ChatSidebar({
                 role="menu"
                 style={{
                   position: 'absolute',
+                  top: 'auto',
                   bottom: '100%',
                   right: 0,
+                  marginTop: 0,
                   marginBottom: '0.5rem',
                   minWidth: '10rem',
                 }}

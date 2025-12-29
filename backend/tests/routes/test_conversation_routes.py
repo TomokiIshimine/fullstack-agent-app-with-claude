@@ -38,9 +38,9 @@ class TestConversationRoutes:
 
     def test_create_conversation_non_streaming(self, auth_client, mocker):
         """Test creating a conversation in non-streaming mode."""
-        # Mock AI service to avoid external API calls
-        mock_ai_service = mocker.patch("app.services.conversation_service.AIService")
-        mock_ai_service.return_value.generate_title.return_value = "Test Title"
+        # Mock Agent service to avoid external API calls
+        mock_agent_service = mocker.patch("app.services.conversation_service.AgentService")
+        mock_agent_service.return_value.generate_title.return_value = "Test Title"
 
         response = auth_client.post(
             "/api/conversations",

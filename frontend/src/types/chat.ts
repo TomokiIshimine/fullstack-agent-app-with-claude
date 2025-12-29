@@ -1,3 +1,6 @@
+import type { ToolCall, ToolCallDto } from './tool'
+import { toToolCall } from './tool'
+
 /**
  * Message role type
  */
@@ -10,6 +13,7 @@ export interface MessageDto {
   id: number
   role: MessageRole
   content: string
+  tool_calls?: ToolCallDto[]
   created_at: string
 }
 
@@ -20,6 +24,7 @@ export interface Message {
   id: number
   role: MessageRole
   content: string
+  toolCalls?: ToolCall[]
   createdAt: Date
 }
 
@@ -121,7 +126,13 @@ export interface SendMessageResponse {
 /**
  * SSE event types for streaming
  */
-export type StreamEventType = 'message_start' | 'content_delta' | 'message_end' | 'error'
+export type StreamEventType =
+  | 'message_start'
+  | 'content_delta'
+  | 'message_end'
+  | 'tool_call_start'
+  | 'tool_call_end'
+  | 'error'
 
 /**
  * SSE event data for message_start
@@ -146,6 +157,24 @@ export interface MessageEndEvent {
 }
 
 /**
+ * SSE event data for tool_call_start
+ */
+export interface ToolCallStartEvent {
+  tool_call_id: string
+  tool_name: string
+  input: Record<string, unknown>
+}
+
+/**
+ * SSE event data for tool_call_end
+ */
+export interface ToolCallEndEvent {
+  tool_call_id: string
+  output?: string | null
+  error?: string | null
+}
+
+/**
  * SSE event data for error
  */
 export interface StreamErrorEvent {
@@ -160,6 +189,7 @@ export function toMessage(dto: MessageDto): Message {
     id: dto.id,
     role: dto.role,
     content: dto.content,
+    toolCalls: dto.tool_calls?.map(toToolCall),
     createdAt: new Date(dto.created_at),
   }
 }

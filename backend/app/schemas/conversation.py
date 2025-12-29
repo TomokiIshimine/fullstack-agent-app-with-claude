@@ -7,6 +7,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, field_validator
 
+from app.schemas.tool_call import ToolCallResponse
+
 
 class CreateConversationRequest(BaseModel):
     """Request schema for creating a new conversation."""
@@ -46,6 +48,7 @@ class MessageResponse(BaseModel):
     id: int
     role: Literal["user", "assistant"]
     content: str
+    tool_calls: list[ToolCallResponse] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}
