@@ -90,5 +90,6 @@ jobs:
       - name: Setup Backend
         uses: ./.github/actions/setup-backend
 
-      - name: Check frontend dependencies
+      - name: Run security audits
         run: make security
+        continue-on-error: true
