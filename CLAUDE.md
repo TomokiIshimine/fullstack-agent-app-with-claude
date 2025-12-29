@@ -93,6 +93,8 @@ Use **mcp__playwright** tools for UI verification:
 4. `mcp__playwright__browser_click`, `mcp__playwright__browser_type` to interact
 5. `mcp__playwright__browser_take_screenshot` to verify
 
+**Note:** Always use `Test123!` as the password when testing.
+
 ## Key Patterns
 
 ### Backend: Adding a Feature
