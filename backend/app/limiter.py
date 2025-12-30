@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import logging
-import os
 
 from flask import Flask, Response, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import TooManyRequests
 
+from app.config import get_rate_limit_storage_uri, load_rate_limit_config
+
 logger = logging.getLogger(__name__)
 
 
-def get_limiter_storage_uri() -> str:
+def _init_limiter_storage_uri() -> str:
     """
     Get storage URI for Flask-Limiter at module load time.
 
@@ -22,52 +23,40 @@ def get_limiter_storage_uri() -> str:
 
     Note:
         This function is called at module import time, before Flask app initialization.
-        It reads directly from environment variables.
+        It reads directly from environment variables via config.
     """
-    # Check if rate limiting is enabled
-    rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "false").lower() == "true"
-    if not rate_limit_enabled:
+    config = load_rate_limit_config()
+    uri = get_rate_limit_storage_uri(config)
+
+    if not config.enabled:
         logger.info("Rate limiting is disabled (RATE_LIMIT_ENABLED=false), using memory storage")
-        return "memory://"
-
-    # Get Redis connection details
-    redis_host = os.getenv("REDIS_HOST")
-    redis_port = os.getenv("REDIS_PORT", "6379")
-    redis_password = os.getenv("REDIS_PASSWORD")
-
-    if not redis_host:
+    elif not config.redis_host:
         logger.warning("REDIS_HOST not configured, using memory storage for rate limiting")
-        return "memory://"
-
-    # Construct Redis URI
-    if redis_password:
-        # redis://[:password@]host:port/0
-        uri = f"redis://:{redis_password}@{redis_host}:{redis_port}/0"
     else:
-        # redis://host:port/0
-        uri = f"redis://{redis_host}:{redis_port}/0"
-
-    # Log connection (mask password)
-    safe_uri = f"redis://{'***@' if redis_password else ''}{redis_host}:{redis_port}/0"
-    logger.info(f"Configured Redis storage for rate limiting: {safe_uri}")
+        # Log connection (mask password)
+        safe_uri = f"redis://{'***@' if config.redis_password else ''}{config.redis_host}:{config.redis_port}/0"
+        logger.info(f"Configured Redis storage for rate limiting: {safe_uri}")
 
     return uri
 
+
+# Load rate limit configuration
+_rate_limit_config = load_rate_limit_config()
 
 # Global limiter instance with proper storage configuration
 # Storage URI is determined at module load time from environment variables
 limiter = Limiter(
     key_func=get_remote_address,  # Use client IP as rate limit key
-    storage_uri=get_limiter_storage_uri(),  # Redis or memory storage
+    storage_uri=_init_limiter_storage_uri(),  # Redis or memory storage
     storage_options={"socket_connect_timeout": 30, "socket_timeout": 30},
     # Default limits (can be overridden per route)
-    default_limits=["200 per hour", "50 per minute"],
+    default_limits=list(_rate_limit_config.default_limits),
     # Swallow errors (don't fail requests if Redis is down)
-    swallow_errors=True,
+    swallow_errors=_rate_limit_config.swallow_errors,
     # Headers in response
-    headers_enabled=True,
+    headers_enabled=_rate_limit_config.headers_enabled,
     # Strategy: fixed-window (simple and performant)
-    strategy="fixed-window",
+    strategy=_rate_limit_config.strategy,
 )
 
 

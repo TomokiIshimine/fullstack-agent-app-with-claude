@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
-import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import jwt
 from sqlalchemy.orm import Session
 
+from app.config import load_jwt_config
 from app.core.exceptions import InvalidCredentialsError, InvalidRefreshTokenError
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
@@ -28,11 +28,12 @@ class AuthService:
         self.user_repo = UserRepository(session)
         self.refresh_token_repo = RefreshTokenRepository(session)
 
-        # JWT configuration from environment variables
-        self.jwt_secret = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
-        self.jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256")
-        self.access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # Default: 1 day
-        self.refresh_token_expire_days = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))  # Default: 7 days
+        # JWT configuration from centralized config
+        jwt_config = load_jwt_config()
+        self.jwt_secret = jwt_config.secret_key
+        self.jwt_algorithm = jwt_config.algorithm
+        self.access_token_expire_minutes = jwt_config.access_token_expire_minutes
+        self.refresh_token_expire_days = jwt_config.refresh_token_expire_days
 
     def login(self, email: str, password: str) -> tuple[LoginResponse, str, str]:
         """

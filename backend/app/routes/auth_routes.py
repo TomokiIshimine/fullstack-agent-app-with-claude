@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import logging
-import os
 
 from flask import Blueprint, jsonify, make_response, request
 from werkzeug.exceptions import Unauthorized
 
+from app.config import load_cookie_config, load_jwt_config
 from app.limiter import limiter
 from app.routes.dependencies import validate_request_body, with_auth_service
 from app.schemas.auth import LoginRequest, LogoutResponse, RefreshTokenResponse, UserResponse
@@ -20,41 +20,57 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 def _set_auth_cookies(response, access_token: str, refresh_token: str):
     """Helper to set authentication cookies on response."""
-    cookie_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true"
-    cookie_domain = os.getenv("COOKIE_DOMAIN", None)
+    cookie_config = load_cookie_config()
+    jwt_config = load_jwt_config()
 
-    access_token_max_age = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")) * 60
-    refresh_token_max_age = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")) * 24 * 60 * 60
+    access_token_max_age = jwt_config.access_token_expire_minutes * 60
+    refresh_token_max_age = jwt_config.refresh_token_expire_days * 24 * 60 * 60
 
     response.set_cookie(
         "access_token",
         value=access_token,
         max_age=access_token_max_age,
-        httponly=True,
-        secure=cookie_secure,
-        samesite="Lax",
-        path="/api",
-        domain=cookie_domain,
+        httponly=cookie_config.httponly,
+        secure=cookie_config.secure,
+        samesite=cookie_config.samesite,
+        path=cookie_config.path,
+        domain=cookie_config.domain,
     )
 
     response.set_cookie(
         "refresh_token",
         value=refresh_token,
         max_age=refresh_token_max_age,
-        httponly=True,
-        secure=cookie_secure,
-        samesite="Lax",
-        path="/api",
-        domain=cookie_domain,
+        httponly=cookie_config.httponly,
+        secure=cookie_config.secure,
+        samesite=cookie_config.samesite,
+        path=cookie_config.path,
+        domain=cookie_config.domain,
     )
 
 
 def _clear_auth_cookies(response):
     """Helper to clear authentication cookies on response."""
-    cookie_domain = os.getenv("COOKIE_DOMAIN", None)
+    cookie_config = load_cookie_config()
 
-    response.set_cookie("access_token", value="", max_age=0, httponly=True, samesite="Lax", path="/api", domain=cookie_domain)
-    response.set_cookie("refresh_token", value="", max_age=0, httponly=True, samesite="Lax", path="/api", domain=cookie_domain)
+    response.set_cookie(
+        "access_token",
+        value="",
+        max_age=0,
+        httponly=cookie_config.httponly,
+        samesite=cookie_config.samesite,
+        path=cookie_config.path,
+        domain=cookie_config.domain,
+    )
+    response.set_cookie(
+        "refresh_token",
+        value="",
+        max_age=0,
+        httponly=cookie_config.httponly,
+        samesite=cookie_config.samesite,
+        path=cookie_config.path,
+        domain=cookie_config.domain,
+    )
 
 
 @auth_bp.post("/login")

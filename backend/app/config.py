@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 
@@ -13,6 +14,9 @@ load_dotenv(dotenv_path=ENV_PATH if ENV_PATH.exists() else None)
 
 DEFAULT_DB_URL = "mysql+pymysql://app_user:example-password@db:3306/app_db"
 DEFAULT_LOG_DIR = BASE_DIR / "logs"
+
+# Default JWT secret for development only - MUST be overridden in production
+_DEV_JWT_SECRET = "your-secret-key-change-this-in-production"
 
 
 @dataclass
@@ -84,6 +88,158 @@ def load_cloud_sql_config() -> CloudSQLConfig:
         enable_iam_auth=enable_iam_auth,
         ip_type=ip_type,
     )
+
+
+@dataclass
+class JWTConfig:
+    """JWT token configuration."""
+
+    secret_key: str
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 1440  # 1 day
+    refresh_token_expire_days: int = 7
+
+
+def _get_environment() -> Literal["production", "development", "testing"]:
+    """Get the current environment from FLASK_ENV."""
+    flask_env = os.getenv("FLASK_ENV", "production").lower()
+    if flask_env in ("production", "development", "testing"):
+        return flask_env  # type: ignore
+    return "production"
+
+
+def load_jwt_config() -> JWTConfig:
+    """Load JWT configuration from environment variables.
+
+    Returns:
+        JWTConfig: JWT configuration
+
+    Raises:
+        ValueError: If JWT_SECRET_KEY is not set in production environment
+    """
+    env = _get_environment()
+    jwt_secret = os.getenv("JWT_SECRET_KEY")
+
+    # In production, JWT_SECRET_KEY must be explicitly set
+    if env == "production" and not jwt_secret:
+        raise ValueError(
+            "JWT_SECRET_KEY must be set in production environment. "
+            'Generate a strong key with: python -c "import secrets; print(secrets.token_hex(32))"'
+        )
+
+    # Use development default only in non-production environments
+    if not jwt_secret:
+        jwt_secret = _DEV_JWT_SECRET
+
+    return JWTConfig(
+        secret_key=jwt_secret,
+        algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
+        access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")),
+        refresh_token_expire_days=int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")),
+    )
+
+
+@dataclass
+class CookieConfig:
+    """Cookie configuration for authentication tokens."""
+
+    httponly: bool = True
+    samesite: Literal["Strict", "Lax", "None"] = "Lax"
+    path: str = "/api"
+    secure: bool = False
+    domain: str | None = None
+
+
+def load_cookie_config() -> CookieConfig:
+    """Load cookie configuration from environment variables.
+
+    Returns:
+        CookieConfig: Cookie configuration
+    """
+    env = _get_environment()
+
+    # In production, default to secure cookies
+    default_secure = "true" if env == "production" else "false"
+    cookie_secure = os.getenv("COOKIE_SECURE", default_secure).lower() == "true"
+
+    cookie_domain = os.getenv("COOKIE_DOMAIN")
+
+    return CookieConfig(
+        httponly=True,
+        samesite="Lax",
+        path="/api",
+        secure=cookie_secure,
+        domain=cookie_domain if cookie_domain else None,
+    )
+
+
+@dataclass
+class RateLimitConfig:
+    """Rate limiting configuration."""
+
+    enabled: bool = False
+    default_limits: list[str] = field(default_factory=lambda: ["200 per hour", "50 per minute"])
+    login_limit: str = "10 per minute"
+    refresh_limit: str = "30 per minute"
+    logout_limit: str = "20 per minute"
+    strategy: str = "fixed-window"
+    headers_enabled: bool = True
+    swallow_errors: bool = True
+    # Redis configuration
+    redis_host: str | None = None
+    redis_port: int = 6379
+    redis_password: str | None = None
+
+
+def load_rate_limit_config() -> RateLimitConfig:
+    """Load rate limit configuration from environment variables.
+
+    Returns:
+        RateLimitConfig: Rate limit configuration
+    """
+    enabled = os.getenv("RATE_LIMIT_ENABLED", "false").lower() == "true"
+
+    redis_host = os.getenv("REDIS_HOST")
+    redis_port = int(os.getenv("REDIS_PORT", "6379"))
+    redis_password = os.getenv("REDIS_PASSWORD")
+
+    return RateLimitConfig(
+        enabled=enabled,
+        default_limits=["200 per hour", "50 per minute"],
+        login_limit=os.getenv("RATE_LIMIT_LOGIN", "10 per minute"),
+        refresh_limit=os.getenv("RATE_LIMIT_REFRESH", "30 per minute"),
+        logout_limit=os.getenv("RATE_LIMIT_LOGOUT", "20 per minute"),
+        strategy=os.getenv("RATE_LIMIT_STRATEGY", "fixed-window"),
+        headers_enabled=os.getenv("RATE_LIMIT_HEADERS", "true").lower() == "true",
+        swallow_errors=os.getenv("RATE_LIMIT_SWALLOW_ERRORS", "true").lower() == "true",
+        redis_host=redis_host,
+        redis_port=redis_port,
+        redis_password=redis_password,
+    )
+
+
+def get_rate_limit_storage_uri(config: RateLimitConfig | None = None) -> str:
+    """Get storage URI for Flask-Limiter.
+
+    Args:
+        config: Optional rate limit config. If not provided, loads from environment.
+
+    Returns:
+        Redis URI if configured and enabled, otherwise "memory://"
+    """
+    if config is None:
+        config = load_rate_limit_config()
+
+    if not config.enabled:
+        return "memory://"
+
+    if not config.redis_host:
+        return "memory://"
+
+    # Construct Redis URI
+    if config.redis_password:
+        return f"redis://:{config.redis_password}@{config.redis_host}:{config.redis_port}/0"
+    return f"redis://{config.redis_host}:{config.redis_port}/0"
 
 
 class Config:

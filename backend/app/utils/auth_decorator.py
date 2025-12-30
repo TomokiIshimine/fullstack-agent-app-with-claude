@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
-import os
 from functools import wraps
 from typing import Any, Callable, Literal
 
 import jwt
 from flask import g, request
 from werkzeug.exceptions import Forbidden, Unauthorized
+
+from app.config import load_jwt_config
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +36,9 @@ def require_auth(f: Callable[..., Any]) -> Callable[..., Any]:
             raise Unauthorized("認証が必要です")
 
         try:
-            # Decode and validate token
-            jwt_secret = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
-            jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256")
-            payload = jwt.decode(access_token, jwt_secret, algorithms=[jwt_algorithm])
+            # Decode and validate token using centralized config
+            jwt_config = load_jwt_config()
+            payload = jwt.decode(access_token, jwt_config.secret_key, algorithms=[jwt_config.algorithm])
 
             # Extract user_id from payload
             user_id = payload.get("user_id")
