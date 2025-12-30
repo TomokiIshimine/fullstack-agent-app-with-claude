@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import type { User } from '@/types/auth'
 import { isPathActive } from '@/lib/utils/routing'
 import { getDisplayName, getAvatarLetter } from '@/lib/utils/user'
+import { useScrollLock } from '@/hooks/useScrollLock'
 import { NavIcon } from './NavIcon'
 import type { NavLinkItem } from './Navbar'
 
@@ -43,17 +44,7 @@ export function MobileMenu({
   }, [isOpen, onClose])
 
   // Prevent body scroll when menu is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
+  useScrollLock(isOpen)
 
   return (
     <>
