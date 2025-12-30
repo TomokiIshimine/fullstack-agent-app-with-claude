@@ -7,6 +7,7 @@ import type {
   SendMessageRequest,
   SendMessageResponse,
 } from '@/types/chat'
+import type { RetryEvent, StreamError } from '@/types/errors'
 import { buildApiError, buildJsonHeaders, fetchSSE, fetchWithLogging, parseJson } from './client'
 
 const API_BASE = '/api/conversations'
@@ -93,7 +94,10 @@ export interface CreateConversationStreamCallbacks {
   onToolCallEnd?: (toolCallId: string, output?: string, error?: string) => void
   onDelta?: (delta: string) => void
   onEnd?: (assistantMessageId: number, content: string) => void
-  onError?: (error: string, userMessageId?: number) => void
+  /** Called when retry is attempted during streaming */
+  onRetry?: (event: RetryEvent) => void
+  /** Called on error with structured error details */
+  onError?: (error: StreamError) => void
 }
 
 /**
@@ -150,8 +154,22 @@ function handleCreateConversationStreamEvent(
     case 'message_end':
       callbacks.onEnd?.(data.assistant_message_id as number, data.content as string)
       break
+    case 'retry':
+      callbacks.onRetry?.({
+        attempt: data.attempt as number,
+        max_attempts: data.max_attempts as number,
+        error_type: data.error_type as string,
+        delay: data.delay as number,
+      })
+      break
     case 'error':
-      callbacks.onError?.(data.error as string, data.user_message_id as number | undefined)
+      callbacks.onError?.({
+        error: data.error as string,
+        error_type: data.error_type as StreamError['error_type'],
+        user_message_id: data.user_message_id as number | undefined,
+        retry_after: data.retry_after as number | undefined,
+        is_retryable: data.is_retryable as boolean | undefined,
+      })
       break
   }
 }
@@ -189,8 +207,10 @@ export interface StreamCallbacks {
   onToolCallEnd?: (toolCallId: string, output?: string, error?: string) => void
   onDelta?: (delta: string) => void
   onEnd?: (assistantMessageId: number, content: string) => void
-  /** Called on error. userMessageId is provided if message was persisted before error */
-  onError?: (error: string, userMessageId?: number) => void
+  /** Called when retry is attempted during streaming */
+  onRetry?: (event: RetryEvent) => void
+  /** Called on error with structured error details */
+  onError?: (error: StreamError) => void
 }
 
 /**
@@ -248,9 +268,22 @@ function handleStreamEvent(
     case 'message_end':
       callbacks.onEnd?.(data.assistant_message_id as number, data.content as string)
       break
+    case 'retry':
+      callbacks.onRetry?.({
+        attempt: data.attempt as number,
+        max_attempts: data.max_attempts as number,
+        error_type: data.error_type as string,
+        delay: data.delay as number,
+      })
+      break
     case 'error':
-      // user_message_id is included if the message was persisted before the error
-      callbacks.onError?.(data.error as string, data.user_message_id as number | undefined)
+      callbacks.onError?.({
+        error: data.error as string,
+        error_type: data.error_type as StreamError['error_type'],
+        user_message_id: data.user_message_id as number | undefined,
+        retry_after: data.retry_after as number | undefined,
+        is_retryable: data.is_retryable as boolean | undefined,
+      })
       break
   }
 }

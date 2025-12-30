@@ -8,11 +8,20 @@ import logging
 from flask import Blueprint, Response, g, jsonify, request, stream_with_context
 from werkzeug.exceptions import Forbidden, NotFound
 
+from app.constants.error_types import LLMErrorType
 from app.constants.http import HTTP_CREATED, HTTP_NO_CONTENT, HTTP_OK
 from app.constants.pagination import DEFAULT_PER_PAGE
 from app.constants.rate_limit import CREATE_CONVERSATION_RATE_LIMIT, SEND_MESSAGE_RATE_LIMIT
 from app.constants.sse_events import SERVICE_TO_SSE_EVENT_MAP, SSEEvent
-from app.core.exceptions import ConversationAccessDeniedError, ConversationNotFoundError
+from app.core.exceptions import (
+    ConversationAccessDeniedError,
+    ConversationNotFoundError,
+    LLMConnectionError,
+    LLMContextLengthError,
+    LLMProviderError,
+    LLMRateLimitError,
+    LLMStreamError,
+)
 from app.limiter import limiter
 from app.routes.dependencies import validate_request_body, with_conversation_service
 from app.schemas.conversation import CreateConversationRequest, SendMessageRequest
@@ -22,6 +31,68 @@ from app.utils.auth_decorator import require_auth
 logger = logging.getLogger(__name__)
 
 conversation_bp = Blueprint("conversations", __name__, url_prefix="/conversations")
+
+
+def _build_llm_error_data(exc: Exception, user_message_id: int | None = None) -> dict:
+    """Build error data dict with LLM-specific error details.
+
+    Args:
+        exc: The exception that occurred
+        user_message_id: ID of the user message if it was persisted
+
+    Returns:
+        Dict containing error details for SSE error event
+    """
+    error_data: dict = {}
+
+    if isinstance(exc, LLMRateLimitError):
+        error_data = {
+            "error": str(exc),
+            "error_type": LLMErrorType.RATE_LIMIT,
+            "retry_after": exc.retry_after,
+            "is_retryable": False,  # Already exhausted retries
+        }
+    elif isinstance(exc, LLMConnectionError):
+        error_data = {
+            "error": str(exc),
+            "error_type": LLMErrorType.CONNECTION,
+            "is_retryable": False,  # Already exhausted retries
+        }
+    elif isinstance(exc, LLMContextLengthError):
+        error_data = {
+            "error": str(exc),
+            "error_type": LLMErrorType.CONTEXT_LENGTH,
+            "is_retryable": False,
+        }
+    elif isinstance(exc, LLMStreamError):
+        error_data = {
+            "error": str(exc),
+            "error_type": LLMErrorType.STREAM_ERROR,
+            "is_retryable": exc.is_retryable,
+        }
+    elif isinstance(exc, LLMProviderError):
+        error_data = {
+            "error": str(exc),
+            "error_type": LLMErrorType.PROVIDER_ERROR,
+            "is_retryable": False,
+        }
+    elif isinstance(exc, (ConversationNotFoundError, ConversationAccessDeniedError)):
+        error_data = {
+            "error": str(exc),
+            "error_type": LLMErrorType.CONVERSATION_ERROR,
+            "is_retryable": False,
+        }
+    else:
+        error_data = {
+            "error": "Internal server error",
+            "error_type": LLMErrorType.UNKNOWN,
+            "is_retryable": False,
+        }
+
+    if user_message_id is not None:
+        error_data["user_message_id"] = user_message_id
+
+    return error_data
 
 
 @conversation_bp.get("")
@@ -118,10 +189,7 @@ def create_conversation(*, data: CreateConversationRequest, conversation_service
                         yield f"event: {sse_event}\ndata: {json.dumps(event_data)}\n\n"
             except Exception as exc:
                 logger.error("Error during conversation creation streaming", exc_info=True)
-                is_known_error = isinstance(exc, (ConversationNotFoundError, ConversationAccessDeniedError))
-                error_data = {"error": str(exc) if is_known_error else "Internal server error"}
-                if user_message_id is not None:
-                    error_data["user_message_id"] = user_message_id
+                error_data = _build_llm_error_data(exc, user_message_id)
                 yield f"event: {SSEEvent.ERROR}\ndata: {json.dumps(error_data)}\n\n"
 
         return Response(
@@ -264,11 +332,7 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
                         yield f"event: {sse_event}\ndata: {json.dumps(event_data)}\n\n"
             except Exception as exc:
                 logger.error("Error during streaming", exc_info=True)
-                # Include user_message_id in error so client knows data was persisted
-                is_known_error = isinstance(exc, (ConversationNotFoundError, ConversationAccessDeniedError))
-                error_data = {"error": str(exc) if is_known_error else "Internal server error"}
-                if user_message_id is not None:
-                    error_data["user_message_id"] = user_message_id
+                error_data = _build_llm_error_data(exc, user_message_id)
                 yield f"event: {SSEEvent.ERROR}\ndata: {json.dumps(error_data)}\n\n"
 
         return Response(

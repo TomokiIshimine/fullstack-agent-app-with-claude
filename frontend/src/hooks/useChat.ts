@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchConversation, sendMessageStreaming } from '@/lib/api/conversations'
 import { useErrorHandler } from './useErrorHandler'
+import { createOnRetryHandler } from './useStreamingCallbacks'
 import { useStreamingToolCalls } from './useStreamingToolCalls'
 import type { Conversation, Message, SendMessageRequest } from '@/types/chat'
 import { toConversation, toMessage } from '@/types/chat'
+import type { RetryStatus } from '@/types/errors'
+import { fromStreamError } from '@/types/errors'
 import { logger } from '@/lib/logger'
 
 interface UseChatOptions {
@@ -33,6 +36,7 @@ export function useChat(options: UseChatOptions) {
   const [isLoading, setIsLoading] = useState(true)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [retryStatus, setRetryStatus] = useState<RetryStatus | null>(null)
   const { streamingToolCalls, addToolCall, completeToolCall, resetToolCalls, getToolCalls } =
     useStreamingToolCalls()
   const { error, handleError, clearError } = useErrorHandler()
@@ -84,6 +88,7 @@ export function useChat(options: UseChatOptions) {
 
       setIsStreaming(true)
       setStreamingContent('')
+      setRetryStatus(null)
       resetToolCalls()
       clearError()
 
@@ -108,9 +113,9 @@ export function useChat(options: UseChatOptions) {
             addToolCall(toolCallId, toolName, input)
             logger.debug('Tool call started', { toolCallId, toolName })
           },
-          onToolCallEnd: (toolCallId, output, error) => {
-            completeToolCall(toolCallId, output, error)
-            logger.debug('Tool call ended', { toolCallId, hasError: !!error })
+          onToolCallEnd: (toolCallId, output, toolError) => {
+            completeToolCall(toolCallId, output, toolError)
+            logger.debug('Tool call ended', { toolCallId, hasError: !!toolError })
           },
           onDelta: delta => {
             finalContent += delta
@@ -119,15 +124,17 @@ export function useChat(options: UseChatOptions) {
           onEnd: (msgId, content) => {
             assistantMessageId = msgId
             finalContent = content
+            setRetryStatus(null)
             logger.debug('Streaming ended', { assistantMessageId })
           },
-          onError: (errorMsg, persistedUserMessageId) => {
+          onRetry: createOnRetryHandler(setRetryStatus),
+          onError: streamErr => {
             // If user message was persisted (indicated by presence of ID), mark it
-            if (persistedUserMessageId !== undefined) {
+            if (streamErr.user_message_id !== undefined) {
               userMessagePersisted = true
-              realUserMessageId = persistedUserMessageId
+              realUserMessageId = streamErr.user_message_id
             }
-            throw new Error(errorMsg)
+            throw fromStreamError(streamErr, targetUuid)
           },
         })
 
@@ -161,6 +168,7 @@ export function useChat(options: UseChatOptions) {
       } finally {
         setIsStreaming(false)
         setStreamingContent('')
+        setRetryStatus(null)
         resetToolCalls()
       }
     },
@@ -191,6 +199,7 @@ export function useChat(options: UseChatOptions) {
     streamingContent,
     streamingToolCalls,
     error,
+    retryStatus,
     clearError,
     loadConversation,
     sendMessage,

@@ -181,10 +181,49 @@ class ProviderAPIKeyError(LLMProviderError):
 
     def __init__(self, provider: str):
         super().__init__(
-            f"{provider}のAPIキーが設定されていません",
+            "AIサービスの設定に問題があります。管理者にお問い合わせください。",
             {"provider": provider},
         )
         self.provider = provider
+
+
+class LLMStreamError(LLMProviderError):
+    """Raised when LLM streaming fails mid-response."""
+
+    def __init__(
+        self,
+        message: str = "AI応答のストリーミング中にエラーが発生しました",
+        partial_content: str = "",
+        is_retryable: bool = True,
+    ):
+        super().__init__(message, {"partial_content": partial_content, "is_retryable": is_retryable})
+        self.partial_content = partial_content
+        self.is_retryable = is_retryable
+
+
+class LLMRateLimitError(LLMProviderError):
+    """Raised when rate limit is exceeded."""
+
+    def __init__(self, retry_after: int | None = None):
+        message = "リクエスト制限に達しました"
+        if retry_after:
+            message += f"。{retry_after}秒後に再試行してください"
+        super().__init__(message, {"retry_after": retry_after})
+        self.retry_after = retry_after
+
+
+class LLMConnectionError(LLMProviderError):
+    """Raised when connection to LLM provider fails."""
+
+    def __init__(self, message: str = "AIサービスへの接続に失敗しました"):
+        super().__init__(message)
+
+
+class LLMContextLengthError(LLMProviderError):
+    """Raised when context length exceeds model limits."""
+
+    def __init__(self, message: str = "メッセージが長すぎます。会話履歴を削減してください"):
+        super().__init__(message)
 
 
 __all__ = [
@@ -209,4 +248,8 @@ __all__ = [
     "ProviderNotFoundError",
     "ProviderConfigurationError",
     "ProviderAPIKeyError",
+    "LLMStreamError",
+    "LLMRateLimitError",
+    "LLMConnectionError",
+    "LLMContextLengthError",
 ]

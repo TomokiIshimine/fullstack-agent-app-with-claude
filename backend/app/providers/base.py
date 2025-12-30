@@ -24,6 +24,8 @@ class LLMConfig:
     model: str
     max_tokens: int = 4096
     streaming: bool = True
+    max_retries: int = 3  # Maximum retry attempts for API calls
+    retry_delay: float = 1.0  # Base delay between retries (exponential backoff)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -33,6 +35,10 @@ class LLMConfig:
             raise ProviderConfigurationError("モデル名は必須です", field="model")
         if self.max_tokens <= 0:
             raise ProviderConfigurationError("max_tokensは正の整数である必要があります", field="max_tokens")
+        if self.max_retries < 0:
+            raise ProviderConfigurationError("max_retriesは0以上である必要があります", field="max_retries")
+        if self.retry_delay < 0:
+            raise ProviderConfigurationError("retry_delayは0以上である必要があります", field="retry_delay")
 
 
 class BaseLLMProvider(ABC):

@@ -63,6 +63,47 @@ class TestLLMConfig:
         with pytest.raises(ProviderConfigurationError, match="max_tokensは正の整数"):
             LLMConfig(provider="test", model="model", max_tokens=-1)
 
+    def test_default_retry_values(self):
+        """Test LLMConfig with default retry values."""
+        config = LLMConfig(provider="test", model="test-model")
+
+        assert config.max_retries == 3
+        assert config.retry_delay == 1.0
+
+    def test_custom_retry_values(self):
+        """Test LLMConfig with custom retry values."""
+        config = LLMConfig(
+            provider="test",
+            model="test-model",
+            max_retries=5,
+            retry_delay=2.0,
+        )
+
+        assert config.max_retries == 5
+        assert config.retry_delay == 2.0
+
+    def test_invalid_max_retries_raises_error(self):
+        """Test that negative max_retries raises ProviderConfigurationError."""
+        with pytest.raises(ProviderConfigurationError, match="max_retriesは0以上"):
+            LLMConfig(provider="test", model="model", max_retries=-1)
+
+    def test_invalid_retry_delay_raises_error(self):
+        """Test that negative retry_delay raises ProviderConfigurationError."""
+        with pytest.raises(ProviderConfigurationError, match="retry_delayは0以上"):
+            LLMConfig(provider="test", model="model", retry_delay=-0.5)
+
+    def test_zero_max_retries_allowed(self):
+        """Test that zero max_retries is allowed (no retries)."""
+        config = LLMConfig(provider="test", model="model", max_retries=0)
+
+        assert config.max_retries == 0
+
+    def test_zero_retry_delay_allowed(self):
+        """Test that zero retry_delay is allowed (no delay between retries)."""
+        config = LLMConfig(provider="test", model="model", retry_delay=0.0)
+
+        assert config.retry_delay == 0.0
+
 
 class TestAnthropicConfig:
     """Tests for AnthropicConfig dataclass."""
@@ -162,7 +203,7 @@ class TestAnthropicProvider:
         )
         provider = AnthropicProvider(config)
 
-        with pytest.raises(ProviderAPIKeyError, match="AnthropicのAPIキーが設定されていません"):
+        with pytest.raises(ProviderAPIKeyError, match="AIサービスの設定に問題があります"):
             provider.create_chat_model()
 
     def test_repr(self):
