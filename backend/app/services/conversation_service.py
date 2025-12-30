@@ -26,12 +26,15 @@ from app.schemas.conversation import (
     SendMessageResponse,
 )
 from app.schemas.tool_call import ToolCallResponse
-from app.services.agent_service import AgentEvent, AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
+from app.services.agent_service import AgentEvent, AgentService, MessageCompleteEvent, RetryEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 
 logger = logging.getLogger(__name__)
 
 # Type alias for streaming event tuples
-StreamingEvent = tuple[Literal["tool_call_start", "tool_call_end", "delta"], dict]
+StreamingEvent = tuple[
+    Literal["created", "start", "end", "delta", "tool_call_start", "tool_call_end", "retry"],
+    dict,
+]
 
 
 class ConversationService:
@@ -183,7 +186,7 @@ class ConversationService:
         self,
         user_id: int,
         first_message: str,
-    ) -> Generator[tuple[Literal["created", "delta", "end", "tool_call_start", "tool_call_end"], dict], None, None]:
+    ) -> Generator[StreamingEvent, None, None]:
         """
         Create a new conversation with AI response streaming.
 
@@ -381,7 +384,7 @@ class ConversationService:
         uuid: str,
         user_id: int,
         content: str,
-    ) -> Generator[tuple[Literal["start", "delta", "end", "tool_call_start", "tool_call_end"], dict], None, None]:
+    ) -> Generator[StreamingEvent, None, None]:
         """
         Send a message and get streaming AI response.
 
@@ -574,6 +577,19 @@ class ConversationService:
             return (("delta", {"delta": event.delta}), event.delta)
         elif isinstance(event, MessageCompleteEvent):
             return (None, event.content)
+        elif isinstance(event, RetryEvent):
+            return (
+                (
+                    "retry",
+                    {
+                        "attempt": event.attempt,
+                        "max_attempts": event.max_attempts,
+                        "error_type": event.error_type,
+                        "delay": event.delay,
+                    },
+                ),
+                None,
+            )
         return (None, None)
 
     def _stream_agent_response(

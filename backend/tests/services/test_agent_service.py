@@ -5,11 +5,14 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from anthropic import APIConnectionError, APIStatusError, RateLimitError
+from httpx import Request, Response
 from langchain_core.messages import AIMessageChunk, ToolMessage
 
-from app.core.exceptions import ProviderNotFoundError
+from app.constants.error_types import LLMErrorType
+from app.core.exceptions import LLMConnectionError, LLMContextLengthError, LLMRateLimitError, LLMStreamError, ProviderNotFoundError
 from app.providers import LLMConfig, create_provider
-from app.services.agent_service import AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
+from app.services.agent_service import AgentService, MessageCompleteEvent, RetryEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 from app.tools import ToolRegistry
 
 
@@ -26,6 +29,8 @@ class TestAgentServiceInit:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-sonnet-4-5-20250929"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -61,6 +66,8 @@ class TestAgentServiceInit:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-sonnet-4-5-20250929"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         registry = ToolRegistry()
@@ -78,6 +85,8 @@ class TestAgentServiceInit:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-sonnet-4-5-20250929"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -101,6 +110,8 @@ class TestAgentServiceInit:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
 
         custom_prompt = "You are a custom assistant."
         service = AgentService(provider=mock_provider, system_prompt=custom_prompt)
@@ -125,6 +136,8 @@ class TestAgentServiceGenerateTitle:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -142,6 +155,8 @@ class TestAgentServiceGenerateTitle:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -161,6 +176,8 @@ class TestAgentServiceGenerateTitle:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -180,6 +197,8 @@ class TestAgentServiceGenerateTitle:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -201,6 +220,10 @@ class TestAgentServiceGenerateResponse:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         # Mock agent with text response using "messages" stream mode format
@@ -230,6 +253,8 @@ class TestAgentServiceGenerateResponse:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         # Mock agent with text response using "messages" stream mode format
@@ -259,6 +284,8 @@ class TestAgentServiceGenerateResponse:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         # Mock agent with tool call using "updates" stream mode format
@@ -294,6 +321,8 @@ class TestAgentServiceGenerateResponse:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         # Mock tool message
@@ -333,6 +362,8 @@ class TestAgentServiceConvertMessages:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -356,6 +387,8 @@ class TestAgentServiceConvertMessages:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -379,6 +412,8 @@ class TestAgentServiceConvertMessages:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -409,6 +444,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -426,6 +463,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -447,6 +486,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -465,6 +506,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -483,6 +526,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -503,6 +548,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -521,6 +568,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -541,6 +590,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -562,6 +613,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -584,6 +637,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -608,6 +663,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -632,6 +689,8 @@ class TestAgentServiceHelperMethods:
         mock_provider.provider_name = "anthropic"
         mock_provider.model_name = "claude-3"
         mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
         mock_create_provider.return_value = mock_provider
 
         service = AgentService()
@@ -698,3 +757,306 @@ class TestEventDataclasses:
         event = MessageCompleteEvent(content="Full response text")
 
         assert event.content == "Full response text"
+
+    def test_retry_event(self):
+        """Test RetryEvent dataclass creation."""
+        event = RetryEvent(
+            attempt=1,
+            max_attempts=3,
+            error_type=LLMErrorType.RATE_LIMIT,
+            delay=1.0,
+        )
+
+        assert event.attempt == 1
+        assert event.max_attempts == 3
+        assert event.error_type == LLMErrorType.RATE_LIMIT
+        assert event.delay == 1.0
+
+
+class TestAgentServiceRetry:
+    """Tests for AgentService retry logic."""
+
+    @patch("app.services.agent_service.time.sleep")
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_retry_on_rate_limit_error(self, mock_create_provider, mock_create_agent, mock_sleep):
+        """Test that RateLimitError triggers retries with exponential backoff."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        # Mock agent that fails on first call, succeeds on second
+        mock_agent = MagicMock()
+        ai_message_chunk = AIMessageChunk(content="Success!")
+
+        call_count = [0]
+
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise RateLimitError(
+                    message="Rate limit exceeded",
+                    response=Response(429, request=Request("POST", "https://api.anthropic.com")),
+                    body=None,
+                )
+            return iter([("messages", (ai_message_chunk, {}))])
+
+        mock_agent.stream.side_effect = side_effect
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        messages = [{"role": "user", "content": "Hi"}]
+
+        events = list(service.generate_response(messages))
+
+        # Should have retry event + text delta + message complete
+        retry_events = [e for e in events if isinstance(e, RetryEvent)]
+        assert len(retry_events) == 1
+        assert retry_events[0].error_type == LLMErrorType.RATE_LIMIT
+        assert retry_events[0].attempt == 1
+        assert mock_sleep.called
+
+    @patch("app.services.agent_service.time.sleep")
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_retry_on_connection_error(self, mock_create_provider, mock_create_agent, mock_sleep):
+        """Test that APIConnectionError triggers retries."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_agent = MagicMock()
+        ai_message_chunk = AIMessageChunk(content="Success!")
+
+        call_count = [0]
+
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise APIConnectionError(request=Request("POST", "https://api.anthropic.com"))
+            return iter([("messages", (ai_message_chunk, {}))])
+
+        mock_agent.stream.side_effect = side_effect
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        messages = [{"role": "user", "content": "Hi"}]
+
+        events = list(service.generate_response(messages))
+
+        retry_events = [e for e in events if isinstance(e, RetryEvent)]
+        assert len(retry_events) == 1
+        assert retry_events[0].error_type == LLMErrorType.CONNECTION
+
+    @patch("app.services.agent_service.time.sleep")
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_retry_on_server_error(self, mock_create_provider, mock_create_agent, mock_sleep):
+        """Test that 500+ errors trigger retries."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_agent = MagicMock()
+        ai_message_chunk = AIMessageChunk(content="Success!")
+
+        call_count = [0]
+
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise APIStatusError(
+                    message="Internal Server Error",
+                    response=Response(500, request=Request("POST", "https://api.anthropic.com")),
+                    body=None,
+                )
+            return iter([("messages", (ai_message_chunk, {}))])
+
+        mock_agent.stream.side_effect = side_effect
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        messages = [{"role": "user", "content": "Hi"}]
+
+        events = list(service.generate_response(messages))
+
+        retry_events = [e for e in events if isinstance(e, RetryEvent)]
+        assert len(retry_events) == 1
+        assert retry_events[0].error_type == LLMErrorType.SERVER_ERROR
+
+    @patch("app.services.agent_service.time.sleep")
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_max_retries_exhausted_raises_rate_limit_error(self, mock_create_provider, mock_create_agent, mock_sleep):
+        """Test that exhausting max_retries raises LLMRateLimitError."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 2
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_agent = MagicMock()
+        mock_agent.stream.side_effect = RateLimitError(
+            message="Rate limit exceeded",
+            response=Response(429, request=Request("POST", "https://api.anthropic.com")),
+            body=None,
+        )
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        messages = [{"role": "user", "content": "Hi"}]
+
+        with pytest.raises(LLMRateLimitError):
+            list(service.generate_response(messages))
+
+    @patch("app.services.agent_service.time.sleep")
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_max_retries_exhausted_raises_connection_error(self, mock_create_provider, mock_create_agent, mock_sleep):
+        """Test that exhausting max_retries on connection error raises LLMConnectionError."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 2
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_agent = MagicMock()
+        mock_agent.stream.side_effect = APIConnectionError(request=Request("POST", "https://api.anthropic.com"))
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        messages = [{"role": "user", "content": "Hi"}]
+
+        with pytest.raises(LLMConnectionError):
+            list(service.generate_response(messages))
+
+    @patch("app.services.agent_service.time.sleep")
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_exponential_backoff_delay(self, mock_create_provider, mock_create_agent, mock_sleep):
+        """Test exponential backoff delay calculation."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 4
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_agent = MagicMock()
+        ai_message_chunk = AIMessageChunk(content="Success!")
+
+        call_count = [0]
+
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] <= 3:
+                raise APIConnectionError(request=Request("POST", "https://api.anthropic.com"))
+            return iter([("messages", (ai_message_chunk, {}))])
+
+        mock_agent.stream.side_effect = side_effect
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        messages = [{"role": "user", "content": "Hi"}]
+
+        events = list(service.generate_response(messages))
+
+        retry_events = [e for e in events if isinstance(e, RetryEvent)]
+        assert len(retry_events) == 3
+        # Verify exponential backoff: 1.0, 2.0, 4.0
+        assert retry_events[0].delay == 1.0
+        assert retry_events[1].delay == 2.0
+        assert retry_events[2].delay == 4.0
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_context_length_error_no_retry(self, mock_create_provider, mock_create_agent):
+        """Test that context length error does not trigger retries."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_agent = MagicMock()
+        mock_agent.stream.side_effect = APIStatusError(
+            message="context_length exceeded",
+            response=Response(400, request=Request("POST", "https://api.anthropic.com")),
+            body=None,
+        )
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        messages = [{"role": "user", "content": "Hi"}]
+
+        with pytest.raises(LLMContextLengthError):
+            list(service.generate_response(messages))
+
+        # Should not retry - only one call
+        assert mock_agent.stream.call_count == 1
+
+    @patch("app.services.agent_service.time.sleep")
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_client_error_no_retry(self, mock_create_provider, mock_create_agent, mock_sleep):
+        """Test that 4xx errors (except context length) do not trigger retries."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_agent = MagicMock()
+        mock_agent.stream.side_effect = APIStatusError(
+            message="Bad request",
+            response=Response(400, request=Request("POST", "https://api.anthropic.com")),
+            body=None,
+        )
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        messages = [{"role": "user", "content": "Hi"}]
+
+        with pytest.raises(LLMStreamError):
+            list(service.generate_response(messages))
+
+        # Should not retry - only one call
+        assert mock_agent.stream.call_count == 1
+        assert not mock_sleep.called

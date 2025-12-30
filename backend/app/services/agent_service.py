@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Generator
 
+from anthropic import APIConnectionError, APIStatusError, RateLimitError
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 
 from app.constants.agent import MAX_CONVERSATION_TITLE_LENGTH, TITLE_TRUNCATION_LENGTH, TITLE_TRUNCATION_SUFFIX
+from app.constants.error_types import LLMErrorType
+from app.core.exceptions import LLMConnectionError, LLMContextLengthError, LLMRateLimitError, LLMStreamError
 from app.providers import BaseLLMProvider, create_provider
 from app.tools import ToolRegistry, get_tool_registry
 
@@ -53,7 +57,17 @@ class MessageCompleteEvent:
     content: str
 
 
-AgentEvent = ToolCallEvent | ToolResultEvent | TextDeltaEvent | MessageCompleteEvent
+@dataclass
+class RetryEvent:
+    """Event emitted when a retry is attempted."""
+
+    attempt: int
+    max_attempts: int
+    error_type: str
+    delay: float
+
+
+AgentEvent = ToolCallEvent | ToolResultEvent | TextDeltaEvent | MessageCompleteEvent | RetryEvent
 
 
 class AgentService:
@@ -255,23 +269,18 @@ class AgentService:
                     error=error,
                 )
 
-    def generate_response(
+    def _generate_response_attempt(
         self,
         messages: list[dict[str, str]],
-        stream: bool = True,  # noqa: ARG002 - kept for API compatibility
     ) -> Generator[AgentEvent, None, None]:
-        """
-        Generate AI response using the ReAct agent.
+        """Single attempt to generate response.
 
         Args:
             messages: Conversation history as list of dicts with 'role' and 'content'
-            stream: Whether to stream the response (currently always True for agent)
 
         Yields:
             AgentEvent instances for tool calls, results, and text content
         """
-        logger.debug(f"Generating agent response with {len(messages)} messages")
-
         langchain_messages = self._convert_messages(messages)
         inputs = {"messages": langchain_messages}
 
@@ -281,27 +290,118 @@ class AgentService:
         # Stream with both modes:
         # - "messages": token-by-token streaming from LLM
         # - "updates": node completion events (tool calls/results)
-        try:
-            for chunk in self.agent.stream(inputs, stream_mode=["messages", "updates"]):
-                if not isinstance(chunk, tuple) or len(chunk) != 2:
-                    continue
+        for chunk in self.agent.stream(inputs, stream_mode=["messages", "updates"]):
+            if not isinstance(chunk, tuple) or len(chunk) != 2:
+                continue
 
-                stream_mode, data = chunk
+            stream_mode, data = chunk
 
-                if stream_mode == "messages":
-                    text_content = self._handle_messages_stream(data)
-                    if text_content:
-                        full_content += text_content
-                        yield TextDeltaEvent(delta=text_content)
+            if stream_mode == "messages":
+                text_content = self._handle_messages_stream(data)
+                if text_content:
+                    full_content += text_content
+                    yield TextDeltaEvent(delta=text_content)
 
-                elif stream_mode == "updates" and isinstance(data, dict):
-                    yield from self._handle_updates_stream(data, emitted_tool_calls)
+            elif stream_mode == "updates" and isinstance(data, dict):
+                yield from self._handle_updates_stream(data, emitted_tool_calls)
 
-            yield MessageCompleteEvent(content=full_content)
+        yield MessageCompleteEvent(content=full_content)
 
-        except Exception as e:
-            logger.error(f"Error in agent execution: {e}")
-            raise
+    def generate_response(
+        self,
+        messages: list[dict[str, str]],
+        stream: bool = True,  # noqa: ARG002 - kept for API compatibility
+    ) -> Generator[AgentEvent, None, None]:
+        """
+        Generate AI response using the ReAct agent with retry logic.
+
+        Args:
+            messages: Conversation history as list of dicts with 'role' and 'content'
+            stream: Whether to stream the response (currently always True for agent)
+
+        Yields:
+            AgentEvent instances for tool calls, results, text content, and retry events
+        """
+        logger.debug(f"Generating agent response with {len(messages)} messages")
+
+        # max_retries is the number of retries, so we need max_retries + 1 attempts
+        # (1 initial attempt + max_retries retry attempts)
+        max_retries = self._provider.config.max_retries
+        max_attempts = max_retries + 1
+        base_delay = self._provider.config.retry_delay
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                yield from self._generate_response_attempt(messages)
+                return  # Success, exit retry loop
+
+            except RateLimitError as e:
+                retry_after = getattr(e, "retry_after", None)
+                if attempt < max_attempts:
+                    delay = retry_after or (base_delay * (2 ** (attempt - 1)))
+                    logger.warning(f"Rate limit hit, retrying (attempt {attempt}/{max_attempts}), delay={delay}s")
+                    yield RetryEvent(
+                        attempt=attempt,
+                        max_attempts=max_attempts,
+                        error_type=LLMErrorType.RATE_LIMIT,
+                        delay=delay,
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Rate limit exceeded after {max_attempts} attempts")
+                    raise LLMRateLimitError(retry_after=retry_after)
+
+            except APIConnectionError as e:
+                if attempt < max_attempts:
+                    delay = base_delay * (2 ** (attempt - 1))
+                    logger.warning(f"Connection error, retrying (attempt {attempt}/{max_attempts}), delay={delay}s")
+                    yield RetryEvent(
+                        attempt=attempt,
+                        max_attempts=max_attempts,
+                        error_type=LLMErrorType.CONNECTION,
+                        delay=delay,
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Connection error after {max_attempts} attempts: {e}")
+                    raise LLMConnectionError(str(e))
+
+            except APIStatusError as e:
+                # Check for context length error (400 with specific message)
+                if e.status_code == 400 and "context_length" in str(e).lower():
+                    logger.error(f"Context length exceeded: {e}")
+                    raise LLMContextLengthError()
+
+                # Retry on server errors (500+)
+                if e.status_code >= 500 and attempt < max_attempts:
+                    delay = base_delay * (2 ** (attempt - 1))
+                    logger.warning(f"Server error ({e.status_code}), retrying (attempt {attempt}/{max_attempts})")
+                    yield RetryEvent(
+                        attempt=attempt,
+                        max_attempts=max_attempts,
+                        error_type=LLMErrorType.SERVER_ERROR,
+                        delay=delay,
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(f"API error ({e.status_code}) after {attempt} attempts: {e}")
+                    raise LLMStreamError(str(e), is_retryable=False)
+
+            except Exception as e:
+                # Generic error handling with retry for unknown errors
+                logger.error(f"Unexpected error in agent execution: {e}")
+                if attempt < max_attempts:
+                    delay = base_delay * (2 ** (attempt - 1))
+                    logger.warning(f"Retrying after unexpected error (attempt {attempt}/{max_attempts})")
+                    yield RetryEvent(
+                        attempt=attempt,
+                        max_attempts=max_attempts,
+                        error_type=LLMErrorType.UNKNOWN,
+                        delay=delay,
+                    )
+                    time.sleep(delay)
+                else:
+                    raise LLMStreamError(str(e))
 
     def generate_title(self, first_message: str) -> str:
         """
@@ -327,5 +427,6 @@ __all__ = [
     "ToolResultEvent",
     "TextDeltaEvent",
     "MessageCompleteEvent",
+    "RetryEvent",
     "SYSTEM_PROMPT",
 ]

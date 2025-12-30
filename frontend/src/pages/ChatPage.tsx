@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConversations } from '@/hooks/useConversations'
 import { useUnifiedChat } from '@/hooks/useUnifiedChat'
-import { ChatSidebar, ChatInput, MessageList } from '@/components/chat'
+import { ChatSidebar, ChatInput, MessageList, ChatError } from '@/components/chat'
 import { Alert } from '@/components/ui'
 import { isConversationError } from '@/types/errors'
 import { logger } from '@/lib/logger'
@@ -120,6 +120,7 @@ export function ChatPage() {
               isStreaming={chat.isStreaming}
               streamingContent={chat.streamingContent}
               streamingToolCalls={chat.streamingToolCalls}
+              retryStatus={chat.retryStatus}
               userName={user?.name || undefined}
             />
           </div>
@@ -127,7 +128,14 @@ export function ChatPage() {
           <div className="chat-main__empty">メッセージを入力して新しい会話を始めましょう</div>
         )}
 
-        <ChatInput onSend={handleSendMessage} disabled={chat.isStreaming || chat.isLoading} />
+        <div className="chat-main__footer">
+          {chat.streamError && (
+            <div className="px-4 pb-2">
+              <ChatError error={chat.streamError} onDismiss={chat.clearStreamError} />
+            </div>
+          )}
+          <ChatInput onSend={handleSendMessage} disabled={chat.isStreaming || chat.isLoading} />
+        </div>
       </main>
     </div>
   )

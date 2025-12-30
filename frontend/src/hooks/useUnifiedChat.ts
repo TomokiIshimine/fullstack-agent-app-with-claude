@@ -5,6 +5,7 @@ import {
   createConversationStreaming,
 } from '@/lib/api/conversations'
 import { useErrorHandler } from './useErrorHandler'
+import { createOnRetryHandler } from './useStreamingCallbacks'
 import { useStreamingToolCalls } from './useStreamingToolCalls'
 import type {
   Conversation,
@@ -13,7 +14,8 @@ import type {
   CreateConversationRequest,
 } from '@/types/chat'
 import { toConversation, toMessage } from '@/types/chat'
-import { ConversationError } from '@/types/errors'
+import { ConversationError, fromStreamError } from '@/types/errors'
+import type { RetryStatus, StreamError } from '@/types/errors'
 import { logger } from '@/lib/logger'
 
 /**
@@ -89,6 +91,8 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
   const [isLoading, setIsLoading] = useState(!!initialUuid)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [retryStatus, setRetryStatus] = useState<RetryStatus | null>(null)
+  const [streamError, setStreamError] = useState<StreamError | null>(null)
 
   // Track current UUID to handle navigation during async operations
   // Initialize as undefined to ensure loadConversation is called on first mount
@@ -140,11 +144,20 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
     setConversation(null)
     setMessages([])
     setStreamingContent('')
+    setRetryStatus(null)
+    setStreamError(null)
     resetToolCalls()
     setIsStreaming(false)
     clearError()
     logger.debug('Chat reset to idle')
   }, [clearError, resetToolCalls])
+
+  /**
+   * Clear stream error state
+   */
+  const clearStreamError = useCallback(() => {
+    setStreamError(null)
+  }, [])
 
   /**
    * Send a message (handles both new and existing conversations)
@@ -174,6 +187,8 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
 
       setIsStreaming(true)
       setStreamingContent('')
+      setRetryStatus(null)
+      setStreamError(null)
       resetToolCalls()
       clearError()
 
@@ -210,9 +225,21 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
             onEnd: (msgId, responseContent) => {
               assistantMessageId = msgId
               finalContent = responseContent
+              setRetryStatus(null) // Clear retry status on success
             },
-            onError: errorMsg => {
-              throw new Error(errorMsg)
+            onRetry: createOnRetryHandler(setRetryStatus, {
+              onReset: () => {
+                finalContent = ''
+                setStreamingContent('')
+                resetToolCalls()
+              },
+            }),
+            onError: streamErr => {
+              if (streamErr.user_message_id !== undefined) {
+                userMessagePersisted = true
+              }
+              setStreamError(streamErr)
+              throw fromStreamError(streamErr, resultUuid || undefined)
             },
           })
         } else {
@@ -240,12 +267,21 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
             onEnd: (msgId, responseContent) => {
               assistantMessageId = msgId
               finalContent = responseContent
+              setRetryStatus(null) // Clear retry status on success
             },
-            onError: (errorMsg, persistedUserMessageId) => {
-              if (persistedUserMessageId !== undefined) {
+            onRetry: createOnRetryHandler(setRetryStatus, {
+              onReset: () => {
+                finalContent = ''
+                setStreamingContent('')
+                resetToolCalls()
+              },
+            }),
+            onError: streamErr => {
+              if (streamErr.user_message_id !== undefined) {
                 userMessagePersisted = true
               }
-              throw new Error(errorMsg)
+              setStreamError(streamErr)
+              throw fromStreamError(streamErr, resultUuid || undefined)
             },
           })
         }
@@ -292,6 +328,7 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
       } finally {
         setIsStreaming(false)
         setStreamingContent('')
+        setRetryStatus(null)
         resetToolCalls()
       }
     },
@@ -328,10 +365,13 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
     streamingToolCalls,
     error,
     title,
+    retryStatus,
+    streamError,
     // Actions
     sendMessage,
     reset,
     clearError,
+    clearStreamError,
     loadConversation,
   }
 }

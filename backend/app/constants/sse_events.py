@@ -28,6 +28,9 @@ class SSEEvent:
     # Error events
     ERROR = "error"
 
+    # Retry events
+    RETRY = "retry"
+
 
 # Service event type to SSE event type mapping
 # Maps internal event types to SSE event names
@@ -38,6 +41,7 @@ SERVICE_TO_SSE_EVENT_MAP = {
     "delta": SSEEvent.CONTENT_DELTA,
     "tool_call_start": SSEEvent.TOOL_CALL_START,
     "tool_call_end": SSEEvent.TOOL_CALL_END,
+    "retry": SSEEvent.RETRY,
 }
 
 

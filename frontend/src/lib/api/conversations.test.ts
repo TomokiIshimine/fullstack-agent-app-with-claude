@@ -286,7 +286,13 @@ describe('API Client - conversations', () => {
       await createConversationStreaming({ message: 'Hello' }, callbacks)
 
       expect(callbacks.onCreated).toHaveBeenCalled()
-      expect(callbacks.onError).toHaveBeenCalledWith('AI service error', 1)
+      expect(callbacks.onError).toHaveBeenCalledWith({
+        error: 'AI service error',
+        error_type: undefined,
+        user_message_id: 1,
+        retry_after: undefined,
+        is_retryable: undefined,
+      })
     })
   })
 })

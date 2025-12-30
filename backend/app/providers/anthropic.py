@@ -111,13 +111,19 @@ class AnthropicProvider(BaseLLMProvider):
         if not self._anthropic_config.api_key:
             raise ProviderAPIKeyError("Anthropic")
 
-        logger.debug(f"Creating ChatAnthropic model: {self.model_name}, " f"max_tokens={self.config.max_tokens}, streaming={self.config.streaming}")
+        logger.debug(
+            f"Creating ChatAnthropic model: {self.model_name}, "
+            f"max_tokens={self.config.max_tokens}, "
+            f"max_retries={self.config.max_retries}, "
+            f"streaming={self.config.streaming}"
+        )
 
         return ChatAnthropic(
             model_name=self.model_name,  # type: ignore[call-arg]
             max_tokens_to_sample=self.config.max_tokens,  # type: ignore[call-arg]
             streaming=self.config.streaming,
             api_key=self._anthropic_config.api_key,  # type: ignore[call-arg, arg-type]
+            max_retries=self.config.max_retries,  # type: ignore[call-arg]
         )
 
 
