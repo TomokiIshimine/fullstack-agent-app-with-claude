@@ -9,7 +9,7 @@ from werkzeug.exceptions import Unauthorized
 
 from app.config import load_cookie_config, load_jwt_config
 from app.constants.http import HTTP_OK
-from app.constants.jwt import HOURS_PER_DAY, SECONDS_PER_DAY, SECONDS_PER_MINUTE
+from app.constants.jwt import SECONDS_PER_DAY, SECONDS_PER_MINUTE
 from app.constants.rate_limit import LOGIN_RATE_LIMIT, LOGOUT_RATE_LIMIT, REFRESH_RATE_LIMIT
 from app.limiter import limiter
 from app.routes.dependencies import validate_request_body, with_auth_service
