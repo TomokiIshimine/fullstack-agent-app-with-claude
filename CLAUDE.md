@@ -49,11 +49,15 @@ Frontend (React)                    Backend (Flask)
 
 ## Commands
 
+Run `make help` to see all available commands.
+
 ### Development
 ```bash
+make install              # Install all dependencies
+make install-frontend     # Install frontend dependencies only
+make install-backend      # Install backend dependencies only
 make up                   # Start all services (frontend :5174, backend :5000, MySQL, Redis)
 make down                 # Stop all services
-make install              # Install all dependencies
 make doctor               # Check development environment (Node, Python, Docker, etc.)
 make health               # Check if all services are running and healthy
 ```
@@ -61,7 +65,10 @@ make health               # Check if all services are running and healthy
 ### Testing
 ```bash
 make test                 # Run all tests with coverage
+make test-frontend        # Run frontend tests only
+make test-backend         # Run backend tests only
 make test-fast            # Run tests without coverage (faster)
+make test-coverage        # Run tests and generate HTML coverage report
 
 # Individual tests
 pnpm --dir frontend run test src/lib/api/auth.test.ts
@@ -70,8 +77,13 @@ poetry -C backend run pytest backend/tests/routes/test_auth_routes.py::test_logi
 
 ### Code Quality
 ```bash
-make lint                 # Lint frontend (ESLint + tsc) and backend (flake8 + mypy)
-make format               # Format frontend (Prettier) and backend (Black + isort)
+make lint                 # Run all linters (frontend + backend)
+make lint-frontend        # Run frontend linters (ESLint, TypeScript)
+make lint-backend         # Run backend linters (flake8, mypy)
+make format               # Format all code
+make format-frontend      # Format frontend code (Prettier)
+make format-backend       # Format backend code (Black, isort)
+make format-check         # Check formatting without changes
 ```
 
 ### Database
@@ -84,6 +96,13 @@ make db-reset             # ⚠️ Drop and recreate database
 ### Pre-commit
 ```bash
 make pre-commit-install   # Install hooks (run once after clone)
+make pre-commit-run       # Run pre-commit on all files
+make pre-commit-update    # Update pre-commit hooks
+```
+
+### CI
+```bash
+make ci                   # Run lint, format-check, and test (full CI pipeline)
 ```
 
 ## Browser Testing with Playwright MCP

@@ -186,13 +186,17 @@ docker compose -f infra/docker-compose.yml exec redis redis-cli
 
 ## よく使うコマンド
 
+`make help` で全コマンドを確認できます。
+
 | フロー            | コマンド            | 説明                                     |
 |------------------|---------------------|------------------------------------------|
 | 依存関係の導入    | `make install`      | frontend/backend の依存を一括インストール |
 | Docker 起動       | `make up`           | MySQL を含むコンテナをバックグラウンドで起動 |
 | Docker 停止       | `make down`         | コンテナ群を停止／削除                   |
-| Lint & Type Check | `make lint`         | ESLint (React) / flake8 & mypy (Flask)   |
+| Lint             | `make lint`         | ESLint + tsc (React) / flake8 + mypy (Flask) |
+| フォーマットチェック | `make format-check` | コードフォーマットの検証（変更なし）    |
 | テスト            | `make test`         | Vitest (frontend) と pytest (backend)    |
+| テスト（高速）    | `make test-fast`    | カバレッジなしでテスト実行              |
 | フォーマット      | `make format`       | Prettier / isort / black                 |
 
 **テストインフラ:**
@@ -301,7 +305,8 @@ make pre-commit-update    # フックのバージョン更新
 型チェック（mypy）とテスト（pytest、vitest）はパフォーマンスのためコミット時に実行されません。手動で実行してください:
 
 ```bash
-make lint                 # mypy + flake8 + ESLint を実行
+make lint                 # ESLint + tsc (frontend) / flake8 + mypy (backend)
+make format-check         # Prettier / isort / black のフォーマットチェック
 make test                 # カバレッジ付きでテストを実行
 ```
 
@@ -315,13 +320,15 @@ make test                 # カバレッジ付きでテストを実行
 
 Pull Request 時に自動実行され、コード品質を検証します:
 
-- **setup**: 依存関係のキャッシュウォーミング
-- **lint**: コード品質チェック（並列実行）
-- **test**: テストスイート実行（並列実行）
+- **lint-frontend / lint-backend**: コード品質チェック（並列実行）
+- **format-check**: フォーマットチェック（Prettier, Black, isort）
+- **test-frontend / test-backend**: テストスイート実行（並列実行）
+- **security**: セキュリティ監査
 
 ```bash
 # ローカルで CI と同等のチェックを実行
 make lint                 # Lint チェック
+make format-check         # フォーマットチェック
 make test                 # テスト実行
 ```
 

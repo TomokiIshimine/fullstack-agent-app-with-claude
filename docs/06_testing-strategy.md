@@ -878,7 +878,8 @@ poetry -C backend run pytest backend/tests/services/test_auth_service.py
 **統合コマンド:**
 ```bash
 make test                     # すべてのテストを実行（フロントエンド + バックエンド）
-make test-cov                 # カバレッジ付きでテスト実行
+make test-coverage            # カバレッジ付きでテスト実行（HTMLレポート生成）
+make test-fast                # カバレッジなしで高速テスト実行
 ```
 
 **個別実行:**
