@@ -171,7 +171,10 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): FormS
     let hasError = false
 
     // Run field-level validation
-    for (const [key, config] of Object.entries(fieldConfigs) as [keyof T, FieldConfig<T[keyof T]>][]) {
+    for (const [key, config] of Object.entries(fieldConfigs) as [
+      keyof T,
+      FieldConfig<T[keyof T]>,
+    ][]) {
       if (config.validate) {
         const fieldError = config.validate(values[key], values as Record<string, unknown>)
         if (fieldError) {
@@ -196,39 +199,38 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): FormS
   }, [fieldConfigs, validate, values])
 
   const handleSubmit = useCallback(
-    (submitFn: (values: T) => Promise<void>) =>
-      async (e: FormEvent) => {
-        e.preventDefault()
-        setError(null)
+    (submitFn: (values: T) => Promise<void>) => async (e: FormEvent) => {
+      e.preventDefault()
+      setError(null)
 
-        // Pre-submit check
-        if (onBeforeSubmit && onBeforeSubmit(values) === false) {
-          return
+      // Pre-submit check
+      if (onBeforeSubmit && onBeforeSubmit(values) === false) {
+        return
+      }
+
+      // Validation
+      if (!runValidation()) {
+        return
+      }
+
+      setIsSubmitting(true)
+
+      try {
+        await submitFn(values)
+        onSuccess?.()
+      } catch (err) {
+        logger.error('Form submission failed', err as Error)
+        if (err instanceof ApiError) {
+          setError(err.message)
+        } else if (err instanceof Error) {
+          setError(err.message)
+        } else {
+          setError(defaultErrorMessage || 'エラーが発生しました')
         }
-
-        // Validation
-        if (!runValidation()) {
-          return
-        }
-
-        setIsSubmitting(true)
-
-        try {
-          await submitFn(values)
-          onSuccess?.()
-        } catch (err) {
-          logger.error('Form submission failed', err as Error)
-          if (err instanceof ApiError) {
-            setError(err.message)
-          } else if (err instanceof Error) {
-            setError(err.message)
-          } else {
-            setError(defaultErrorMessage || 'エラーが発生しました')
-          }
-        } finally {
-          setIsSubmitting(false)
-        }
-      },
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
     [values, runValidation, onBeforeSubmit, onSuccess, defaultErrorMessage]
   )
 

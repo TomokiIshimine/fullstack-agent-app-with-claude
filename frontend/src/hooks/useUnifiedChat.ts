@@ -99,7 +99,8 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
 
   // Derived state
   const title =
-    conversation?.title || (mode === 'idle' ? '新しいチャット' : mode === 'new' ? '' : '読み込み中...')
+    conversation?.title ||
+    (mode === 'idle' ? '新しいチャット' : mode === 'new' ? '' : '読み込み中...')
 
   /**
    * Load an existing conversation by UUID

@@ -272,9 +272,7 @@ describe('PasswordChangeForm', () => {
 
       await waitFor(() => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-        expect(
-          screen.queryByText('現在のパスワードを入力してください')
-        ).not.toBeInTheDocument()
+        expect(screen.queryByText('現在のパスワードを入力してください')).not.toBeInTheDocument()
       })
     })
   })
