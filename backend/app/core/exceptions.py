@@ -120,6 +120,31 @@ class PasswordChangeFailedError(PasswordServiceError):
         super().__init__(message)
 
 
+# === Database Exceptions ===
+
+
+class DatabaseError(ServiceError):
+    """Base exception for database-related errors."""
+
+    pass
+
+
+class DuplicateEntryError(DatabaseError):
+    """Raised when a database unique constraint is violated (race condition)."""
+
+    def __init__(self, message: str = "レコードが既に存在します", field: str | None = None):
+        details = {"field": field} if field else {}
+        super().__init__(message, details)
+        self.field = field
+
+
+class DatabaseConnectionError(DatabaseError):
+    """Raised when database connection fails or times out."""
+
+    def __init__(self, message: str = "データベース接続に失敗しました"):
+        super().__init__(message)
+
+
 __all__ = [
     "ServiceError",
     "AuthServiceError",
@@ -135,4 +160,7 @@ __all__ = [
     "PasswordServiceError",
     "InvalidPasswordError",
     "PasswordChangeFailedError",
+    "DatabaseError",
+    "DuplicateEntryError",
+    "DatabaseConnectionError",
 ]

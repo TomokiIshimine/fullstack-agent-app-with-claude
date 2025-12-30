@@ -8,14 +8,17 @@ from typing import Any, Callable, TypeVar
 
 from flask import g, request
 from pydantic import BaseModel, ValidationError
-from werkzeug.exceptions import BadRequest, Conflict, Forbidden, InternalServerError, NotFound, Unauthorized
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, InternalServerError, NotFound, ServiceUnavailable, Unauthorized
 
-from app.core.exceptions import (  # Auth exceptions; Conversation exceptions; Password exceptions; User exceptions
+from app.core.exceptions import (
     AuthServiceError,
     CannotDeleteAdminError,
     ConversationAccessDeniedError,
     ConversationNotFoundError,
     ConversationServiceError,
+    DatabaseConnectionError,
+    DuplicateEntryError,
     InvalidCredentialsError,
     InvalidPasswordError,
     InvalidRefreshTokenError,
@@ -37,6 +40,35 @@ logger = logging.getLogger(__name__)
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
 RouteCallable = TypeVar("RouteCallable", bound=Callable[..., Any])
+
+
+def _handle_sqlalchemy_error(exc: SQLAlchemyError) -> None:
+    """Translate SQLAlchemy exceptions to HTTP exceptions.
+
+    Args:
+        exc: The SQLAlchemy exception to handle
+
+    Raises:
+        Conflict: For unique constraint violations (IntegrityError)
+        ServiceUnavailable: For connection failures (OperationalError)
+        InternalServerError: For other database errors
+    """
+    if isinstance(exc, IntegrityError):
+        error_msg = str(exc.orig) if hasattr(exc, "orig") else str(exc)
+        field = None
+        if "Duplicate entry" in error_msg and "for key" in error_msg:
+            key_part = error_msg.split("for key")[-1].strip(" '\"")
+            field = key_part.split(".")[-1] if "." in key_part else key_part
+        elif "UNIQUE constraint failed" in error_msg:
+            field = error_msg.split(":")[-1].strip().split(".")[-1]
+        logger.warning(f"Database integrity error: {error_msg}", extra={"field": field})
+        raise Conflict(description=str(DuplicateEntryError(field=field))) from exc
+    elif isinstance(exc, OperationalError):
+        logger.error(f"Database connection error: {exc}", exc_info=True)
+        raise ServiceUnavailable(description=str(DatabaseConnectionError())) from exc
+    else:
+        logger.error(f"Unexpected database error: {exc}", exc_info=True)
+        raise InternalServerError(description="データベースエラーが発生しました") from exc
 
 
 # === Service Factories ===
@@ -104,6 +136,8 @@ def with_auth_service(func: RouteCallable) -> RouteCallable:
         except AuthServiceError as exc:
             logger.error("Auth service error", exc_info=True)
             raise InternalServerError(description=str(exc)) from exc
+        except SQLAlchemyError as exc:
+            _handle_sqlalchemy_error(exc)
         except Exception:  # pragma: no cover - unexpected error path
             logger.error("Unexpected error in auth route", exc_info=True)
             raise
@@ -126,6 +160,8 @@ def with_conversation_service(func: RouteCallable) -> RouteCallable:
         except ConversationServiceError as exc:
             logger.error("Conversation service error", exc_info=True)
             raise InternalServerError(description=str(exc)) from exc
+        except SQLAlchemyError as exc:
+            _handle_sqlalchemy_error(exc)
         except Exception:  # pragma: no cover - unexpected error path
             logger.error("Unexpected error in conversation route", exc_info=True)
             raise
@@ -142,12 +178,14 @@ def with_password_service(func: RouteCallable) -> RouteCallable:
         try:
             return func(*args, password_service=password_service, **kwargs)
         except InvalidPasswordError as exc:
-            raise Unauthorized(description=str(exc)) from exc
+            raise Forbidden(description=str(exc)) from exc
         except PasswordChangeFailedError as exc:
             raise InternalServerError(description=str(exc)) from exc
         except PasswordServiceError as exc:
             logger.error("Password service error", exc_info=True)
             raise InternalServerError(description=str(exc)) from exc
+        except SQLAlchemyError as exc:
+            _handle_sqlalchemy_error(exc)
         except Exception:  # pragma: no cover - unexpected error path
             logger.error("Unexpected error in password route", exc_info=True)
             raise
@@ -172,6 +210,8 @@ def with_user_service(func: RouteCallable) -> RouteCallable:
         except UserServiceError as exc:
             logger.error("User service error", exc_info=True)
             raise InternalServerError(description=str(exc)) from exc
+        except SQLAlchemyError as exc:
+            _handle_sqlalchemy_error(exc)
         except Exception:  # pragma: no cover - unexpected error path
             logger.error("Unexpected error in user route", exc_info=True)
             raise
