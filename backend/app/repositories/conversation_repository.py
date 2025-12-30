@@ -191,6 +191,35 @@ class ConversationRepository(BaseRepository):
         """
         self.session.delete(conversation)
 
+    def _build_date_filters(
+        self,
+        start_date: str | None,
+        end_date: str | None,
+    ) -> list:
+        """Build date filter conditions for queries.
+
+        Args:
+            start_date: Optional start date filter (ISO format)
+            end_date: Optional end date filter (ISO format)
+
+        Returns:
+            List of SQLAlchemy filter conditions
+        """
+        from app.utils.date_filter import parse_date_filter
+
+        filters = []
+        if start_date:
+            start_dt = parse_date_filter(start_date, end_of_day=False)
+            if start_dt:
+                filters.append(Conversation.created_at >= start_dt)
+
+        if end_date:
+            end_dt = parse_date_filter(end_date, end_of_day=True)
+            if end_dt:
+                filters.append(Conversation.created_at <= end_dt)
+
+        return filters
+
     def find_all_with_user(
         self,
         page: int = 1,
@@ -212,21 +241,13 @@ class ConversationRepository(BaseRepository):
         Returns:
             Tuple of (list of dicts with conversation, user, message_count, total count)
         """
-        from datetime import datetime, time
-
         from app.models.user import User
 
-        def parse_date_filter(date_str: str, end_of_day: bool = False) -> datetime | None:
-            """Parse date string, optionally normalizing to end of day."""
-            try:
-                dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-                # If date-only (time is midnight and no explicit time in input),
-                # normalize to end of day for inclusive filtering
-                if end_of_day and dt.time() == time(0, 0, 0) and "T" not in date_str:
-                    dt = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-                return dt
-            except ValueError:
-                return None
+        # Build filter conditions once
+        filter_conditions = []
+        if user_id is not None:
+            filter_conditions.append(Conversation.user_id == user_id)
+        filter_conditions.extend(self._build_date_filters(start_date, end_date))
 
         # Subquery to count messages per conversation
         message_count_subquery = (
@@ -251,34 +272,16 @@ class ConversationRepository(BaseRepository):
             )
         )
 
-        # Apply filters
-        if user_id is not None:
-            query = query.filter(Conversation.user_id == user_id)
-
-        if start_date:
-            start_dt = parse_date_filter(start_date, end_of_day=False)
-            if start_dt:
-                query = query.filter(Conversation.created_at >= start_dt)
-
-        if end_date:
-            end_dt = parse_date_filter(end_date, end_of_day=True)
-            if end_dt:
-                query = query.filter(Conversation.created_at <= end_dt)
+        # Apply all filters
+        for condition in filter_conditions:
+            query = query.filter(condition)
 
         query = query.order_by(Conversation.updated_at.desc())
 
-        # Count total with filters
+        # Count total with same filters
         count_query = self.session.query(Conversation)
-        if user_id is not None:
-            count_query = count_query.filter(Conversation.user_id == user_id)
-        if start_date:
-            start_dt = parse_date_filter(start_date, end_of_day=False)
-            if start_dt:
-                count_query = count_query.filter(Conversation.created_at >= start_dt)
-        if end_date:
-            end_dt = parse_date_filter(end_date, end_of_day=True)
-            if end_dt:
-                count_query = count_query.filter(Conversation.created_at <= end_dt)
+        for condition in filter_conditions:
+            count_query = count_query.filter(condition)
         total = count_query.count()
 
         offset = (page - 1) * per_page

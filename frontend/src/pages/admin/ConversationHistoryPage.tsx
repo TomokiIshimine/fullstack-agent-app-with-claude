@@ -36,7 +36,7 @@ export function ConversationHistoryPage() {
               variant="error"
               onRetry={() => {
                 clearError()
-                void loadConversations()
+                void loadConversations(currentPage, filters)
               }}
               onDismiss={clearError}
             >

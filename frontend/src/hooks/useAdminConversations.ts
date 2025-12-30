@@ -20,7 +20,13 @@ interface ConversationDetail {
   updatedAt: Date
 }
 
-export function useAdminConversations() {
+interface UseAdminConversationsOptions {
+  autoLoad?: boolean
+}
+
+export function useAdminConversations(options: UseAdminConversationsOptions = {}) {
+  const { autoLoad = true } = options
+
   const [conversations, setConversations] = useState<AdminConversation[]>([])
   const [users, setUsers] = useState<UserResponse[]>([])
   const [pagination, setPagination] = useState<PaginationMeta | null>(null)
@@ -41,11 +47,11 @@ export function useAdminConversations() {
   }, [])
 
   const loadConversations = useCallback(
-    async (page: number = 1, appliedFilters?: AdminConversationFilters) => {
+    async (page: number = 1, appliedFilters: AdminConversationFilters = {}) => {
       setIsLoading(true)
       clearError()
       try {
-        const data = await fetchAdminConversations(page, 20, appliedFilters || filters)
+        const data = await fetchAdminConversations(page, 20, appliedFilters)
         const converted: AdminConversation[] = data.conversations.map(dto => ({
           uuid: dto.uuid,
           title: dto.title,
@@ -64,7 +70,7 @@ export function useAdminConversations() {
         setIsLoading(false)
       }
     },
-    [clearError, handleError, filters]
+    [clearError, handleError]
   )
 
   const loadConversationDetail = useCallback(
@@ -111,9 +117,9 @@ export function useAdminConversations() {
 
   const goToPage = useCallback(
     (page: number) => {
-      void loadConversations(page)
+      void loadConversations(page, filters)
     },
-    [loadConversations]
+    [loadConversations, filters]
   )
 
   const closeDetail = useCallback(() => {
@@ -121,9 +127,11 @@ export function useAdminConversations() {
   }, [])
 
   useEffect(() => {
-    void loadConversations()
-    void loadUsers()
-  }, [])
+    if (autoLoad) {
+      void loadConversations()
+      void loadUsers()
+    }
+  }, [autoLoad, loadConversations, loadUsers])
 
   return {
     conversations,
