@@ -209,7 +209,6 @@ class TestMessageRepositoryFindByConversationId:
 
     def test_find_by_conversation_id_only_matching(self, app, message_repo, sample_conversation, test_user):
         """Test that only messages for the specified conversation are returned."""
-        from app.database import get_session
         from app.models.conversation import Conversation
 
         repo, session = message_repo
@@ -343,7 +342,6 @@ class TestMessageRepositoryCountByConversationId:
 
     def test_count_only_specified_conversation(self, app, message_repo, sample_conversation, test_user):
         """Test that count only counts messages in specified conversation."""
-        from app.database import get_session
         from app.models.conversation import Conversation
 
         repo, session = message_repo
@@ -399,7 +397,6 @@ class TestMessageRepositoryDeleteByConversationId:
 
     def test_delete_only_specified_conversation(self, app, message_repo, sample_conversation, test_user):
         """Test that delete only removes messages from specified conversation."""
-        from app.database import get_session
         from app.models.conversation import Conversation
 
         repo, session = message_repo

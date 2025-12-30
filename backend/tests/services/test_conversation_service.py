@@ -7,14 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.core.exceptions import ConversationAccessDeniedError, ConversationNotFoundError
-from app.services.agent_service import (
-    MessageCompleteEvent,
-    MessageMetadataEvent,
-    RetryEvent,
-    TextDeltaEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-)
+from app.services.agent_service import MessageCompleteEvent, MessageMetadataEvent, RetryEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 from app.services.conversation_service import ConversationService, StreamingResult
 
 
@@ -261,8 +254,6 @@ class TestBuildMessageHistory:
 
     def test_build_message_history_with_existing(self, app, conversation_service):
         """Test building history with existing messages."""
-        from app.models.message import Message
-
         service, session = conversation_service
 
         existing = [
@@ -445,7 +436,7 @@ class TestFinalizeStreamingResponse:
             cost_usd=0.0,
         )
 
-        end_data = service._finalize_streaming_response(msg, conversation, result)
+        service._finalize_streaming_response(msg, conversation, result)
 
         # Zero/empty values should be None in message
         assert msg.input_tokens is None
@@ -461,11 +452,13 @@ class TestStreamingMethods:
         service, session = conversation_service
 
         # Mock agent response
-        service._agent_service.generate_response.return_value = iter([
-            TextDeltaEvent(delta="Hello"),
-            MessageCompleteEvent(content="Hello"),
-            MessageMetadataEvent(input_tokens=10, output_tokens=5, model="claude-3", response_time_ms=100),
-        ])
+        service._agent_service.generate_response.return_value = iter(
+            [
+                TextDeltaEvent(delta="Hello"),
+                MessageCompleteEvent(content="Hello"),
+                MessageMetadataEvent(input_tokens=10, output_tokens=5, model="claude-3", response_time_ms=100),
+            ]
+        )
 
         events = list(service.create_conversation_streaming(test_user, "Hi"))
 
@@ -478,11 +471,13 @@ class TestStreamingMethods:
         """Test that create_conversation_streaming yields end event last."""
         service, session = conversation_service
 
-        service._agent_service.generate_response.return_value = iter([
-            TextDeltaEvent(delta="Hi"),
-            MessageCompleteEvent(content="Hi"),
-            MessageMetadataEvent(input_tokens=10, output_tokens=5, model="claude-3", response_time_ms=100),
-        ])
+        service._agent_service.generate_response.return_value = iter(
+            [
+                TextDeltaEvent(delta="Hi"),
+                MessageCompleteEvent(content="Hi"),
+                MessageMetadataEvent(input_tokens=10, output_tokens=5, model="claude-3", response_time_ms=100),
+            ]
+        )
 
         events = list(service.create_conversation_streaming(test_user, "Hello"))
 
@@ -494,17 +489,21 @@ class TestStreamingMethods:
         """Test that send_message_streaming yields start event first."""
         service, session = conversation_service
 
-        service._agent_service.generate_response.return_value = iter([
-            TextDeltaEvent(delta="Response"),
-            MessageCompleteEvent(content="Response"),
-            MessageMetadataEvent(input_tokens=20, output_tokens=10, model="claude-3", response_time_ms=200),
-        ])
+        service._agent_service.generate_response.return_value = iter(
+            [
+                TextDeltaEvent(delta="Response"),
+                MessageCompleteEvent(content="Response"),
+                MessageMetadataEvent(input_tokens=20, output_tokens=10, model="claude-3", response_time_ms=200),
+            ]
+        )
 
-        events = list(service.send_message_streaming(
-            conversation_with_messages["uuid"],
-            conversation_with_messages["user_id"],
-            "Another message",
-        ))
+        events = list(
+            service.send_message_streaming(
+                conversation_with_messages["uuid"],
+                conversation_with_messages["user_id"],
+                "Another message",
+            )
+        )
 
         assert events[0][0] == "start"
         assert "user_message_id" in events[0][1]
@@ -513,18 +512,22 @@ class TestStreamingMethods:
         """Test that send_message_streaming yields delta events."""
         service, session = conversation_service
 
-        service._agent_service.generate_response.return_value = iter([
-            TextDeltaEvent(delta="Part 1"),
-            TextDeltaEvent(delta=" Part 2"),
-            MessageCompleteEvent(content="Part 1 Part 2"),
-            MessageMetadataEvent(input_tokens=20, output_tokens=10, model="claude-3", response_time_ms=200),
-        ])
+        service._agent_service.generate_response.return_value = iter(
+            [
+                TextDeltaEvent(delta="Part 1"),
+                TextDeltaEvent(delta=" Part 2"),
+                MessageCompleteEvent(content="Part 1 Part 2"),
+                MessageMetadataEvent(input_tokens=20, output_tokens=10, model="claude-3", response_time_ms=200),
+            ]
+        )
 
-        events = list(service.send_message_streaming(
-            conversation_with_messages["uuid"],
-            conversation_with_messages["user_id"],
-            "Test",
-        ))
+        events = list(
+            service.send_message_streaming(
+                conversation_with_messages["uuid"],
+                conversation_with_messages["user_id"],
+                "Test",
+            )
+        )
 
         delta_events = [e for e in events if e[0] == "delta"]
         assert len(delta_events) == 2
@@ -536,11 +539,13 @@ class TestStreamingMethods:
         service, session = conversation_service
 
         with pytest.raises(ConversationAccessDeniedError):
-            list(service.send_message_streaming(
-                conversation_with_messages["uuid"],
-                99999,
-                "Test",
-            ))
+            list(
+                service.send_message_streaming(
+                    conversation_with_messages["uuid"],
+                    99999,
+                    "Test",
+                )
+            )
 
 
 class TestStreamAgentResponse:
@@ -560,11 +565,13 @@ class TestStreamAgentResponse:
         session.add(msg)
         session.flush()
 
-        service._agent_service.generate_response.return_value = iter([
-            TextDeltaEvent(delta="Test"),
-            MessageCompleteEvent(content="Test"),
-            MessageMetadataEvent(input_tokens=50, output_tokens=25, model="claude-3", response_time_ms=500),
-        ])
+        service._agent_service.generate_response.return_value = iter(
+            [
+                TextDeltaEvent(delta="Test"),
+                MessageCompleteEvent(content="Test"),
+                MessageMetadataEvent(input_tokens=50, output_tokens=25, model="claude-3", response_time_ms=500),
+            ]
+        )
 
         gen = service._stream_agent_response([{"role": "user", "content": "Hi"}], msg.id)
 
@@ -595,12 +602,14 @@ class TestStreamAgentResponse:
         session.add(msg)
         session.flush()
 
-        service._agent_service.generate_response.return_value = iter([
-            TextDeltaEvent(delta="Hello"),
-            TextDeltaEvent(delta=" World"),
-            MessageCompleteEvent(content="Hello World"),
-            MessageMetadataEvent(input_tokens=10, output_tokens=5, model="claude-3", response_time_ms=100),
-        ])
+        service._agent_service.generate_response.return_value = iter(
+            [
+                TextDeltaEvent(delta="Hello"),
+                TextDeltaEvent(delta=" World"),
+                MessageCompleteEvent(content="Hello World"),
+                MessageMetadataEvent(input_tokens=10, output_tokens=5, model="claude-3", response_time_ms=100),
+            ]
+        )
 
         gen = service._stream_agent_response([{"role": "user", "content": "Hi"}], msg.id)
 
