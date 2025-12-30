@@ -39,6 +39,7 @@ const normalizedTargets = Array.from(new Set(positional.map(normalizePath).filte
 const targets = normalizedTargets.length > 0 ? normalizedTargets : ['.']
 const prettierArgs = [
   'prettier',
+  '--cache',
   '--ignore-unknown',
   ...(isCheck ? ['--check'] : ['--write']),
   ...flags,

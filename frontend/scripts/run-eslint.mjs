@@ -28,7 +28,7 @@ if (files.length === 0) {
   process.exit(0)
 }
 
-const eslintArgs = ['eslint', '--max-warnings=0', '--fix', ...files]
+const eslintArgs = ['eslint', '--cache', '--max-warnings=0', '--fix', ...files]
 const result = spawnSync('pnpm', eslintArgs, { stdio: 'inherit', shell: false })
 
 if (result.error) {
