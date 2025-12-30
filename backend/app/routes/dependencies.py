@@ -29,8 +29,10 @@ from app.core.exceptions import (
     UserServiceError,
 )
 from app.database import get_session
+from app.providers import BaseLLMProvider, create_provider
 from app.schemas.password import PasswordValidationError
 from app.schemas.user import UserValidationError
+from app.services.agent_service import AgentService
 from app.services.auth_service import AuthService
 from app.services.conversation_service import ConversationService
 from app.services.password_service import PasswordService
@@ -134,6 +136,40 @@ def _create_service_decorator(
 
 
 # === Service Factories ===
+
+
+def get_llm_provider() -> BaseLLMProvider:
+    """Return request-scoped LLM provider instance.
+
+    Creates a single LLM provider per request and caches it in Flask's g object.
+    This enables consistent provider usage across a request lifecycle.
+
+    Returns:
+        BaseLLMProvider instance configured from environment variables.
+    """
+    if provider := g.get("llm_provider"):
+        return provider
+
+    provider = create_provider()
+    g.llm_provider = provider
+    return provider
+
+
+def get_agent_service() -> AgentService:
+    """Return request-scoped AgentService instance.
+
+    Creates a single AgentService per request, using the shared LLM provider.
+
+    Returns:
+        AgentService instance with LLM provider and default tools.
+    """
+    if service := g.get("agent_service"):
+        return service
+
+    provider = get_llm_provider()
+    service = AgentService(provider=provider)
+    g.agent_service = service
+    return service
 
 
 def get_auth_service() -> AuthService:
@@ -273,8 +309,10 @@ def validate_request_body(schema: type[SchemaType]) -> Callable[[RouteCallable],
 
 
 __all__ = [
+    "get_agent_service",
     "get_auth_service",
     "get_conversation_service",
+    "get_llm_provider",
     "get_password_service",
     "get_user_service",
     "with_auth_service",
