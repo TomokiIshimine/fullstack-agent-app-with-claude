@@ -212,9 +212,21 @@ class ConversationRepository(BaseRepository):
         Returns:
             Tuple of (list of dicts with conversation, user, message_count, total count)
         """
-        from datetime import datetime
+        from datetime import datetime, time
 
         from app.models.user import User
+
+        def parse_date_filter(date_str: str, end_of_day: bool = False) -> datetime | None:
+            """Parse date string, optionally normalizing to end of day."""
+            try:
+                dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                # If date-only (time is midnight and no explicit time in input),
+                # normalize to end of day for inclusive filtering
+                if end_of_day and dt.time() == time(0, 0, 0) and "T" not in date_str:
+                    dt = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+                return dt
+            except ValueError:
+                return None
 
         # Subquery to count messages per conversation
         message_count_subquery = (
@@ -244,18 +256,14 @@ class ConversationRepository(BaseRepository):
             query = query.filter(Conversation.user_id == user_id)
 
         if start_date:
-            try:
-                start_dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+            start_dt = parse_date_filter(start_date, end_of_day=False)
+            if start_dt:
                 query = query.filter(Conversation.created_at >= start_dt)
-            except ValueError:
-                pass
 
         if end_date:
-            try:
-                end_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            end_dt = parse_date_filter(end_date, end_of_day=True)
+            if end_dt:
                 query = query.filter(Conversation.created_at <= end_dt)
-            except ValueError:
-                pass
 
         query = query.order_by(Conversation.updated_at.desc())
 
@@ -264,17 +272,13 @@ class ConversationRepository(BaseRepository):
         if user_id is not None:
             count_query = count_query.filter(Conversation.user_id == user_id)
         if start_date:
-            try:
-                start_dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+            start_dt = parse_date_filter(start_date, end_of_day=False)
+            if start_dt:
                 count_query = count_query.filter(Conversation.created_at >= start_dt)
-            except ValueError:
-                pass
         if end_date:
-            try:
-                end_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            end_dt = parse_date_filter(end_date, end_of_day=True)
+            if end_dt:
                 count_query = count_query.filter(Conversation.created_at <= end_dt)
-            except ValueError:
-                pass
         total = count_query.count()
 
         offset = (page - 1) * per_page
