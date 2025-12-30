@@ -127,7 +127,7 @@ export function ChatPage() {
           <div className="chat-main__empty">メッセージを入力して新しい会話を始めましょう</div>
         )}
 
-        <ChatInput onSend={handleSendMessage} disabled={chat.isStreaming} />
+        <ChatInput onSend={handleSendMessage} disabled={chat.isStreaming || chat.isLoading} />
       </main>
     </div>
   )
