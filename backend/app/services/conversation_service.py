@@ -9,6 +9,7 @@ from typing import Generator, Literal
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConversationAccessDeniedError, ConversationNotFoundError
+from app.models.conversation import Conversation
 from app.models.message import Message
 from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.message_repository import MessageRepository
@@ -121,13 +122,7 @@ class ConversationService:
             ConversationNotFoundError: If conversation not found
             ConversationAccessDeniedError: If user doesn't own the conversation
         """
-        conversation = self.conversation_repo.find_by_uuid_with_messages(uuid)
-
-        if not conversation:
-            raise ConversationNotFoundError(uuid)
-
-        if conversation.user_id != user_id:
-            raise ConversationAccessDeniedError(uuid)
+        conversation = self.validate_conversation_access(uuid, user_id, with_messages=True)
 
         return ConversationDetailResponse(
             conversation=ConversationResponse.model_validate(conversation),
@@ -242,26 +237,9 @@ class ConversationService:
         except StopIteration as e:
             full_response = e.value
 
-        # Update assistant message with final content
-        assistant_message.content = full_response
-        self.session.flush()
-
-        # Update conversation timestamp
-        self.conversation_repo.touch(conversation)
-
-        # Get tool calls for response
-        tool_calls = self.tool_call_repo.find_by_message_id(assistant_message.id)
-        tool_calls_data = [ToolCallResponse.model_validate(tc).model_dump(mode="json") for tc in tool_calls]
-
-        # Yield end event
-        yield (
-            "end",
-            {
-                "assistant_message_id": assistant_message.id,
-                "content": full_response,
-                "tool_calls": tool_calls_data,
-            },
-        )
+        # Finalize and yield end event
+        end_event_data = self._finalize_streaming_response(assistant_message, conversation, full_response)
+        yield ("end", end_event_data)
 
         logger.info(f"Streaming conversation created: {conversation.uuid}")
 
@@ -281,13 +259,7 @@ class ConversationService:
             ConversationNotFoundError: If conversation not found
             ConversationAccessDeniedError: If user doesn't own the conversation
         """
-        conversation = self.conversation_repo.find_by_uuid(uuid)
-
-        if not conversation:
-            raise ConversationNotFoundError(uuid)
-
-        if conversation.user_id != user_id:
-            raise ConversationAccessDeniedError(uuid)
+        conversation = self.validate_conversation_access(uuid, user_id)
 
         self.conversation_repo.delete(conversation)
         logger.info(f"Deleted conversation {uuid}")
@@ -296,25 +268,36 @@ class ConversationService:
         self,
         uuid: str,
         user_id: int,
-    ) -> None:
+        *,
+        with_messages: bool = False,
+    ) -> Conversation:
         """
         Validate that a conversation exists and user has access.
 
         Args:
             uuid: Conversation UUID
             user_id: User ID
+            with_messages: If True, load messages with the conversation
+
+        Returns:
+            The validated conversation
 
         Raises:
             ConversationNotFoundError: If conversation not found
             ConversationAccessDeniedError: If user doesn't own the conversation
         """
-        conversation = self.conversation_repo.find_by_uuid(uuid)
+        if with_messages:
+            conversation = self.conversation_repo.find_by_uuid_with_messages(uuid)
+        else:
+            conversation = self.conversation_repo.find_by_uuid(uuid)
 
         if not conversation:
             raise ConversationNotFoundError(uuid)
 
         if conversation.user_id != user_id:
             raise ConversationAccessDeniedError(uuid)
+
+        return conversation
 
     def send_message(
         self,
@@ -337,13 +320,7 @@ class ConversationService:
             ConversationNotFoundError: If conversation not found
             ConversationAccessDeniedError: If user doesn't own the conversation
         """
-        conversation = self.conversation_repo.find_by_uuid_with_messages(uuid)
-
-        if not conversation:
-            raise ConversationNotFoundError(uuid)
-
-        if conversation.user_id != user_id:
-            raise ConversationAccessDeniedError(uuid)
+        conversation = self.validate_conversation_access(uuid, user_id, with_messages=True)
 
         # Save user message
         user_message = self.message_repo.create(
@@ -413,13 +390,7 @@ class ConversationService:
             ConversationNotFoundError: If conversation not found
             ConversationAccessDeniedError: If user doesn't own the conversation
         """
-        conversation = self.conversation_repo.find_by_uuid_with_messages(uuid)
-
-        if not conversation:
-            raise ConversationNotFoundError(uuid)
-
-        if conversation.user_id != user_id:
-            raise ConversationAccessDeniedError(uuid)
+        conversation = self.validate_conversation_access(uuid, user_id, with_messages=True)
 
         # Save user message
         user_message = self.message_repo.create(
@@ -454,6 +425,32 @@ class ConversationService:
         except StopIteration as e:
             full_response = e.value
 
+        # Finalize and yield end event
+        end_event_data = self._finalize_streaming_response(assistant_message, conversation, full_response)
+        yield ("end", end_event_data)
+
+        logger.info(f"Streaming message exchange in conversation {uuid}")
+
+    def _finalize_streaming_response(
+        self,
+        assistant_message: Message,
+        conversation: Conversation,
+        full_response: str,
+    ) -> dict:
+        """
+        Finalize streaming response and prepare end event data.
+
+        Updates the assistant message with final content, touches the conversation
+        timestamp, retrieves tool calls, and returns the end event data.
+
+        Args:
+            assistant_message: The assistant message to update
+            conversation: The conversation to touch
+            full_response: The complete response content
+
+        Returns:
+            Dict containing end event data (assistant_message_id, content, tool_calls)
+        """
         # Update assistant message with final content
         assistant_message.content = full_response
         self.session.flush()
@@ -465,17 +462,11 @@ class ConversationService:
         tool_calls = self.tool_call_repo.find_by_message_id(assistant_message.id)
         tool_calls_data = [ToolCallResponse.model_validate(tc).model_dump(mode="json") for tc in tool_calls]
 
-        # Yield end event
-        yield (
-            "end",
-            {
-                "assistant_message_id": assistant_message.id,
-                "content": full_response,
-                "tool_calls": tool_calls_data,
-            },
-        )
-
-        logger.info(f"Streaming message exchange in conversation {uuid}")
+        return {
+            "assistant_message_id": assistant_message.id,
+            "content": full_response,
+            "tool_calls": tool_calls_data,
+        }
 
     def _build_message_history(
         self,
