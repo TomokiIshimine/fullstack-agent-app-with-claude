@@ -44,6 +44,13 @@ class MessageResponse(BaseModel):
     tool_calls: list[ToolCallResponse] = []
     created_at: datetime
 
+    # Metadata fields (only populated for assistant messages)
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    model: Optional[str] = None
+    response_time_ms: Optional[int] = None
+    cost_usd: Optional[float] = None
+
     model_config = {"from_attributes": True}
 
 

@@ -58,6 +58,16 @@ class MessageCompleteEvent:
 
 
 @dataclass
+class MessageMetadataEvent:
+    """Event emitted with usage metadata after response completion."""
+
+    input_tokens: int
+    output_tokens: int
+    model: str
+    response_time_ms: int
+
+
+@dataclass
 class RetryEvent:
     """Event emitted when a retry is attempted."""
 
@@ -67,7 +77,7 @@ class RetryEvent:
     delay: float
 
 
-AgentEvent = ToolCallEvent | ToolResultEvent | TextDeltaEvent | MessageCompleteEvent | RetryEvent
+AgentEvent = ToolCallEvent | ToolResultEvent | TextDeltaEvent | MessageCompleteEvent | MessageMetadataEvent | RetryEvent
 
 
 class AgentService:
@@ -279,13 +289,20 @@ class AgentService:
             messages: Conversation history as list of dicts with 'role' and 'content'
 
         Yields:
-            AgentEvent instances for tool calls, results, and text content
+            AgentEvent instances for tool calls, results, text content, and metadata
         """
         langchain_messages = self._convert_messages(messages)
         inputs = {"messages": langchain_messages}
 
         full_content = ""
         emitted_tool_calls: set[str] = set()
+
+        # Track token usage from streaming chunks
+        total_input_tokens = 0
+        total_output_tokens = 0
+
+        # Track response time
+        start_time = time.time()
 
         # Stream with both modes:
         # - "messages": token-by-token streaming from LLM
@@ -302,10 +319,33 @@ class AgentService:
                     full_content += text_content
                     yield TextDeltaEvent(delta=text_content)
 
+                # Extract usage metadata from AIMessageChunk
+                if isinstance(data, tuple) and len(data) == 2:
+                    message_chunk, _ = data
+                    if isinstance(message_chunk, AIMessageChunk):
+                        usage_metadata = getattr(message_chunk, "usage_metadata", None)
+                        if usage_metadata:
+                            # Accumulate token counts
+                            if "input_tokens" in usage_metadata:
+                                total_input_tokens += usage_metadata["input_tokens"]
+                            if "output_tokens" in usage_metadata:
+                                total_output_tokens += usage_metadata["output_tokens"]
+
             elif stream_mode == "updates" and isinstance(data, dict):
                 yield from self._handle_updates_stream(data, emitted_tool_calls)
 
+        # Calculate response time
+        response_time_ms = int((time.time() - start_time) * 1000)
+
         yield MessageCompleteEvent(content=full_content)
+
+        # Emit metadata event with token usage and timing
+        yield MessageMetadataEvent(
+            input_tokens=total_input_tokens,
+            output_tokens=total_output_tokens,
+            model=self.model_name,
+            response_time_ms=response_time_ms,
+        )
 
     def generate_response(
         self,
@@ -427,6 +467,7 @@ __all__ = [
     "ToolResultEvent",
     "TextDeltaEvent",
     "MessageCompleteEvent",
+    "MessageMetadataEvent",
     "RetryEvent",
     "SYSTEM_PROMPT",
 ]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
+from dataclasses import dataclass
 from typing import Generator, Literal
 
 from sqlalchemy.orm import Session
@@ -26,7 +27,8 @@ from app.schemas.conversation import (
     SendMessageResponse,
 )
 from app.schemas.tool_call import ToolCallResponse
-from app.services.agent_service import AgentEvent, AgentService, MessageCompleteEvent, RetryEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
+from app.services.agent_service import AgentEvent, AgentService, MessageCompleteEvent, MessageMetadataEvent, RetryEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
+from app.utils.cost_calculator import calculate_cost
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,18 @@ StreamingEvent = tuple[
     Literal["created", "start", "end", "delta", "tool_call_start", "tool_call_end", "retry"],
     dict,
 ]
+
+
+@dataclass
+class StreamingResult:
+    """Result from streaming agent response."""
+
+    content: str
+    input_tokens: int
+    output_tokens: int
+    model: str
+    response_time_ms: int
+    cost_usd: float
 
 
 class ConversationService:
@@ -244,16 +258,18 @@ class ConversationService:
 
         # Generate and stream AI response using common method
         response_generator = self._stream_agent_response(messages, assistant_message.id)
-        full_response = ""
+        result: StreamingResult | None = None
         try:
             while True:
                 streaming_event = next(response_generator)
                 yield streaming_event
         except StopIteration as e:
-            full_response = e.value
+            result = e.value
 
         # Finalize and yield end event
-        end_event_data = self._finalize_streaming_response(assistant_message, conversation, full_response)
+        if result is None:
+            result = StreamingResult(content="", input_tokens=0, output_tokens=0, model="", response_time_ms=0, cost_usd=0.0)
+        end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
         yield ("end", end_event_data)
 
         logger.info(f"Streaming conversation created: {conversation.uuid}")
@@ -432,16 +448,18 @@ class ConversationService:
 
         # Generate and stream AI response using common method
         response_generator = self._stream_agent_response(messages, assistant_message.id)
-        full_response = ""
+        result: StreamingResult | None = None
         try:
             while True:
                 streaming_event = next(response_generator)
                 yield streaming_event
         except StopIteration as e:
-            full_response = e.value
+            result = e.value
 
         # Finalize and yield end event
-        end_event_data = self._finalize_streaming_response(assistant_message, conversation, full_response)
+        if result is None:
+            result = StreamingResult(content="", input_tokens=0, output_tokens=0, model="", response_time_ms=0, cost_usd=0.0)
+        end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
         yield ("end", end_event_data)
 
         logger.info(f"Streaming message exchange in conversation {uuid}")
@@ -450,24 +468,29 @@ class ConversationService:
         self,
         assistant_message: Message,
         conversation: Conversation,
-        full_response: str,
+        result: StreamingResult,
     ) -> dict:
         """
         Finalize streaming response and prepare end event data.
 
-        Updates the assistant message with final content, touches the conversation
-        timestamp, retrieves tool calls, and returns the end event data.
+        Updates the assistant message with final content and metadata, touches the
+        conversation timestamp, retrieves tool calls, and returns the end event data.
 
         Args:
             assistant_message: The assistant message to update
             conversation: The conversation to touch
-            full_response: The complete response content
+            result: The streaming result with content and metadata
 
         Returns:
-            Dict containing end event data (assistant_message_id, content, tool_calls)
+            Dict containing end event data with metadata
         """
-        # Update assistant message with final content
-        assistant_message.content = full_response
+        # Update assistant message with final content and metadata
+        assistant_message.content = result.content
+        assistant_message.input_tokens = result.input_tokens if result.input_tokens > 0 else None
+        assistant_message.output_tokens = result.output_tokens if result.output_tokens > 0 else None
+        assistant_message.model = result.model if result.model else None
+        assistant_message.response_time_ms = result.response_time_ms if result.response_time_ms > 0 else None
+        assistant_message.cost_usd = result.cost_usd if result.cost_usd > 0 else None
         self.session.flush()
 
         # Update conversation timestamp
@@ -479,8 +502,14 @@ class ConversationService:
 
         return {
             "assistant_message_id": assistant_message.id,
-            "content": full_response,
+            "content": result.content,
             "tool_calls": tool_calls_data,
+            # Include metadata in end event
+            "input_tokens": result.input_tokens if result.input_tokens > 0 else None,
+            "output_tokens": result.output_tokens if result.output_tokens > 0 else None,
+            "model": result.model if result.model else None,
+            "response_time_ms": result.response_time_ms if result.response_time_ms > 0 else None,
+            "cost_usd": result.cost_usd if result.cost_usd > 0 else None,
         }
 
     def _build_message_history(
@@ -596,9 +625,9 @@ class ConversationService:
         self,
         messages: list[dict],
         assistant_message_id: int,
-    ) -> Generator[StreamingEvent, None, str]:
+    ) -> Generator[StreamingEvent, None, StreamingResult]:
         """
-        Stream agent response, yielding events and returning final content.
+        Stream agent response, yielding events and returning result with metadata.
 
         Args:
             messages: Message history for the agent
@@ -608,9 +637,11 @@ class ConversationService:
             StreamingEvent tuples for tool calls and text deltas
 
         Returns:
-            Final complete response content
+            StreamingResult with content and metadata
         """
         full_response = ""
+        metadata: MessageMetadataEvent | None = None
+
         for event in self.agent_service.generate_response(messages, stream=True):
             streaming_event, text_content = self._process_agent_event(event, assistant_message_id)
             if streaming_event is not None:
@@ -620,7 +651,28 @@ class ConversationService:
                     full_response += text_content
                 elif isinstance(event, MessageCompleteEvent):
                     full_response = text_content
-        return full_response
+
+            # Capture metadata event
+            if isinstance(event, MessageMetadataEvent):
+                metadata = event
+
+        # Calculate cost if we have metadata
+        cost_usd = 0.0
+        if metadata and metadata.input_tokens > 0:
+            cost_usd = calculate_cost(
+                model=metadata.model,
+                input_tokens=metadata.input_tokens,
+                output_tokens=metadata.output_tokens,
+            )
+
+        return StreamingResult(
+            content=full_response,
+            input_tokens=metadata.input_tokens if metadata else 0,
+            output_tokens=metadata.output_tokens if metadata else 0,
+            model=metadata.model if metadata else "",
+            response_time_ms=metadata.response_time_ms if metadata else 0,
+            cost_usd=cost_usd,
+        )
 
 
 __all__ = ["ConversationService"]
