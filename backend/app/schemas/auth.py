@@ -8,6 +8,8 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
+from app.schemas.validators import validate_password as _validate_password
+
 
 class LoginRequest(BaseModel):
     """Login request schema."""
@@ -31,12 +33,7 @@ class LoginRequest(BaseModel):
     @classmethod
     def validate_password(cls, v: str) -> str:
         """Validate password format."""
-        if not v or len(v) < 8:
-            raise ValueError("Password must be at least 8 characters long")
-        # Check for alphanumeric characters
-        if not re.search(r"[a-zA-Z]", v) or not re.search(r"[0-9]", v):
-            raise ValueError("Password must contain both letters and numbers")
-        return v
+        return _validate_password(v)
 
 
 class UserResponse(BaseModel):
