@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -346,6 +347,173 @@ class TestAgentServiceGenerateResponse:
         assert tool_result_events[0].output == "3"
         assert tool_result_events[0].error is None
 
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_newline_added_before_text_after_tool_result(self, mock_create_provider, mock_create_agent):
+        """Test that newline is added before text following a ToolResultEvent."""
+        from langchain_core.messages import AIMessageChunk, ToolMessage
+
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        # Mock tool message (ToolResultEvent source)
+        mock_tool_message = MagicMock(spec=ToolMessage)
+        mock_tool_message.tool_call_id = "call_123"
+        mock_tool_message.content = "42"
+
+        # Text that follows tool result
+        ai_chunk = AIMessageChunk(content="The result is 42.")
+
+        mock_agent = MagicMock()
+        mock_agent.stream.return_value = iter(
+            [
+                ("updates", {"tools": {"messages": [mock_tool_message]}}),
+                ("messages", (ai_chunk, {})),
+            ]
+        )
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        events = list(service.generate_response([{"role": "user", "content": "test"}]))
+
+        # Verify text has newline prefix
+        text_events = [e for e in events if isinstance(e, TextDeltaEvent)]
+        assert len(text_events) == 1
+        assert text_events[0].delta == "\nThe result is 42."
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_newline_flag_resets_after_adding_newline(self, mock_create_provider, mock_create_agent):
+        """Test that newline flag resets, so subsequent text doesn't get extra newlines."""
+        from langchain_core.messages import AIMessageChunk, ToolMessage
+
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_tool_message = MagicMock(spec=ToolMessage)
+        mock_tool_message.tool_call_id = "call_123"
+        mock_tool_message.content = "42"
+
+        # Two text chunks after tool result
+        ai_chunk1 = AIMessageChunk(content="Hello")
+        ai_chunk2 = AIMessageChunk(content=" world")
+
+        mock_agent = MagicMock()
+        mock_agent.stream.return_value = iter(
+            [
+                ("updates", {"tools": {"messages": [mock_tool_message]}}),
+                ("messages", (ai_chunk1, {})),
+                ("messages", (ai_chunk2, {})),
+            ]
+        )
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        events = list(service.generate_response([{"role": "user", "content": "test"}]))
+
+        text_events = [e for e in events if isinstance(e, TextDeltaEvent)]
+        assert len(text_events) == 2
+        assert text_events[0].delta == "\nHello"  # First text has newline
+        assert text_events[1].delta == " world"  # Second text has no newline
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_multiple_tool_results_each_add_newline(self, mock_create_provider, mock_create_agent):
+        """Test that each ToolResultEvent adds newline before its following text."""
+        from langchain_core.messages import AIMessageChunk, ToolMessage
+
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_tool_message1 = MagicMock(spec=ToolMessage)
+        mock_tool_message1.tool_call_id = "call_1"
+        mock_tool_message1.content = "10"
+
+        mock_tool_message2 = MagicMock(spec=ToolMessage)
+        mock_tool_message2.tool_call_id = "call_2"
+        mock_tool_message2.content = "20"
+
+        ai_chunk1 = AIMessageChunk(content="First result")
+        ai_chunk2 = AIMessageChunk(content="Second result")
+
+        mock_agent = MagicMock()
+        mock_agent.stream.return_value = iter(
+            [
+                ("updates", {"tools": {"messages": [mock_tool_message1]}}),
+                ("messages", (ai_chunk1, {})),
+                ("updates", {"tools": {"messages": [mock_tool_message2]}}),
+                ("messages", (ai_chunk2, {})),
+            ]
+        )
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        events = list(service.generate_response([{"role": "user", "content": "test"}]))
+
+        text_events = [e for e in events if isinstance(e, TextDeltaEvent)]
+        assert len(text_events) == 2
+        assert text_events[0].delta == "\nFirst result"
+        assert text_events[1].delta == "\nSecond result"
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_full_content_includes_newlines(self, mock_create_provider, mock_create_agent):
+        """Test that MessageCompleteEvent content includes the added newlines."""
+        from langchain_core.messages import AIMessageChunk, ToolMessage
+
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_tool_message = MagicMock(spec=ToolMessage)
+        mock_tool_message.tool_call_id = "call_123"
+        mock_tool_message.content = "42"
+
+        ai_chunk = AIMessageChunk(content="The answer is 42.")
+
+        mock_agent = MagicMock()
+        mock_agent.stream.return_value = iter(
+            [
+                ("updates", {"tools": {"messages": [mock_tool_message]}}),
+                ("messages", (ai_chunk, {})),
+            ]
+        )
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        events = list(service.generate_response([{"role": "user", "content": "test"}]))
+
+        complete_events = [e for e in events if isinstance(e, MessageCompleteEvent)]
+        assert len(complete_events) == 1
+        assert complete_events[0].content == "\nThe answer is 42."
+
 
 class TestAgentServiceConvertMessages:
     """Tests for AgentService._convert_messages method."""
@@ -532,7 +700,7 @@ class TestAgentServiceHelperMethods:
 
         service = AgentService()
         ai_chunk = AIMessageChunk(content="Hello!")
-        data = (ai_chunk, {})
+        data: tuple[Any, Any] = (ai_chunk, {})
 
         result = service._handle_messages_stream(data)
 
@@ -554,9 +722,9 @@ class TestAgentServiceHelperMethods:
 
         service = AgentService()
 
-        assert service._handle_messages_stream(None) is None
-        assert service._handle_messages_stream(("single",)) is None
-        assert service._handle_messages_stream("not a tuple") is None
+        assert service._handle_messages_stream(cast(Any, None)) is None
+        assert service._handle_messages_stream(cast(Any, ("single",))) is None
+        assert service._handle_messages_stream(cast(Any, "not a tuple")) is None
 
     @patch("app.services.agent_service.create_react_agent")
     @patch("app.services.agent_service.create_provider")
@@ -574,7 +742,7 @@ class TestAgentServiceHelperMethods:
 
         service = AgentService()
         ai_chunk = AIMessageChunk(content="")
-        data = (ai_chunk, {})
+        data: tuple[Any, Any] = (ai_chunk, {})
 
         result = service._handle_messages_stream(data)
 
@@ -597,7 +765,7 @@ class TestAgentServiceHelperMethods:
         service = AgentService()
         # ToolMessage should be ignored even if it has content
         tool_msg = ToolMessage(content="Tool output: 42", tool_call_id="call_123")
-        data = (tool_msg, {})
+        data: tuple[Any, Any] = (tool_msg, {})
 
         result = service._handle_messages_stream(data)
 
@@ -621,7 +789,7 @@ class TestAgentServiceHelperMethods:
         # Generic MagicMock (not AIMessageChunk) should be ignored
         mock_chunk = MagicMock()
         mock_chunk.content = "This should be ignored"
-        data = (mock_chunk, {})
+        data: tuple[Any, Any] = (mock_chunk, {})
 
         result = service._handle_messages_stream(data)
 
@@ -645,7 +813,7 @@ class TestAgentServiceHelperMethods:
         mock_message = MagicMock()
         mock_message.tool_calls = [{"id": "call_1", "name": "add", "args": {"a": 1}}]
         node_output = {"messages": [mock_message]}
-        emitted = set()
+        emitted: set[str] = set()
 
         events = list(service._process_agent_node(node_output, emitted))
 
