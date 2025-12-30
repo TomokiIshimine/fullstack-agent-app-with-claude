@@ -53,7 +53,7 @@ class UserAlreadyExistsError(UserServiceError):
     """Raised when attempting to create a user with duplicate email."""
 
     def __init__(self, email: str):
-        super().__init__(f"User with email '{email}' already exists", {"email": email})
+        super().__init__("このメールアドレスは既に使用されています", {"email": email})
         self.email = email
 
 
@@ -61,7 +61,7 @@ class UserNotFoundError(UserServiceError):
     """Raised when user is not found."""
 
     def __init__(self, user_id: int):
-        super().__init__(f"User with id {user_id} not found", {"user_id": user_id})
+        super().__init__("ユーザーが見つかりません", {"user_id": user_id})
         self.user_id = user_id
 
 
@@ -69,7 +69,7 @@ class CannotDeleteAdminError(UserServiceError):
     """Raised when attempting to delete an admin user."""
 
     def __init__(self):
-        super().__init__("Admin user cannot be deleted")
+        super().__init__("管理者ユーザーは削除できません")
 
 
 # === Conversation Exceptions ===
@@ -85,7 +85,7 @@ class ConversationNotFoundError(ConversationServiceError):
     """Raised when conversation is not found."""
 
     def __init__(self, uuid: str):
-        super().__init__("Conversation not found", {"uuid": uuid})
+        super().__init__("会話が見つかりません", {"uuid": uuid})
         self.uuid = uuid
 
 
@@ -93,7 +93,7 @@ class ConversationAccessDeniedError(ConversationServiceError):
     """Raised when user doesn't have access to conversation."""
 
     def __init__(self, uuid: str):
-        super().__init__("Access denied", {"uuid": uuid})
+        super().__init__("この会話へのアクセス権限がありません", {"uuid": uuid})
         self.uuid = uuid
 
 
@@ -116,7 +116,7 @@ class InvalidPasswordError(PasswordServiceError):
 class PasswordChangeFailedError(PasswordServiceError):
     """Raised when password change operation fails."""
 
-    def __init__(self, message: str = "Failed to change password"):
+    def __init__(self, message: str = "パスワードの変更に失敗しました"):
         super().__init__(message)
 
 

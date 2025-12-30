@@ -4,17 +4,14 @@ from __future__ import annotations
 
 import json
 import logging
-from functools import wraps
-from typing import Any, Callable, TypeVar
 
 from flask import Blueprint, Response, g, jsonify, request, stream_with_context
-from pydantic import BaseModel, ValidationError
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 from app.constants.sse_events import SERVICE_TO_SSE_EVENT_MAP, SSEEvent
 from app.core.exceptions import ConversationAccessDeniedError, ConversationNotFoundError
 from app.limiter import limiter
-from app.routes.dependencies import with_conversation_service
+from app.routes.dependencies import validate_request_body, with_conversation_service
 from app.schemas.conversation import CreateConversationRequest, SendMessageRequest
 from app.services.conversation_service import ConversationService
 from app.utils.auth_decorator import require_auth
@@ -22,35 +19,6 @@ from app.utils.auth_decorator import require_auth
 logger = logging.getLogger(__name__)
 
 conversation_bp = Blueprint("conversations", __name__, url_prefix="/conversations")
-
-
-SchemaType = TypeVar("SchemaType", bound=BaseModel)
-RouteCallable = TypeVar("RouteCallable", bound=Callable[..., Any])
-
-
-def validate_conversation_request(schema: type[SchemaType]) -> Callable[[RouteCallable], RouteCallable]:
-    """Validate JSON request body with given schema and pass it to the route."""
-
-    def decorator(func: RouteCallable) -> RouteCallable:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any):
-            payload = request.get_json()
-            if not payload:
-                logger.warning("Validation failed: request body is required", extra={"path": request.path})
-                raise BadRequest(description="Request body is required")
-
-            try:
-                data = schema.model_validate(payload)
-            except ValidationError as exc:
-                messages = ", ".join(err.get("msg", "Invalid value") for err in exc.errors())
-                logger.warning("Validation failed for request body", extra={"path": request.path, "messages": messages})
-                raise BadRequest(description=f"Validation error: {messages}") from exc
-
-            return func(*args, data=data, **kwargs)
-
-        return wrapper  # type: ignore[return-value]
-
-    return decorator
 
 
 @conversation_bp.get("")
@@ -95,7 +63,7 @@ def list_conversations(*, conversation_service: ConversationService):
 @require_auth
 @limiter.limit("30/minute")
 @with_conversation_service
-@validate_conversation_request(CreateConversationRequest)
+@validate_request_body(CreateConversationRequest)
 def create_conversation(*, data: CreateConversationRequest, conversation_service: ConversationService):
     """
     Create a new conversation with an initial message and AI response.
@@ -229,7 +197,7 @@ def delete_conversation(uuid: str, *, conversation_service: ConversationService)
 @require_auth
 @limiter.limit("30/minute")
 @with_conversation_service
-@validate_conversation_request(SendMessageRequest)
+@validate_request_body(SendMessageRequest)
 def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: ConversationService):
     """
     Send a message and get AI response.
