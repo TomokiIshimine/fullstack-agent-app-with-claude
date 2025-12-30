@@ -6,6 +6,7 @@ import logging
 
 from flask import Blueprint, g, jsonify
 
+from app.constants.http import HTTP_CREATED, HTTP_NO_CONTENT, HTTP_OK
 from app.routes.dependencies import validate_request_body, with_user_service
 from app.schemas.user import UserCreateRequest, UserListResponse, UserUpdateRequest, UserUpdateResponse
 from app.services.user_service import UserService
@@ -44,7 +45,7 @@ def list_users(*, user_service: UserService):
 
     response = UserListResponse(users=users)
     logger.info(f"GET /api/users - Retrieved {len(users)} users successfully")
-    return jsonify(response.model_dump()), 200
+    return jsonify(response.model_dump()), HTTP_OK
 
 
 @user_bp.post("")
@@ -79,7 +80,7 @@ def create_user(*, data: UserCreateRequest, user_service: UserService):
     result = user_service.create_user(email=data.email, name=data.name)
 
     logger.info(f"POST /api/users - User created successfully: {data.email} (id={result.user.id})")
-    return jsonify(result.model_dump()), 201
+    return jsonify(result.model_dump()), HTTP_CREATED
 
 
 @user_bp.patch("/me")
@@ -117,7 +118,7 @@ def update_current_user(*, data: UserUpdateRequest, user_service: UserService):
         "PATCH /api/users/me - Profile updated successfully",
         extra={"user_id": user_id, "email": data.email},
     )
-    return jsonify(response.model_dump()), 200
+    return jsonify(response.model_dump()), HTTP_OK
 
 
 @user_bp.delete("/<int:user_id>")
@@ -139,7 +140,7 @@ def delete_user(user_id: int, *, user_service: UserService):
     user_service.delete_user(user_id)
 
     logger.info(f"DELETE /api/users/{user_id} - User deleted successfully")
-    return "", 204
+    return "", HTTP_NO_CONTENT
 
 
 __all__ = ["user_bp"]

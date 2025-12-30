@@ -1,0 +1,28 @@
+"""HTTP status code constants."""
+
+# Success status codes
+HTTP_OK = 200
+HTTP_CREATED = 201
+HTTP_NO_CONTENT = 204
+
+# Client error status codes
+HTTP_BAD_REQUEST = 400
+HTTP_UNAUTHORIZED = 401
+HTTP_FORBIDDEN = 403
+HTTP_NOT_FOUND = 404
+HTTP_TOO_MANY_REQUESTS = 429
+
+# Server error status codes
+HTTP_INTERNAL_SERVER_ERROR = 500
+
+__all__ = [
+    "HTTP_OK",
+    "HTTP_CREATED",
+    "HTTP_NO_CONTENT",
+    "HTTP_BAD_REQUEST",
+    "HTTP_UNAUTHORIZED",
+    "HTTP_FORBIDDEN",
+    "HTTP_NOT_FOUND",
+    "HTTP_TOO_MANY_REQUESTS",
+    "HTTP_INTERNAL_SERVER_ERROR",
+]

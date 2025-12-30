@@ -8,6 +8,7 @@ from typing import Generator, Literal
 
 from sqlalchemy.orm import Session
 
+from app.constants.pagination import DEFAULT_PER_PAGE, MAX_PER_PAGE, MIN_PER_PAGE
 from app.core.exceptions import ConversationAccessDeniedError, ConversationNotFoundError
 from app.models.conversation import Conversation
 from app.models.message import Message
@@ -57,7 +58,7 @@ class ConversationService:
         self,
         user_id: int,
         page: int = 1,
-        per_page: int = 20,
+        per_page: int = DEFAULT_PER_PAGE,
     ) -> ConversationListResponse:
         """
         List conversations for a user with pagination.
@@ -71,7 +72,7 @@ class ConversationService:
             ConversationListResponse with conversations and pagination meta
         """
         # Clamp per_page to reasonable limits
-        per_page = max(1, min(per_page, 100))
+        per_page = max(MIN_PER_PAGE, min(per_page, MAX_PER_PAGE))
         page = max(1, page)
 
         conversations_with_count, total = self.conversation_repo.find_by_user_id_with_message_count(

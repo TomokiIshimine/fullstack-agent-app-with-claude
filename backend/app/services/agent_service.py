@@ -11,6 +11,14 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 
+from app.constants.agent import (
+    DEFAULT_LLM_MODEL,
+    DEFAULT_LLM_PROVIDER,
+    DEFAULT_MAX_TOKENS,
+    MAX_TITLE_LENGTH,
+    TITLE_TRUNCATION_LENGTH,
+    TITLE_TRUNCATION_SUFFIX,
+)
 from app.tools import ToolRegistry, get_tool_registry
 
 logger = logging.getLogger(__name__)
@@ -29,18 +37,18 @@ class AgentConfig:
     allowing for easy testing and dependency injection.
     """
 
-    provider: str = "anthropic"
-    model_name: str = "claude-sonnet-4-5-20250929"
-    max_tokens: int = 4096
+    provider: str = DEFAULT_LLM_PROVIDER
+    model_name: str = DEFAULT_LLM_MODEL
+    max_tokens: int = DEFAULT_MAX_TOKENS
     system_prompt: str = SYSTEM_PROMPT
 
     @classmethod
     def from_env(cls) -> "AgentConfig":
         """Create configuration from environment variables."""
         return cls(
-            provider=os.getenv("LLM_PROVIDER", "anthropic"),
-            model_name=os.getenv("LLM_MODEL", "claude-sonnet-4-5-20250929"),
-            max_tokens=int(os.getenv("CLAUDE_MAX_TOKENS", "4096")),
+            provider=os.getenv("LLM_PROVIDER", DEFAULT_LLM_PROVIDER),
+            model_name=os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL),
+            max_tokens=int(os.getenv("CLAUDE_MAX_TOKENS", str(DEFAULT_MAX_TOKENS))),
             system_prompt=SYSTEM_PROMPT,
         )
 
@@ -310,12 +318,12 @@ class AgentService:
             first_message: The first user message in the conversation
 
         Returns:
-            Generated title (max 50 characters)
+            Generated title (max MAX_TITLE_LENGTH characters)
         """
         # Simple approach: truncate the first message
         title = first_message.strip()
-        if len(title) > 50:
-            title = title[:47] + "..."
+        if len(title) > MAX_TITLE_LENGTH:
+            title = title[:TITLE_TRUNCATION_LENGTH] + TITLE_TRUNCATION_SUFFIX
         return title
 
 

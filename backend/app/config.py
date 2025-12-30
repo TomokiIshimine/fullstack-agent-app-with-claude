@@ -7,6 +7,21 @@ from typing import Literal
 
 from dotenv import load_dotenv
 
+from app.constants.database import DEFAULT_MAX_OVERFLOW, DEFAULT_POOL_SIZE
+from app.constants.jwt import (
+    DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES,
+    DEFAULT_JWT_ALGORITHM,
+    DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS,
+)
+from app.constants.rate_limit import (
+    DEFAULT_RATE_LIMITS,
+    DEFAULT_RATE_LIMIT_STRATEGY,
+    LOGIN_RATE_LIMIT,
+    LOGOUT_RATE_LIMIT,
+    REFRESH_RATE_LIMIT,
+)
+from app.constants.redis import DEFAULT_REDIS_PORT
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / ".env"
 
@@ -25,8 +40,8 @@ class DatabaseConfig:
 
     use_cloud_sql_connector: bool
     database_uri: str
-    pool_size: int = 5
-    max_overflow: int = 10
+    pool_size: int = DEFAULT_POOL_SIZE
+    max_overflow: int = DEFAULT_MAX_OVERFLOW
 
 
 @dataclass
@@ -45,8 +60,8 @@ def load_database_config() -> DatabaseConfig:
     """Load database configuration from environment variables."""
     use_cloud_sql = os.getenv("USE_CLOUD_SQL_CONNECTOR", "false").lower() == "true"
     database_uri = os.getenv("DATABASE_URL", DEFAULT_DB_URL)
-    pool_size = int(os.getenv("DB_POOL_SIZE", "5"))
-    max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+    pool_size = int(os.getenv("DB_POOL_SIZE", str(DEFAULT_POOL_SIZE)))
+    max_overflow = int(os.getenv("DB_MAX_OVERFLOW", str(DEFAULT_MAX_OVERFLOW)))
 
     return DatabaseConfig(
         use_cloud_sql_connector=use_cloud_sql,
@@ -95,9 +110,9 @@ class JWTConfig:
     """JWT token configuration."""
 
     secret_key: str
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 1440  # 1 day
-    refresh_token_expire_days: int = 7
+    algorithm: str = DEFAULT_JWT_ALGORITHM
+    access_token_expire_minutes: int = DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES
+    refresh_token_expire_days: int = DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS
 
 
 def _get_environment() -> Literal["production", "development", "testing"]:
@@ -133,9 +148,13 @@ def load_jwt_config() -> JWTConfig:
 
     return JWTConfig(
         secret_key=jwt_secret,
-        algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
-        access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")),
-        refresh_token_expire_days=int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")),
+        algorithm=os.getenv("JWT_ALGORITHM", DEFAULT_JWT_ALGORITHM),
+        access_token_expire_minutes=int(
+            os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES))
+        ),
+        refresh_token_expire_days=int(
+            os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", str(DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS))
+        ),
     )
 
 
@@ -178,16 +197,16 @@ class RateLimitConfig:
     """Rate limiting configuration."""
 
     enabled: bool = False
-    default_limits: list[str] = field(default_factory=lambda: ["200 per hour", "50 per minute"])
-    login_limit: str = "10 per minute"
-    refresh_limit: str = "30 per minute"
-    logout_limit: str = "20 per minute"
-    strategy: str = "fixed-window"
+    default_limits: list[str] = field(default_factory=lambda: list(DEFAULT_RATE_LIMITS))
+    login_limit: str = LOGIN_RATE_LIMIT
+    refresh_limit: str = REFRESH_RATE_LIMIT
+    logout_limit: str = LOGOUT_RATE_LIMIT
+    strategy: str = DEFAULT_RATE_LIMIT_STRATEGY
     headers_enabled: bool = True
     swallow_errors: bool = True
     # Redis configuration
     redis_host: str | None = None
-    redis_port: int = 6379
+    redis_port: int = DEFAULT_REDIS_PORT
     redis_password: str | None = None
 
 
@@ -200,16 +219,16 @@ def load_rate_limit_config() -> RateLimitConfig:
     enabled = os.getenv("RATE_LIMIT_ENABLED", "false").lower() == "true"
 
     redis_host = os.getenv("REDIS_HOST")
-    redis_port = int(os.getenv("REDIS_PORT", "6379"))
+    redis_port = int(os.getenv("REDIS_PORT", str(DEFAULT_REDIS_PORT)))
     redis_password = os.getenv("REDIS_PASSWORD")
 
     return RateLimitConfig(
         enabled=enabled,
-        default_limits=["200 per hour", "50 per minute"],
-        login_limit=os.getenv("RATE_LIMIT_LOGIN", "10 per minute"),
-        refresh_limit=os.getenv("RATE_LIMIT_REFRESH", "30 per minute"),
-        logout_limit=os.getenv("RATE_LIMIT_LOGOUT", "20 per minute"),
-        strategy=os.getenv("RATE_LIMIT_STRATEGY", "fixed-window"),
+        default_limits=list(DEFAULT_RATE_LIMITS),
+        login_limit=os.getenv("RATE_LIMIT_LOGIN", LOGIN_RATE_LIMIT),
+        refresh_limit=os.getenv("RATE_LIMIT_REFRESH", REFRESH_RATE_LIMIT),
+        logout_limit=os.getenv("RATE_LIMIT_LOGOUT", LOGOUT_RATE_LIMIT),
+        strategy=os.getenv("RATE_LIMIT_STRATEGY", DEFAULT_RATE_LIMIT_STRATEGY),
         headers_enabled=os.getenv("RATE_LIMIT_HEADERS", "true").lower() == "true",
         swallow_errors=os.getenv("RATE_LIMIT_SWALLOW_ERRORS", "true").lower() == "true",
         redis_host=redis_host,

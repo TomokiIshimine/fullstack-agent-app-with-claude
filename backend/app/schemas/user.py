@@ -6,6 +6,7 @@ import re
 
 from pydantic import BaseModel, field_validator
 
+from app.constants.validation import MAX_USER_NAME_LENGTH
 from app.schemas.auth import UserResponse
 
 
@@ -40,8 +41,8 @@ class UserCreateRequest(BaseModel):
         if not v or not v.strip():
             raise UserValidationError("Name is required")
         trimmed = v.strip()
-        if len(trimmed) > 100:
-            raise UserValidationError("Name must be at most 100 characters")
+        if len(trimmed) > MAX_USER_NAME_LENGTH:
+            raise UserValidationError(f"Name must be at most {MAX_USER_NAME_LENGTH} characters")
         return trimmed
 
 
@@ -76,8 +77,8 @@ class UserUpdateRequest(BaseModel):
         if not v or not v.strip():
             raise UserValidationError("Name is required")
         trimmed = v.strip()
-        if len(trimmed) > 100:
-            raise UserValidationError("Name must be at most 100 characters")
+        if len(trimmed) > MAX_USER_NAME_LENGTH:
+            raise UserValidationError(f"Name must be at most {MAX_USER_NAME_LENGTH} characters")
         return trimmed
 
 
