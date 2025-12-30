@@ -73,8 +73,6 @@ export function ChatPage() {
         conversations={conversations}
         currentUuid={uuid}
         isLoading={isLoadingConversations}
-        userName={user?.name || undefined}
-        userEmail={user?.email}
         onNewChat={handleNewChat}
         onSelectConversation={handleSelectConversation}
         isOpen={isSidebarOpen}

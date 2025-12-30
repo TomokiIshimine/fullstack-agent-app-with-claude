@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react'
+import { useScrollLock } from '@/hooks/useScrollLock'
 
 export type ModalSize = 'sm' | 'md' | 'lg'
 
@@ -31,17 +32,8 @@ export const Modal: React.FC<ModalProps> = ({
 }) => {
   const overlayRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
+  // Prevent body scroll when modal is open
+  useScrollLock(isOpen)
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
