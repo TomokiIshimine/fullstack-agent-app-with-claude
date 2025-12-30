@@ -34,7 +34,10 @@ export async function fetchWithLogging(url: string, options?: RequestInit): Prom
     logger.logApiResponse(method, url, response.status, duration)
 
     // Detect session expiration and emit global event
-    if (response.status === 401) {
+    // Exclude auth endpoints to avoid false positives on initial page load
+    // (e.g., /api/auth/refresh returning 401 for unauthenticated users)
+    const isAuthEndpoint = url.includes('/api/auth/')
+    if (response.status === 401 && !isAuthEndpoint) {
       logger.warn('Session expired - 401 received', { url, method })
       emitSessionExpired()
     }

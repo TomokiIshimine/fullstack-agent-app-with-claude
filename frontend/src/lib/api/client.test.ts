@@ -326,4 +326,34 @@ describe('fetchWithLogging', () => {
     expect(response.status).toBe(401)
     expect(response.ok).toBe(false)
   })
+
+  it('should not emit session expired event on 401 for auth endpoints', async () => {
+    const emitSpy = vi.spyOn(authEvents, 'emitSessionExpired')
+
+    mockFetch.mockResolvedValueOnce(
+      createMockResponse({ error: 'Unauthorized' }, { status: 401, ok: false })
+    )
+
+    await fetchWithLogging('/api/auth/refresh')
+
+    expect(emitSpy).not.toHaveBeenCalled()
+  })
+
+  it('should not emit session expired event on 401 for any auth endpoint', async () => {
+    const emitSpy = vi.spyOn(authEvents, 'emitSessionExpired')
+
+    // Test various auth endpoints
+    const authEndpoints = ['/api/auth/login', '/api/auth/logout', '/api/auth/refresh', '/api/auth/me']
+
+    for (const endpoint of authEndpoints) {
+      emitSpy.mockClear()
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse({ error: 'Unauthorized' }, { status: 401, ok: false })
+      )
+
+      await fetchWithLogging(endpoint)
+
+      expect(emitSpy).not.toHaveBeenCalled()
+    }
+  })
 })
