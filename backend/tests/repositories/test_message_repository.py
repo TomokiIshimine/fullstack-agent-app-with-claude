@@ -183,11 +183,23 @@ class TestMessageRepositoryFindByConversationId:
 
     def test_find_by_conversation_id_ordered_by_created_at(self, app, message_repo, sample_conversation):
         """Test that messages are ordered by created_at ascending."""
+        from datetime import datetime, timedelta, timezone
+
         repo, session = message_repo
         with app.app_context():
-            repo.create(conversation_id=sample_conversation, role="user", content="First")
-            repo.create(conversation_id=sample_conversation, role="assistant", content="Second")
-            repo.create(conversation_id=sample_conversation, role="user", content="Third")
+            # Use explicit timestamps to ensure deterministic ordering
+            # (SQLite has only second-resolution timestamps)
+            base_time = datetime.now(timezone.utc)
+            msg1 = repo.create(conversation_id=sample_conversation, role="user", content="First")
+            msg1.created_at = base_time - timedelta(seconds=2)
+
+            msg2 = repo.create(conversation_id=sample_conversation, role="assistant", content="Second")
+            msg2.created_at = base_time - timedelta(seconds=1)
+
+            msg3 = repo.create(conversation_id=sample_conversation, role="user", content="Third")
+            msg3.created_at = base_time
+
+            session.flush()
 
             result = repo.find_by_conversation_id(sample_conversation)
 
