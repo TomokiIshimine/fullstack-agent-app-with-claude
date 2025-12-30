@@ -46,13 +46,24 @@ class ConversationService:
 
         Args:
             session: SQLAlchemy database session.
-            agent_service: Agent service instance. If None, creates a new instance.
+            agent_service: Agent service instance. If None, creates lazily on first use.
         """
         self.session = session
         self.conversation_repo = ConversationRepository(session)
         self.message_repo = MessageRepository(session)
         self.tool_call_repo = ToolCallRepository(session)
-        self.agent_service = agent_service or AgentService()
+        self._agent_service: AgentService | None = agent_service
+
+    @property
+    def agent_service(self) -> AgentService:
+        """Get agent service, creating it lazily if needed.
+
+        Returns:
+            AgentService instance.
+        """
+        if self._agent_service is None:
+            self._agent_service = AgentService()
+        return self._agent_service
 
     def list_conversations(
         self,
