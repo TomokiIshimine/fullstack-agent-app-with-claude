@@ -14,6 +14,7 @@ Full-stack monorepo: React + TypeScript frontend, Flask + SQLAlchemy backend, My
 - [backend/CLAUDE.md](backend/CLAUDE.md) - Backend architecture, patterns, logging
 - [frontend/CLAUDE.md](frontend/CLAUDE.md) - Frontend architecture, UI components, patterns
 - [docs/](docs/) - Comprehensive documentation (start with `00_development.md`)
+- [docs/10_troubleshooting.md](docs/10_troubleshooting.md) - Common issues and solutions
 
 ## Architecture
 
@@ -53,6 +54,8 @@ Frontend (React)                    Backend (Flask)
 make up                   # Start all services (frontend :5174, backend :5000, MySQL, Redis)
 make down                 # Stop all services
 make install              # Install all dependencies
+make doctor               # Check development environment (Node, Python, Docker, etc.)
+make health               # Check if all services are running and healthy
 ```
 
 ### Testing

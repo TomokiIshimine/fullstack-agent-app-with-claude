@@ -1,4 +1,4 @@
-.PHONY: install setup up down lint lint-frontend lint-backend format format-check test test-frontend test-backend test-fast test-cov test-parallel test-frontend-ci test-backend-ci security ci pre-commit-install pre-commit-run pre-commit-update db-init db-create-user db-reset
+.PHONY: install setup up down lint lint-frontend lint-backend format format-check test test-frontend test-backend test-fast test-cov test-parallel test-frontend-ci test-backend-ci security ci pre-commit-install pre-commit-run pre-commit-update db-init db-create-user db-reset doctor health
 
 PNPM ?= pnpm --dir frontend
 POETRY ?= poetry -C backend
@@ -151,3 +151,126 @@ db-reset:
 	@printf 'Waiting for database to be ready...\n'
 	@sleep 5
 	@printf '✅ Database reset complete\n'
+
+# Environment validation
+doctor:
+	@printf '🩺 Checking development environment...\n\n'
+	@ERRORS=0; \
+	printf '  Node.js:   '; \
+	if command -v node >/dev/null 2>&1; then \
+		NODE_VER=$$(node --version | sed 's/v//'); \
+		NODE_MAJOR=$$(echo $$NODE_VER | cut -d. -f1); \
+		if [ $$NODE_MAJOR -ge 20 ]; then \
+			printf '✅ v%s\n' "$$NODE_VER"; \
+		else \
+			printf '⚠️  v%s (v20+ recommended)\n' "$$NODE_VER"; \
+		fi; \
+	else \
+		printf '❌ Not installed\n'; ERRORS=1; \
+	fi; \
+	printf '  Python:    '; \
+	if command -v python3 >/dev/null 2>&1; then \
+		PY_VER=$$(python3 --version | cut -d' ' -f2); \
+		PY_MAJOR=$$(echo $$PY_VER | cut -d. -f1); \
+		PY_MINOR=$$(echo $$PY_VER | cut -d. -f2); \
+		if [ $$PY_MAJOR -ge 3 ] && [ $$PY_MINOR -ge 12 ]; then \
+			printf '✅ v%s\n' "$$PY_VER"; \
+		else \
+			printf '⚠️  v%s (v3.12+ recommended)\n' "$$PY_VER"; \
+		fi; \
+	else \
+		printf '❌ Not installed\n'; ERRORS=1; \
+	fi; \
+	printf '  Docker:    '; \
+	if command -v docker >/dev/null 2>&1; then \
+		if docker info >/dev/null 2>&1; then \
+			DOCKER_VER=$$(docker --version | sed 's/Docker version \([^,]*\).*/\1/'); \
+			printf '✅ v%s (running)\n' "$$DOCKER_VER"; \
+		else \
+			printf '⚠️  Installed but not running\n'; ERRORS=1; \
+		fi; \
+	else \
+		printf '❌ Not installed\n'; ERRORS=1; \
+	fi; \
+	printf '  pnpm:      '; \
+	if command -v pnpm >/dev/null 2>&1; then \
+		PNPM_VER=$$(pnpm --version); \
+		printf '✅ v%s\n' "$$PNPM_VER"; \
+	else \
+		printf '❌ Not installed (run: npm install -g pnpm)\n'; ERRORS=1; \
+	fi; \
+	printf '  Poetry:    '; \
+	if command -v poetry >/dev/null 2>&1; then \
+		POETRY_VER=$$(poetry --version | sed 's/Poetry (version \(.*\))/\1/'); \
+		printf '✅ v%s\n' "$$POETRY_VER"; \
+	else \
+		printf '❌ Not installed (see: https://python-poetry.org/docs/#installation)\n'; ERRORS=1; \
+	fi; \
+	printf '\n  Environment files:\n'; \
+	printf '    infra/.env.development: '; \
+	if [ -f infra/.env.development ]; then \
+		printf '✅ exists\n'; \
+	else \
+		printf '❌ missing (copy from infra/.env.example)\n'; ERRORS=1; \
+	fi; \
+	printf '    backend/.env:           '; \
+	if [ -f backend/.env ]; then \
+		printf '✅ exists\n'; \
+	else \
+		printf '⚠️  missing (optional, uses defaults)\n'; \
+	fi; \
+	printf '\n'; \
+	if [ $$ERRORS -eq 0 ]; then \
+		printf '✅ Environment is ready! Run `make install` to install dependencies.\n'; \
+	else \
+		printf '❌ Some issues found. Please fix them before continuing.\n'; \
+		printf '   See docs/10_troubleshooting.md for help.\n'; \
+		exit 1; \
+	fi
+
+# Service health check
+health:
+	@printf '🏥 Checking service health...\n\n'
+	@ERRORS=0; \
+	printf '  Docker services:\n'; \
+	for SERVICE in frontend backend db redis; do \
+		printf '    %s: ' "$$SERVICE"; \
+		STATUS=$$($(COMPOSE) ps --format '{{.Status}}' $$SERVICE 2>/dev/null | head -1); \
+		if echo "$$STATUS" | grep -q "Up"; then \
+			if echo "$$STATUS" | grep -q "healthy"; then \
+				printf '✅ Running (healthy)\n'; \
+			elif echo "$$STATUS" | grep -q "starting"; then \
+				printf '⏳ Starting...\n'; \
+			else \
+				printf '✅ Running\n'; \
+			fi; \
+		else \
+			printf '❌ Not running\n'; ERRORS=1; \
+		fi; \
+	done; \
+	printf '\n  HTTP endpoints:\n'; \
+	printf '    Frontend (http://localhost:5174): '; \
+	if curl -sf http://localhost:5174 >/dev/null 2>&1; then \
+		printf '✅ Accessible\n'; \
+	else \
+		printf '❌ Not accessible\n'; ERRORS=1; \
+	fi; \
+	printf '    Backend  (http://localhost:5001/api/health): '; \
+	HEALTH_RESP=$$(curl -sf http://localhost:5001/api/health 2>/dev/null); \
+	if [ $$? -eq 0 ]; then \
+		DB_STATUS=$$(echo "$$HEALTH_RESP" | grep -o '"database":"[^"]*"' | cut -d'"' -f4); \
+		if [ "$$DB_STATUS" = "connected" ]; then \
+			printf '✅ Healthy (DB connected)\n'; \
+		else \
+			printf '⚠️  Running (DB: %s)\n' "$$DB_STATUS"; \
+		fi; \
+	else \
+		printf '❌ Not accessible\n'; ERRORS=1; \
+	fi; \
+	printf '\n'; \
+	if [ $$ERRORS -eq 0 ]; then \
+		printf '✅ All services are healthy!\n'; \
+	else \
+		printf '❌ Some services are not healthy. Try `make down && make up`.\n'; \
+		printf '   See docs/10_troubleshooting.md for help.\n'; \
+	fi
