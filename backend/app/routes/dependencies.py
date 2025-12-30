@@ -10,21 +10,17 @@ from flask import g, request
 from pydantic import BaseModel, ValidationError
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, InternalServerError, NotFound, Unauthorized
 
-from app.core.exceptions import (
-    # Auth exceptions
+from app.core.exceptions import (  # Auth exceptions; Conversation exceptions; Password exceptions; User exceptions
     AuthServiceError,
-    InvalidCredentialsError,
-    InvalidRefreshTokenError,
-    # Conversation exceptions
+    CannotDeleteAdminError,
     ConversationAccessDeniedError,
     ConversationNotFoundError,
     ConversationServiceError,
-    # Password exceptions
+    InvalidCredentialsError,
     InvalidPasswordError,
+    InvalidRefreshTokenError,
     PasswordChangeFailedError,
     PasswordServiceError,
-    # User exceptions
-    CannotDeleteAdminError,
     UserAlreadyExistsError,
     UserNotFoundError,
     UserServiceError,

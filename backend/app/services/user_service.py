@@ -6,12 +6,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import (
-    CannotDeleteAdminError,
-    UserAlreadyExistsError,
-    UserNotFoundError,
-    UserServiceError,
-)
+from app.core.exceptions import CannotDeleteAdminError, UserAlreadyExistsError, UserNotFoundError, UserServiceError
 from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.message_repository import MessageRepository
 from app.repositories.refresh_token_repository import RefreshTokenRepository
