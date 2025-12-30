@@ -40,7 +40,7 @@ lint-frontend:
 	@printf '🔍 Linting frontend...\n'
 	@$(PNPM_QUIET) run lint
 	@$(PNPM) exec tsc --noEmit
-	@$(PNPM) exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}" 2>/dev/null || true
+	@$(PNPM) exec prettier --check --log-level warn "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}"
 	@printf '✅ Frontend lint passed\n'
 
 lint-backend:
@@ -109,9 +109,9 @@ format-check:
 security:
 	@printf '🔒 Running security audit...\n'
 	@EXIT_CODE=0; \
-	$(PNPM) audit --audit-level=moderate 2>/dev/null || EXIT_CODE=$$?; \
+	$(PNPM) audit --audit-level=moderate || EXIT_CODE=$$?; \
 	$(POETRY_QUIET) check || EXIT_CODE=$$?; \
-	$(POETRY) run pip-audit 2>/dev/null || EXIT_CODE=$$?; \
+	$(POETRY) run pip-audit || EXIT_CODE=$$?; \
 	if [ $$EXIT_CODE -eq 0 ]; then printf '✅ Security audit passed\n'; fi; \
 	exit $$EXIT_CODE
 
