@@ -134,17 +134,18 @@ class AgentService:
             config: Agent configuration. Deprecated, use provider instead.
             tool_registry: Tool registry instance. If None, uses global registry.
             provider: LLM provider instance. If None, creates from config.
-            system_prompt: System prompt override. Defaults to SYSTEM_PROMPT.
+            system_prompt: System prompt override. Takes precedence over config.system_prompt.
         """
-        self._system_prompt = system_prompt or SYSTEM_PROMPT
-
         # Handle backward compatibility: config takes precedence if both provided
         if config is not None:
             self.config = config
             self._provider = None
+            # Honor config.system_prompt unless explicitly overridden by system_prompt arg
+            self._system_prompt = system_prompt if system_prompt is not None else config.system_prompt
             self.llm = self._create_llm_from_config()
         elif provider is not None:
             self._provider = provider
+            self._system_prompt = system_prompt or SYSTEM_PROMPT
             self.config = AgentConfig(
                 provider=provider.provider_name,
                 model_name=provider.model_name,
@@ -155,6 +156,7 @@ class AgentService:
         else:
             # Default: create provider from environment
             self._provider = create_provider()
+            self._system_prompt = system_prompt or SYSTEM_PROMPT
             self.config = AgentConfig(
                 provider=self._provider.provider_name,
                 model_name=self._provider.model_name,

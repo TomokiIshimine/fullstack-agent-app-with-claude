@@ -105,6 +105,53 @@ class TestAgentServiceInit:
 
     @patch("app.services.agent_service.create_react_agent")
     @patch("app.services.agent_service.create_provider")
+    def test_init_with_config_honors_system_prompt(self, mock_create_provider, mock_create_agent):
+        """Test that config.system_prompt is honored when using AgentConfig."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_create_provider.return_value = mock_provider
+
+        custom_prompt = "You are a specialized assistant from config."
+        config = AgentConfig(
+            provider="anthropic",
+            model_name="claude-opus-4",
+            system_prompt=custom_prompt,
+        )
+        service = AgentService(config=config)
+
+        assert service._system_prompt == custom_prompt
+        # Verify the custom prompt was passed to create_react_agent
+        mock_create_agent.assert_called_once()
+        call_kwargs = mock_create_agent.call_args
+        assert call_kwargs.kwargs.get("prompt") == custom_prompt
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_init_system_prompt_arg_overrides_config(self, mock_create_provider, mock_create_agent):
+        """Test that system_prompt argument takes precedence over config.system_prompt."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_create_provider.return_value = mock_provider
+
+        config_prompt = "Prompt from config."
+        override_prompt = "Override prompt from argument."
+        config = AgentConfig(
+            provider="anthropic",
+            model_name="claude-opus-4",
+            system_prompt=config_prompt,
+        )
+        service = AgentService(config=config, system_prompt=override_prompt)
+
+        assert service._system_prompt == override_prompt
+        # Verify the override prompt was passed to create_react_agent
+        mock_create_agent.assert_called_once()
+        call_kwargs = mock_create_agent.call_args
+        assert call_kwargs.kwargs.get("prompt") == override_prompt
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
     def test_init_with_provider(self, mock_create_provider, mock_create_agent):
         """Test initialization with LLM provider instance."""
         mock_llm = MagicMock()
