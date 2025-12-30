@@ -76,6 +76,23 @@ jobs:
           path: backend/htmlcov/
           retention-days: 7
 
+  # Format checks
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Frontend
+        uses: ./.github/actions/setup-frontend
+
+      - name: Setup Backend
+        uses: ./.github/actions/setup-backend
+
+      - name: Check formatting
+        run: make format-check-ci
+
   # Security checks
   security:
     name: Security Checks
