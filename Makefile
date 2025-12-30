@@ -4,98 +4,135 @@ PNPM ?= pnpm --dir frontend
 POETRY ?= poetry -C backend
 COMPOSE ?= docker compose -f infra/docker-compose.yml --env-file infra/.env.development
 
+# Suppress command echo and add quiet flags where appropriate
+PNPM_QUIET = $(PNPM) --silent
+POETRY_QUIET = $(POETRY) --quiet
+
 install:
-	CI=true $(PNPM) install --config.allow-scripts=true
-	$(POETRY) install
+	@printf '📦 Installing frontend dependencies...\n'
+	@CI=true $(PNPM_QUIET) install --config.allow-scripts=true
+	@printf '📦 Installing backend dependencies...\n'
+	@$(POETRY_QUIET) install
+	@printf '✅ Dependencies installed\n'
 
 setup: install
 	@printf '✅ Environment setup complete. You can now run `make up` to start the stack.\n'
 
 up:
-	$(COMPOSE) up -d
+	@printf '🚀 Starting services...\n'
+	@$(COMPOSE) up -d --quiet-pull 2>/dev/null || $(COMPOSE) up -d
+	@printf '✅ Services started (frontend :5174, backend :5000)\n'
 
 down:
-	$(COMPOSE) down
+	@$(COMPOSE) down --remove-orphans 2>/dev/null
+	@printf '✅ Services stopped\n'
 
 lint:
-	$(PNPM) run lint
-	$(PNPM) exec tsc --noEmit
-	$(POETRY) run flake8 app tests
-	$(POETRY) run mypy app
+	@printf '🔍 Linting frontend...\n'
+	@$(PNPM_QUIET) run lint
+	@$(PNPM) exec tsc --noEmit
+	@printf '🔍 Linting backend...\n'
+	@$(POETRY) run flake8 app tests --quiet || $(POETRY) run flake8 app tests
+	@$(POETRY) run mypy app --no-error-summary 2>/dev/null || $(POETRY) run mypy app
+	@printf '✅ Lint passed\n'
 
 lint-frontend:
-	$(PNPM) run lint
-	$(PNPM) exec tsc --noEmit
-	$(PNPM) exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}"
+	@printf '🔍 Linting frontend...\n'
+	@$(PNPM_QUIET) run lint
+	@$(PNPM) exec tsc --noEmit
+	@$(PNPM) exec prettier --check --log-level warn "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}"
+	@printf '✅ Frontend lint passed\n'
 
 lint-backend:
-	$(POETRY) run flake8 app tests
-	$(POETRY) run mypy app
-	$(POETRY) run isort --check-only app tests
-	$(POETRY) run black --check app tests
+	@printf '🔍 Linting backend...\n'
+	@$(POETRY) run flake8 app tests --quiet || $(POETRY) run flake8 app tests
+	@$(POETRY) run mypy app --no-error-summary 2>/dev/null || $(POETRY) run mypy app
+	@$(POETRY) run isort --check-only --quiet app tests
+	@$(POETRY) run black --check --quiet app tests
+	@printf '✅ Backend lint passed\n'
 
 test:
-	$(PNPM) run test:coverage
-	$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html
+	@printf '🧪 Running frontend tests...\n'
+	@$(PNPM_QUIET) run test:coverage
+	@printf '🧪 Running backend tests...\n'
+	@$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html -q
+	@printf '✅ All tests passed\n'
 
 test-frontend:
-	$(PNPM) run test -- --runInBand
+	@printf '🧪 Running frontend tests...\n'
+	@$(PNPM_QUIET) run test -- --runInBand
+	@printf '✅ Frontend tests passed\n'
 
 test-backend:
-	$(POETRY) run pytest --cov=app --cov-report=term-missing
+	@printf '🧪 Running backend tests...\n'
+	@$(POETRY) run pytest --cov=app --cov-report=term-missing -q
+	@printf '✅ Backend tests passed\n'
 
 test-fast:
-	$(PNPM) run test -- --runInBand
-	$(POETRY) run pytest --no-cov
+	@printf '🧪 Running tests (no coverage)...\n'
+	@$(PNPM_QUIET) run test -- --runInBand
+	@$(POETRY) run pytest --no-cov -q
+	@printf '✅ All tests passed\n'
 
 test-cov:
-	$(PNPM) run test -- --runInBand
-	$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html
+	@printf '🧪 Running tests with coverage...\n'
+	@$(PNPM_QUIET) run test -- --runInBand
+	@$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html -q
 	@printf '\n✅ Coverage report generated in backend/htmlcov/index.html\n'
 
 test-parallel:
-	$(PNPM) run test -- --runInBand
-	$(POETRY) run pytest -n auto --cov=app --cov-report=term-missing
+	@printf '🧪 Running tests in parallel...\n'
+	@$(PNPM_QUIET) run test -- --runInBand
+	@$(POETRY) run pytest -n auto --cov=app --cov-report=term-missing -q
+	@printf '✅ All tests passed\n'
 
 test-frontend-ci:
-	$(PNPM) run test:coverage
+	@$(PNPM_QUIET) run test:coverage
 
 test-backend-ci:
-	$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html
+	@$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html -q
 
 format:
-	$(PNPM) run format
-	$(POETRY) run isort app tests
-	$(POETRY) run black app tests
+	@printf '✨ Formatting code...\n'
+	@$(PNPM) exec prettier --ignore-unknown --write --log-level warn .
+	@$(POETRY) run isort app tests --quiet
+	@$(POETRY) run black app tests --quiet
+	@printf '✅ Code formatted\n'
 
 format-check:
-	$(PNPM) exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}"
-	$(POETRY) run isort --check-only app tests
-	$(POETRY) run black --check app tests
+	@printf '🔍 Checking format...\n'
+	@$(PNPM) exec prettier --check --log-level warn "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}"
+	@$(POETRY) run isort --check-only --quiet app tests
+	@$(POETRY) run black --check --quiet app tests
+	@printf '✅ Format check passed\n'
 
 security:
+	@printf '🔒 Running security audit...\n'
 	@EXIT_CODE=0; \
 	$(PNPM) audit --audit-level=moderate || EXIT_CODE=$$?; \
-	$(POETRY) check || EXIT_CODE=$$?; \
+	$(POETRY_QUIET) check || EXIT_CODE=$$?; \
 	$(POETRY) run pip-audit || EXIT_CODE=$$?; \
+	if [ $$EXIT_CODE -eq 0 ]; then printf '✅ Security audit passed\n'; fi; \
 	exit $$EXIT_CODE
 
 ci: lint format-check test
 
 pre-commit-install:
-	$(POETRY) run pre-commit install
+	@$(POETRY) run pre-commit install >/dev/null
 	@printf '✅ Pre-commit hooks installed\n'
 
 pre-commit-run:
-	$(POETRY) run pre-commit run --all-files
+	@printf '🔍 Running pre-commit hooks...\n'
+	@$(POETRY) run pre-commit run --all-files
 
 pre-commit-update:
-	$(POETRY) run pre-commit autoupdate
+	@$(POETRY) run pre-commit autoupdate
 	@printf '✅ Pre-commit hooks updated\n'
 
 # Database management targets
 db-init:
-	$(POETRY) run python scripts/create_tables.py
+	@printf '🗄️  Creating database tables...\n'
+	@$(POETRY) run python scripts/create_tables.py 2>/dev/null || $(POETRY) run python scripts/create_tables.py
 	@printf '✅ Database tables created\n'
 
 db-create-user:
@@ -103,12 +140,13 @@ db-create-user:
 		printf 'Usage: make db-create-user EMAIL=user@example.com PASSWORD=password123\n'; \
 		exit 1; \
 	fi
-	$(POETRY) run python scripts/create_user.py $(EMAIL) $(PASSWORD)
+	@$(POETRY) run python scripts/create_user.py $(EMAIL) $(PASSWORD)
 
 db-reset:
 	@printf '⚠️  This will reset the database. Are you sure? [y/N] ' && read ans && [ $${ans:-N} = y ]
-	$(COMPOSE) down -v
-	$(COMPOSE) up -d db
+	@$(COMPOSE) down -v 2>/dev/null
+	@printf '🗄️  Starting database...\n'
+	@$(COMPOSE) up -d db --quiet-pull 2>/dev/null || $(COMPOSE) up -d db
 	@printf 'Waiting for database to be ready...\n'
 	@sleep 5
 	@printf '✅ Database reset complete\n'
