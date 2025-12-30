@@ -1,8 +1,8 @@
 # 機能一覧
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-12-27
-**バージョン:** 1.3
+**最終更新:** 2025-12-30
+**バージョン:** 1.4
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -26,6 +26,7 @@ graph TB
     System --> Auth["認証機能"]
     System --> UserMgmt["ユーザー管理機能"]
     System --> AIChat["AIチャット機能"]
+    System --> AdminMgmt["管理者機能"]
     System --> Common["共通機能"]
 
     Auth --> Login["ログイン"]
@@ -44,6 +45,9 @@ graph TB
     AIChat --> StreamingResponse["ストリーミング応答"]
     AIChat --> DeleteConversation["会話削除"]
 
+    AdminMgmt --> AdminConversationList["会話履歴一覧"]
+    AdminMgmt --> AdminConversationDetail["会話詳細表示"]
+
     Common --> Logging["ロギング"]
     Common --> ErrorHandle["エラーハンドリング"]
     Common --> Validation["バリデーション"]
@@ -53,6 +57,7 @@ graph TB
     style Auth fill:#fff4e6
     style UserMgmt fill:#e8f5e9
     style AIChat fill:#e3f2fd
+    style AdminMgmt fill:#fce4ec
     style Common fill:#f3e5f5
 ```
 
@@ -94,7 +99,16 @@ graph TB
 
 ---
 
-### 3.4 共通機能
+### 3.4 管理者機能
+
+| 機能 | エンドポイント | 実装箇所 | 主な仕様 |
+|------|--------------|---------|---------|
+| **会話履歴一覧** | `GET /api/admin/conversations` | FE: `ConversationHistoryPage.tsx`<br/>BE: `admin_conversation_routes.py` | - 管理者のみアクセス可能<br/>- 全ユーザーの会話一覧取得<br/>- ページネーション対応<br/>- ユーザーID/日付範囲でフィルタリング |
+| **会話詳細表示** | `GET /api/admin/conversations/{uuid}` | FE: `ConversationDetailModal.tsx`<br/>BE: `admin_conversation_routes.py` | - 管理者のみアクセス可能<br/>- 会話の全メッセージ表示<br/>- ユーザー情報を含む |
+
+---
+
+### 3.5 共通機能
 
 | 機能 | 実装箇所 | 主な仕様 |
 |------|---------|---------|
@@ -125,6 +139,8 @@ graph TB
 | AIチャット | 会話詳細取得 | ✓ | ✓ | BE: ✓ |
 | AIチャット | メッセージ送信 | ✓ | ✓ | BE: ✓ |
 | AIチャット | 会話削除 | ✓ | ✓ | BE: ✓ |
+| 管理者機能 | 会話履歴一覧 | ✓ | ✓ | BE: ✓ |
+| 管理者機能 | 会話詳細表示 | ✓ | ✓ | BE: ✓ |
 | 共通 | UIコンポーネントライブラリ | - | ✓ | FE: ✓ |
 | 共通 | ロギング | ✓ | ✓ | - |
 | 共通 | エラーハンドリング | ✓ | ✓ | BE: ✓, FE: ✓ |
@@ -187,6 +203,20 @@ graph TB
 | DELETE | `/api/conversations/{uuid}` | 必要 | 所有者のみ | 会話削除 |
 | POST | `/api/conversations/{uuid}/messages` | 必要 | 所有者のみ | メッセージ送信（SSEストリーミング対応） |
 
+### 5.6 管理者用 API
+
+| メソッド | エンドポイント | 認証 | 権限 | 説明 |
+|---------|--------------|------|------|------|
+| GET | `/api/admin/conversations` | 必要 | 管理者のみ | 全ユーザーの会話一覧取得（フィルタリング対応） |
+| GET | `/api/admin/conversations/{uuid}` | 必要 | 管理者のみ | 会話詳細取得（ユーザー情報含む） |
+
+**クエリパラメータ（会話一覧）:**
+- `page`: ページ番号（デフォルト: 1）
+- `per_page`: 1ページあたりの件数（デフォルト: 20）
+- `user_id`: ユーザーIDでフィルタリング
+- `start_date`: 開始日（ISO形式）
+- `end_date`: 終了日（ISO形式）
+
 **ストリーミング応答:**
 - デフォルトでSSE（Server-Sent Events）ストリーミングが有効
 - `X-Stream: false` ヘッダーで非ストリーミングモードに切り替え可能
@@ -208,6 +238,7 @@ graph TB
 | チャット画面 | `/chat`, `/chat/:uuid` | 必要 | 全ユーザー | AIチャット、会話管理 | `ChatPage.tsx` |
 | 設定画面 | `/settings` | 必要 | 全ユーザー | プロフィール編集、パスワード変更 | `SettingsPage.tsx` |
 | ユーザー管理画面 | `/admin/users` | 必要 | 管理者のみ | ユーザー一覧表示、作成、削除 | `UserManagementPage.tsx` |
+| 会話履歴管理画面 | `/admin/conversations` | 必要 | 管理者のみ | 全ユーザーの会話履歴閲覧 | `ConversationHistoryPage.tsx` |
 
 ### 6.2 画面遷移図
 
@@ -220,14 +251,21 @@ stateDiagram-v2
 
     Chat --> Settings: 設定画面へ
     Chat --> UserManagement: ユーザー管理へ（管理者のみ）
+    Chat --> ConversationHistory: 会話履歴へ（管理者のみ）
     Settings --> Chat: チャット画面へ
     UserManagement --> Chat: チャット画面へ
+    ConversationHistory --> Chat: チャット画面へ
 
     UserManagement --> Settings: 設定画面へ
+    UserManagement --> ConversationHistory: 会話履歴へ
     Settings --> UserManagement: ユーザー管理へ（管理者のみ）
+    Settings --> ConversationHistory: 会話履歴へ（管理者のみ）
+    ConversationHistory --> UserManagement: ユーザー管理へ
+    ConversationHistory --> Settings: 設定画面へ
 
     Chat --> Login: ログアウト
     UserManagement --> Login: ログアウト
+    ConversationHistory --> Login: ログアウト
     Settings --> Login: ログアウト
 ```
 
