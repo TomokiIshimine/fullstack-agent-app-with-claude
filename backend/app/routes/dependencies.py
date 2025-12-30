@@ -9,7 +9,7 @@ from typing import Any, Callable, TypeVar
 from flask import g, request
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
-from werkzeug.exceptions import BadRequest, Conflict, Forbidden, InternalServerError, NotFound, ServiceUnavailable, Unauthorized
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, HTTPException, InternalServerError, NotFound, ServiceUnavailable, Unauthorized
 
 from app.core.exceptions import (
     AuthServiceError,
@@ -37,6 +37,9 @@ from app.services.password_service import PasswordService
 from app.services.user_service import UserService
 
 logger = logging.getLogger(__name__)
+
+# Type alias for error mapping: exception class -> HTTP exception class
+ErrorMapping = dict[type[Exception], type[HTTPException]]
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
 RouteCallable = TypeVar("RouteCallable", bound=Callable[..., Any])
@@ -69,6 +72,65 @@ def _handle_sqlalchemy_error(exc: SQLAlchemyError) -> None:
     else:
         logger.error(f"Unexpected database error: {exc}", exc_info=True)
         raise InternalServerError(description="データベースエラーが発生しました") from exc
+
+
+def _create_service_decorator(
+    service_getter: Callable[[], Any],
+    service_kwarg: str,
+    error_mapping: ErrorMapping,
+    fallback_error_class: type[Exception],
+    service_name: str,
+) -> Callable[[RouteCallable], RouteCallable]:
+    """Create a service injection decorator with error handling.
+
+    Factory function that generates decorators for injecting services into
+    route handlers while translating domain exceptions to HTTP exceptions.
+
+    Args:
+        service_getter: Function that returns the service instance.
+        service_kwarg: Name of the keyword argument to inject the service as.
+        error_mapping: Dict mapping domain exception classes to HTTP exception classes.
+        fallback_error_class: Service error class to catch as fallback (logs and raises 500).
+        service_name: Human-readable service name for logging.
+
+    Returns:
+        A decorator function that can be applied to route handlers.
+
+    Example:
+        with_auth_service = _create_service_decorator(
+            service_getter=get_auth_service,
+            service_kwarg="auth_service",
+            error_mapping={
+                InvalidCredentialsError: Unauthorized,
+                InvalidRefreshTokenError: Unauthorized,
+            },
+            fallback_error_class=AuthServiceError,
+            service_name="auth",
+        )
+    """
+
+    def decorator(func: RouteCallable) -> RouteCallable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any):
+            service = service_getter()
+            try:
+                return func(*args, **{service_kwarg: service}, **kwargs)
+            except tuple(error_mapping.keys()) as exc:
+                http_exc_class = error_mapping[type(exc)]
+                raise http_exc_class(description=str(exc)) from exc
+            except SQLAlchemyError as exc:
+                _handle_sqlalchemy_error(exc)
+            except Exception as exc:
+                if isinstance(exc, fallback_error_class):
+                    logger.error(f"{service_name.capitalize()} service error", exc_info=True)
+                    raise InternalServerError(description=str(exc)) from exc
+                # pragma: no cover - unexpected error path
+                logger.error(f"Unexpected error in {service_name} route", exc_info=True)
+                raise
+
+        return wrapper  # type: ignore[return-value]
+
+    return decorator
 
 
 # === Service Factories ===
@@ -120,103 +182,63 @@ def get_user_service() -> UserService:
 
 # === Service Injection Decorators ===
 
+# Error mappings for each service (domain exception -> HTTP exception)
+_AUTH_ERROR_MAPPING: ErrorMapping = {
+    InvalidCredentialsError: Unauthorized,
+    InvalidRefreshTokenError: Unauthorized,
+}
 
-def with_auth_service(func: RouteCallable) -> RouteCallable:
-    """Inject AuthService and translate domain errors into HTTP responses."""
+_CONVERSATION_ERROR_MAPPING: ErrorMapping = {
+    ConversationNotFoundError: NotFound,
+    ConversationAccessDeniedError: Forbidden,
+}
 
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any):
-        auth_service = get_auth_service()
-        try:
-            return func(*args, auth_service=auth_service, **kwargs)
-        except InvalidCredentialsError as exc:
-            raise Unauthorized(description=str(exc)) from exc
-        except InvalidRefreshTokenError as exc:
-            raise Unauthorized(description=str(exc)) from exc
-        except AuthServiceError as exc:
-            logger.error("Auth service error", exc_info=True)
-            raise InternalServerError(description=str(exc)) from exc
-        except SQLAlchemyError as exc:
-            _handle_sqlalchemy_error(exc)
-        except Exception:  # pragma: no cover - unexpected error path
-            logger.error("Unexpected error in auth route", exc_info=True)
-            raise
+_PASSWORD_ERROR_MAPPING: ErrorMapping = {
+    InvalidPasswordError: Unauthorized,
+    PasswordChangeFailedError: InternalServerError,
+}
 
-    return wrapper  # type: ignore[return-value]
+_USER_ERROR_MAPPING: ErrorMapping = {
+    UserAlreadyExistsError: Conflict,
+    UserNotFoundError: NotFound,
+    CannotDeleteAdminError: Forbidden,
+}
 
+with_auth_service: Callable[[RouteCallable], RouteCallable] = _create_service_decorator(
+    service_getter=get_auth_service,
+    service_kwarg="auth_service",
+    error_mapping=_AUTH_ERROR_MAPPING,
+    fallback_error_class=AuthServiceError,
+    service_name="auth",
+)
+with_auth_service.__doc__ = "Inject AuthService and translate domain errors into HTTP responses."
 
-def with_conversation_service(func: RouteCallable) -> RouteCallable:
-    """Inject ConversationService and translate domain errors into HTTP responses."""
+with_conversation_service: Callable[[RouteCallable], RouteCallable] = _create_service_decorator(
+    service_getter=get_conversation_service,
+    service_kwarg="conversation_service",
+    error_mapping=_CONVERSATION_ERROR_MAPPING,
+    fallback_error_class=ConversationServiceError,
+    service_name="conversation",
+)
+with_conversation_service.__doc__ = "Inject ConversationService and translate domain errors into HTTP responses."
 
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any):
-        service = get_conversation_service()
-        try:
-            return func(*args, conversation_service=service, **kwargs)
-        except ConversationNotFoundError as exc:
-            raise NotFound(description=str(exc)) from exc
-        except ConversationAccessDeniedError as exc:
-            raise Forbidden(description=str(exc)) from exc
-        except ConversationServiceError as exc:
-            logger.error("Conversation service error", exc_info=True)
-            raise InternalServerError(description=str(exc)) from exc
-        except SQLAlchemyError as exc:
-            _handle_sqlalchemy_error(exc)
-        except Exception:  # pragma: no cover - unexpected error path
-            logger.error("Unexpected error in conversation route", exc_info=True)
-            raise
+with_password_service: Callable[[RouteCallable], RouteCallable] = _create_service_decorator(
+    service_getter=get_password_service,
+    service_kwarg="password_service",
+    error_mapping=_PASSWORD_ERROR_MAPPING,
+    fallback_error_class=PasswordServiceError,
+    service_name="password",
+)
+with_password_service.__doc__ = "Inject PasswordService and translate domain errors into HTTP responses."
 
-    return wrapper  # type: ignore[return-value]
-
-
-def with_password_service(func: RouteCallable) -> RouteCallable:
-    """Inject PasswordService and translate domain errors into HTTP responses."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any):
-        password_service = get_password_service()
-        try:
-            return func(*args, password_service=password_service, **kwargs)
-        except InvalidPasswordError as exc:
-            raise Unauthorized(description=str(exc)) from exc
-        except PasswordChangeFailedError as exc:
-            raise InternalServerError(description=str(exc)) from exc
-        except PasswordServiceError as exc:
-            logger.error("Password service error", exc_info=True)
-            raise InternalServerError(description=str(exc)) from exc
-        except SQLAlchemyError as exc:
-            _handle_sqlalchemy_error(exc)
-        except Exception:  # pragma: no cover - unexpected error path
-            logger.error("Unexpected error in password route", exc_info=True)
-            raise
-
-    return wrapper  # type: ignore[return-value]
-
-
-def with_user_service(func: RouteCallable) -> RouteCallable:
-    """Inject UserService and translate domain errors into HTTP responses."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any):
-        user_service = get_user_service()
-        try:
-            return func(*args, user_service=user_service, **kwargs)
-        except UserAlreadyExistsError as exc:
-            raise Conflict(description=str(exc)) from exc
-        except UserNotFoundError as exc:
-            raise NotFound(description=str(exc)) from exc
-        except CannotDeleteAdminError as exc:
-            raise Forbidden(description=str(exc)) from exc
-        except UserServiceError as exc:
-            logger.error("User service error", exc_info=True)
-            raise InternalServerError(description=str(exc)) from exc
-        except SQLAlchemyError as exc:
-            _handle_sqlalchemy_error(exc)
-        except Exception:  # pragma: no cover - unexpected error path
-            logger.error("Unexpected error in user route", exc_info=True)
-            raise
-
-    return wrapper  # type: ignore[return-value]
+with_user_service: Callable[[RouteCallable], RouteCallable] = _create_service_decorator(
+    service_getter=get_user_service,
+    service_kwarg="user_service",
+    error_mapping=_USER_ERROR_MAPPING,
+    fallback_error_class=UserServiceError,
+    service_name="user",
+)
+with_user_service.__doc__ = "Inject UserService and translate domain errors into HTTP responses."
 
 
 # === Request Validation Decorator ===
