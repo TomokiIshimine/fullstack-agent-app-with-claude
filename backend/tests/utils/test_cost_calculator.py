@@ -6,11 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.utils.cost_calculator import (
-    CostCalculationResult,
-    calculate_cost,
-    calculate_cost_detailed,
-)
+from app.utils.cost_calculator import CostCalculationResult, calculate_cost, calculate_cost_detailed
 
 
 class TestCalculateCost:
@@ -27,7 +23,7 @@ class TestCalculateCost:
                 output_tokens=500,
             )
 
-            assert result == 0.009
+            assert result == pytest.approx(0.009)
             mock_cost.assert_called_once_with(
                 model="claude-sonnet-4-5-20250929",
                 prompt_tokens=1000,
@@ -117,9 +113,9 @@ class TestCalculateCostDetailed:
             )
 
             assert isinstance(result, CostCalculationResult)
-            assert result.input_cost == 0.003
-            assert result.output_cost == 0.006
-            assert result.total_cost == 0.009
+            assert result.input_cost == pytest.approx(0.003)
+            assert result.output_cost == pytest.approx(0.006)
+            assert result.total_cost == pytest.approx(0.009)
 
     def test_calculate_cost_detailed_zero_tokens(self):
         """Test detailed cost calculation with zero tokens."""
@@ -193,7 +189,7 @@ class TestIntegration:
         # This test uses the real LiteLLM pricing database
         # Skip if running in CI without network access
         try:
-            from litellm import cost_per_token
+            import litellm  # noqa: F401 - Check if LiteLLM is available
 
             # Test with a known model
             result = calculate_cost(
@@ -211,7 +207,7 @@ class TestIntegration:
     def test_real_cost_calculation_gpt4(self):
         """Test real cost calculation for GPT-4 model."""
         try:
-            from litellm import cost_per_token
+            import litellm  # noqa: F401 - Check if LiteLLM is available
 
             result = calculate_cost(
                 model="gpt-4",
