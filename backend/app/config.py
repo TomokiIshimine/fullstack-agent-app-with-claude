@@ -8,18 +8,8 @@ from typing import Literal
 from dotenv import load_dotenv
 
 from app.constants.database import DEFAULT_MAX_OVERFLOW, DEFAULT_POOL_SIZE
-from app.constants.jwt import (
-    DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES,
-    DEFAULT_JWT_ALGORITHM,
-    DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS,
-)
-from app.constants.rate_limit import (
-    DEFAULT_RATE_LIMITS,
-    DEFAULT_RATE_LIMIT_STRATEGY,
-    LOGIN_RATE_LIMIT,
-    LOGOUT_RATE_LIMIT,
-    REFRESH_RATE_LIMIT,
-)
+from app.constants.jwt import DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES, DEFAULT_JWT_ALGORITHM, DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS
+from app.constants.rate_limit import DEFAULT_RATE_LIMIT_STRATEGY, DEFAULT_RATE_LIMITS, LOGIN_RATE_LIMIT, LOGOUT_RATE_LIMIT, REFRESH_RATE_LIMIT
 from app.constants.redis import DEFAULT_REDIS_PORT
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -149,12 +139,8 @@ def load_jwt_config() -> JWTConfig:
     return JWTConfig(
         secret_key=jwt_secret,
         algorithm=os.getenv("JWT_ALGORITHM", DEFAULT_JWT_ALGORITHM),
-        access_token_expire_minutes=int(
-            os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES))
-        ),
-        refresh_token_expire_days=int(
-            os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", str(DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS))
-        ),
+        access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES))),
+        refresh_token_expire_days=int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", str(DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS))),
     )
 
 
