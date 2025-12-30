@@ -69,17 +69,14 @@ def load_llm_config() -> LLMConfig:
         LLMConfig populated from environment variables.
     """
     provider = os.getenv("LLM_PROVIDER", DEFAULT_LLM_PROVIDER)
+
+    # Use provider-specific config factory if available
+    if provider == "anthropic":
+        return AnthropicConfig.from_env()
+
+    # Fallback for other providers
     model = os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL)
     max_tokens = int(os.getenv("CLAUDE_MAX_TOKENS", str(DEFAULT_MAX_TOKENS)))
-
-    # Use provider-specific config if available
-    if provider == "anthropic":
-        return AnthropicConfig(
-            provider=provider,
-            model=model,
-            max_tokens=max_tokens,
-            streaming=True,
-        )
 
     return LLMConfig(
         provider=provider,
