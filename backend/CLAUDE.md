@@ -23,7 +23,64 @@ The backend uses a global SQLAlchemy engine and scoped session factory initializ
 
 ### Error Handling
 
-Global error handlers in `app/main.py` catch `HTTPException` and generic `Exception`, returning JSON responses with standardized error structure.
+The backend uses a centralized error handling architecture with custom exceptions and decorator-based translation.
+
+#### Exception Hierarchy (`app/core/exceptions.py`)
+
+Domain-specific exceptions organized by service:
+
+- **ServiceError** - Base exception for all service layer errors
+  - **AuthServiceError**
+    - `InvalidCredentialsError` - Login credentials invalid (→ 401)
+    - `InvalidRefreshTokenError` - Refresh token invalid/expired (→ 401)
+  - **UserServiceError**
+    - `UserAlreadyExistsError(email)` - Duplicate email (→ 409)
+    - `UserNotFoundError(user_id)` - User not found (→ 404)
+    - `CannotDeleteAdminError()` - Cannot delete admin (→ 403)
+  - **ConversationServiceError**
+    - `ConversationNotFoundError(uuid)` - Conversation not found (→ 404)
+    - `ConversationAccessDeniedError(uuid)` - Access denied (→ 403)
+  - **PasswordServiceError**
+    - `InvalidPasswordError()` - Current password incorrect (→ 401)
+    - `PasswordChangeFailedError(message)` - Password change failed (→ 500)
+
+#### Service Decorators (`app/routes/dependencies.py`)
+
+Decorators inject services and translate domain exceptions to HTTP responses:
+
+| Decorator | Service | Error Translation |
+|-----------|---------|-------------------|
+| `@with_auth_service` | AuthService | InvalidCredentialsError → 401, InvalidRefreshTokenError → 401 |
+| `@with_user_service` | UserService | UserAlreadyExistsError → 409, UserNotFoundError → 404, CannotDeleteAdminError → 403 |
+| `@with_conversation_service` | ConversationService | ConversationNotFoundError → 404, ConversationAccessDeniedError → 403 |
+| `@with_password_service` | PasswordService | InvalidPasswordError → 401, PasswordChangeFailedError → 500 |
+
+#### Usage Pattern
+
+```python
+@auth_bp.post("/login")
+@limiter.limit("10 per minute")
+@with_auth_service                    # Injects auth_service, handles exceptions
+@validate_request_body(LoginRequest)  # Validates request, injects data
+def login(*, data: LoginRequest, auth_service: AuthService):
+    # InvalidCredentialsError automatically becomes 401 response
+    response_data, access_token, refresh_token = auth_service.login(
+        data.email, data.password
+    )
+    # ... rest of implementation
+```
+
+#### Request Validation (`@validate_request_body`)
+
+Validates JSON request body against Pydantic schema and injects validated data:
+- Catches `ValidationError` → 400 Bad Request
+- Passes validated data as `data` keyword argument
+
+#### Global Error Handlers (`app/main.py`)
+
+Catch-all handlers for HTTP exceptions and unexpected errors:
+- `HTTPException` → JSON response with `{"error": description}`
+- Generic `Exception` → 500 Internal Server Error with logging
 
 ## Development Commands
 
