@@ -1,5 +1,5 @@
 import type { StreamingToolCall } from '@/types/tool'
-import { ToolCallItem } from './ToolCallItem'
+import { ToolCallsGroup } from './ToolCallsGroup'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface StreamingMessageProps {
@@ -37,9 +37,7 @@ export function StreamingMessage({ content, toolCalls = [] }: StreamingMessagePr
       <div className="streaming-message__content">
         {hasToolCalls && (
           <div className="streaming-message__tool-calls">
-            {toolCalls.map(tc => (
-              <ToolCallItem key={tc.toolCallId} toolCall={tc} />
-            ))}
+            <ToolCallsGroup toolCalls={toolCalls} />
           </div>
         )}
         {hasContent && (
