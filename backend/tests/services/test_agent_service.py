@@ -7,101 +7,61 @@ from unittest.mock import MagicMock, patch
 import pytest
 from langchain_core.messages import AIMessageChunk, ToolMessage
 
-from app.services.agent_service import SYSTEM_PROMPT, AgentConfig, AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
+from app.core.exceptions import ProviderNotFoundError
+from app.providers import LLMConfig, create_provider
+from app.services.agent_service import AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 from app.tools import ToolRegistry
-
-
-class TestAgentConfig:
-    """Tests for AgentConfig dataclass."""
-
-    def test_default_values(self):
-        """Test default configuration values."""
-        config = AgentConfig()
-
-        assert config.provider == "anthropic"
-        assert config.model_name == "claude-sonnet-4-5-20250929"
-        assert config.max_tokens == 4096
-        assert config.system_prompt == SYSTEM_PROMPT
-
-    def test_custom_values(self):
-        """Test custom configuration values."""
-        config = AgentConfig(
-            provider="custom",
-            model_name="custom-model",
-            max_tokens=8192,
-            system_prompt="Custom prompt",
-        )
-
-        assert config.provider == "custom"
-        assert config.model_name == "custom-model"
-        assert config.max_tokens == 8192
-        assert config.system_prompt == "Custom prompt"
-
-    def test_from_env_with_defaults(self, monkeypatch):
-        """Test from_env uses default values when env vars not set."""
-        # Clear any existing env vars
-        monkeypatch.delenv("LLM_PROVIDER", raising=False)
-        monkeypatch.delenv("LLM_MODEL", raising=False)
-        monkeypatch.delenv("CLAUDE_MAX_TOKENS", raising=False)
-
-        config = AgentConfig.from_env()
-
-        assert config.provider == "anthropic"
-        assert config.model_name == "claude-sonnet-4-5-20250929"
-        assert config.max_tokens == 4096
-
-    def test_from_env_with_custom_values(self, monkeypatch):
-        """Test from_env reads custom values from environment."""
-        monkeypatch.setenv("LLM_PROVIDER", "custom_provider")
-        monkeypatch.setenv("LLM_MODEL", "custom-model-v2")
-        monkeypatch.setenv("CLAUDE_MAX_TOKENS", "2048")
-
-        config = AgentConfig.from_env()
-
-        assert config.provider == "custom_provider"
-        assert config.model_name == "custom-model-v2"
-        assert config.max_tokens == 2048
 
 
 class TestAgentServiceInit:
     """Tests for AgentService initialization."""
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_init_with_default_config(self, mock_chat_anthropic, mock_create_agent):
-        """Test initialization with default configuration."""
+    @patch("app.services.agent_service.create_provider")
+    def test_init_with_default_provider(self, mock_create_provider, mock_create_agent):
+        """Test initialization with default provider from environment."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-sonnet-4-5-20250929"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
 
-        assert service.config.provider == "anthropic"
-        mock_chat_anthropic.assert_called_once()
+        assert service.provider_name == "anthropic"
+        mock_create_provider.assert_called_once()
         mock_create_agent.assert_called_once()
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_init_with_custom_config(self, mock_chat_anthropic, mock_create_agent):
-        """Test initialization with custom configuration."""
+    def test_init_with_provider(self, mock_create_agent):
+        """Test initialization with LLM provider instance."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-opus-4"
+        mock_provider.config.max_tokens = 8192
 
-        config = AgentConfig(
-            provider="anthropic",
-            model_name="claude-opus-4",
-            max_tokens=8192,
-        )
-        service = AgentService(config=config)
+        service = AgentService(provider=mock_provider)
 
-        assert service.config.model_name == "claude-opus-4"
-        assert service.config.max_tokens == 8192
+        assert service.provider_name == "anthropic"
+        assert service.model_name == "claude-opus-4"
+        assert service.max_tokens == 8192
+        assert service.provider is mock_provider
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_init_with_custom_tool_registry(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_init_with_custom_tool_registry(self, mock_create_provider, mock_create_agent):
         """Test initialization with custom tool registry."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-sonnet-4-5-20250929"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         registry = ToolRegistry()
         service = AgentService(tool_registry=registry)
@@ -109,11 +69,16 @@ class TestAgentServiceInit:
         assert service.tools == []
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_init_registers_default_tools(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_init_registers_default_tools(self, mock_create_provider, mock_create_agent):
         """Test that initialization registers default tools from global registry."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-sonnet-4-5-20250929"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
 
@@ -121,22 +86,46 @@ class TestAgentServiceInit:
         assert len(service.tools) > 0
 
     def test_init_unsupported_provider_raises_error(self):
-        """Test that unsupported provider raises ValueError."""
-        config = AgentConfig(provider="unsupported_provider")
+        """Test that unsupported provider raises ProviderNotFoundError."""
+        config = LLMConfig(provider="unsupported_provider", model="test-model")
 
-        with pytest.raises(ValueError, match="Unsupported LLM provider"):
-            AgentService(config=config)
+        with pytest.raises(ProviderNotFoundError, match="サポートされていないLLMプロバイダー"):
+            create_provider(config)
+
+    @patch("app.services.agent_service.create_react_agent")
+    def test_init_with_custom_system_prompt(self, mock_create_agent):
+        """Test initialization with custom system prompt."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+
+        custom_prompt = "You are a custom assistant."
+        service = AgentService(provider=mock_provider, system_prompt=custom_prompt)
+
+        assert service._system_prompt == custom_prompt
+        # Verify the custom prompt was passed to create_react_agent
+        mock_create_agent.assert_called_once()
+        call_kwargs = mock_create_agent.call_args
+        assert call_kwargs.kwargs.get("prompt") == custom_prompt
 
 
 class TestAgentServiceGenerateTitle:
     """Tests for AgentService.generate_title method."""
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_generate_title_short_message(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_generate_title_short_message(self, mock_create_provider, mock_create_agent):
         """Test title generation for short messages."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         title = service.generate_title("Hello, how are you?")
@@ -144,11 +133,16 @@ class TestAgentServiceGenerateTitle:
         assert title == "Hello, how are you?"
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_generate_title_long_message_truncates(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_generate_title_long_message_truncates(self, mock_create_provider, mock_create_agent):
         """Test that long messages are truncated to 50 characters."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         long_message = "This is a very long message that should be truncated to exactly fifty characters"
@@ -158,11 +152,16 @@ class TestAgentServiceGenerateTitle:
         assert title.endswith("...")
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_generate_title_exactly_50_chars(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_generate_title_exactly_50_chars(self, mock_create_provider, mock_create_agent):
         """Test message exactly 50 characters is not truncated."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         message = "A" * 50
@@ -172,11 +171,16 @@ class TestAgentServiceGenerateTitle:
         assert len(title) == 50
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_generate_title_strips_whitespace(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_generate_title_strips_whitespace(self, mock_create_provider, mock_create_agent):
         """Test that whitespace is stripped from messages."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         title = service.generate_title("  Hello world  ")
@@ -188,11 +192,16 @@ class TestAgentServiceGenerateResponse:
     """Tests for AgentService.generate_response method."""
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_generate_response_yields_text_delta_events(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_generate_response_yields_text_delta_events(self, mock_create_provider, mock_create_agent):
         """Test that generate_response yields TextDeltaEvent for text content."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         # Mock agent with text response using "messages" stream mode format
         mock_agent = MagicMock()
@@ -212,11 +221,16 @@ class TestAgentServiceGenerateResponse:
         assert text_events[0].delta == "Hello, world!"
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_generate_response_yields_message_complete_event(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_generate_response_yields_message_complete_event(self, mock_create_provider, mock_create_agent):
         """Test that generate_response yields MessageCompleteEvent at the end."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         # Mock agent with text response using "messages" stream mode format
         mock_agent = MagicMock()
@@ -236,11 +250,16 @@ class TestAgentServiceGenerateResponse:
         assert complete_events[0].content == "Response text"
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_generate_response_yields_tool_call_event(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_generate_response_yields_tool_call_event(self, mock_create_provider, mock_create_agent):
         """Test that generate_response yields ToolCallEvent for tool calls."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         # Mock agent with tool call using "updates" stream mode format
         mock_agent = MagicMock()
@@ -264,13 +283,18 @@ class TestAgentServiceGenerateResponse:
         assert tool_call_events[0].input == {"a": 1, "b": 2}
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_generate_response_yields_tool_result_event(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_generate_response_yields_tool_result_event(self, mock_create_provider, mock_create_agent):
         """Test that generate_response yields ToolResultEvent for tool results."""
         from langchain_core.messages import ToolMessage
 
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         # Mock tool message
         mock_tool_message = MagicMock(spec=ToolMessage)
@@ -298,13 +322,18 @@ class TestAgentServiceConvertMessages:
     """Tests for AgentService._convert_messages method."""
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_convert_user_message(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_convert_user_message(self, mock_create_provider, mock_create_agent):
         """Test conversion of user message to HumanMessage."""
         from langchain_core.messages import HumanMessage
 
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         messages = [{"role": "user", "content": "Hello"}]
@@ -316,13 +345,18 @@ class TestAgentServiceConvertMessages:
         assert result[0].content == "Hello"
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_convert_assistant_message(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_convert_assistant_message(self, mock_create_provider, mock_create_agent):
         """Test conversion of assistant message to AIMessage."""
         from langchain_core.messages import AIMessage
 
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         messages = [{"role": "assistant", "content": "Hi there!"}]
@@ -334,13 +368,18 @@ class TestAgentServiceConvertMessages:
         assert result[0].content == "Hi there!"
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_convert_mixed_messages(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_convert_mixed_messages(self, mock_create_provider, mock_create_agent):
         """Test conversion of mixed user and assistant messages."""
         from langchain_core.messages import AIMessage, HumanMessage
 
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         messages = [
@@ -361,11 +400,16 @@ class TestAgentServiceHelperMethods:
     """Tests for AgentService helper methods."""
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_extract_text_content_from_string(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_extract_text_content_from_string(self, mock_create_provider, mock_create_agent):
         """Test _extract_text_content with string input."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         result = service._extract_text_content("Hello, world!")
@@ -373,11 +417,16 @@ class TestAgentServiceHelperMethods:
         assert result == "Hello, world!"
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_extract_text_content_from_list_of_dicts(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_extract_text_content_from_list_of_dicts(self, mock_create_provider, mock_create_agent):
         """Test _extract_text_content with list of dicts input."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         content = [
@@ -389,11 +438,16 @@ class TestAgentServiceHelperMethods:
         assert result == "Hello, world!"
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_extract_text_content_from_list_of_strings(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_extract_text_content_from_list_of_strings(self, mock_create_provider, mock_create_agent):
         """Test _extract_text_content with list of strings input."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         content = ["Hello, ", "world!"]
@@ -402,11 +456,16 @@ class TestAgentServiceHelperMethods:
         assert result == "Hello, world!"
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_extract_text_content_empty(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_extract_text_content_empty(self, mock_create_provider, mock_create_agent):
         """Test _extract_text_content with empty/invalid input."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
 
@@ -415,11 +474,16 @@ class TestAgentServiceHelperMethods:
         assert service._extract_text_content([]) == ""
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_handle_messages_stream_with_valid_ai_message(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_handle_messages_stream_with_valid_ai_message(self, mock_create_provider, mock_create_agent):
         """Test _handle_messages_stream with valid AIMessageChunk data."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         ai_chunk = AIMessageChunk(content="Hello!")
@@ -430,11 +494,16 @@ class TestAgentServiceHelperMethods:
         assert result == "Hello!"
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_handle_messages_stream_with_invalid_data(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_handle_messages_stream_with_invalid_data(self, mock_create_provider, mock_create_agent):
         """Test _handle_messages_stream with invalid data."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
 
@@ -443,11 +512,16 @@ class TestAgentServiceHelperMethods:
         assert service._handle_messages_stream("not a tuple") is None
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_handle_messages_stream_with_empty_content(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_handle_messages_stream_with_empty_content(self, mock_create_provider, mock_create_agent):
         """Test _handle_messages_stream with empty content."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         ai_chunk = AIMessageChunk(content="")
@@ -458,11 +532,16 @@ class TestAgentServiceHelperMethods:
         assert result is None
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_handle_messages_stream_ignores_tool_messages(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_handle_messages_stream_ignores_tool_messages(self, mock_create_provider, mock_create_agent):
         """Test _handle_messages_stream ignores ToolMessage to prevent tool output leakage."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         # ToolMessage should be ignored even if it has content
@@ -474,11 +553,16 @@ class TestAgentServiceHelperMethods:
         assert result is None
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_handle_messages_stream_ignores_non_ai_messages(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_handle_messages_stream_ignores_non_ai_messages(self, mock_create_provider, mock_create_agent):
         """Test _handle_messages_stream ignores non-AIMessageChunk types."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         # Generic MagicMock (not AIMessageChunk) should be ignored
@@ -491,11 +575,16 @@ class TestAgentServiceHelperMethods:
         assert result is None
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_process_agent_node_with_tool_calls(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_process_agent_node_with_tool_calls(self, mock_create_provider, mock_create_agent):
         """Test _process_agent_node emits ToolCallEvents."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         mock_message = MagicMock()
@@ -510,11 +599,16 @@ class TestAgentServiceHelperMethods:
         assert "call_1" in emitted
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_process_agent_node_deduplicates_tool_calls(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_process_agent_node_deduplicates_tool_calls(self, mock_create_provider, mock_create_agent):
         """Test _process_agent_node doesn't emit duplicate tool calls."""
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         mock_message = MagicMock()
@@ -527,13 +621,18 @@ class TestAgentServiceHelperMethods:
         assert len(events) == 0
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.ChatAnthropic")
-    def test_process_tools_node(self, mock_chat_anthropic, mock_create_agent):
+    @patch("app.services.agent_service.create_provider")
+    def test_process_tools_node(self, mock_create_provider, mock_create_agent):
         """Test _process_tools_node emits ToolResultEvents."""
         from langchain_core.messages import ToolMessage
 
         mock_llm = MagicMock()
-        mock_chat_anthropic.return_value = mock_llm
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_create_provider.return_value = mock_provider
 
         service = AgentService()
         mock_tool_msg = MagicMock(spec=ToolMessage)

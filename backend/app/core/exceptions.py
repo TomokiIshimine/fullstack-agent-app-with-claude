@@ -145,6 +145,48 @@ class DatabaseConnectionError(DatabaseError):
         super().__init__(message)
 
 
+# === LLM Provider Exceptions ===
+
+
+class LLMProviderError(ServiceError):
+    """Base exception for LLM provider errors."""
+
+    pass
+
+
+class ProviderNotFoundError(LLMProviderError):
+    """Raised when specified provider is not supported."""
+
+    def __init__(self, provider: str, supported: list[str] | None = None):
+        supported_str = ", ".join(supported) if supported else "不明"
+        super().__init__(
+            f"サポートされていないLLMプロバイダー: '{provider}'. 対応プロバイダー: {supported_str}",
+            {"provider": provider, "supported_providers": supported},
+        )
+        self.provider = provider
+        self.supported_providers = supported
+
+
+class ProviderConfigurationError(LLMProviderError):
+    """Raised when provider configuration is invalid."""
+
+    def __init__(self, message: str, field: str | None = None):
+        details = {"field": field} if field else {}
+        super().__init__(message, details)
+        self.field = field
+
+
+class ProviderAPIKeyError(LLMProviderError):
+    """Raised when API key is missing or invalid."""
+
+    def __init__(self, provider: str):
+        super().__init__(
+            f"{provider}のAPIキーが設定されていません",
+            {"provider": provider},
+        )
+        self.provider = provider
+
+
 __all__ = [
     "ServiceError",
     "AuthServiceError",
@@ -163,4 +205,8 @@ __all__ = [
     "DatabaseError",
     "DuplicateEntryError",
     "DatabaseConnectionError",
+    "LLMProviderError",
+    "ProviderNotFoundError",
+    "ProviderConfigurationError",
+    "ProviderAPIKeyError",
 ]
