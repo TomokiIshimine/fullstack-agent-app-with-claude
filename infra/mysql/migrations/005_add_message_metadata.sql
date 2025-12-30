@@ -21,4 +21,4 @@ ALTER TABLE messages ADD COLUMN model VARCHAR(255) NULL COMMENT 'Model name used
 ALTER TABLE messages ADD COLUMN response_time_ms INT UNSIGNED NULL COMMENT 'Response time in milliseconds';
 
 -- Step 5: Add cost_usd column
-ALTER TABLE messages ADD COLUMN cost_usd FLOAT NULL COMMENT 'Cost in USD for this message';
+ALTER TABLE messages ADD COLUMN cost_usd DECIMAL(10, 6) NULL COMMENT 'Cost in USD for this message';
