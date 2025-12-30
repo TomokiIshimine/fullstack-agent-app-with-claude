@@ -3,26 +3,19 @@
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator
+from typing import Any, Generator
 
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 
 from app.constants.agent import (
-    DEFAULT_LLM_MODEL,
-    DEFAULT_LLM_PROVIDER,
-    DEFAULT_MAX_TOKENS,
     MAX_CONVERSATION_TITLE_LENGTH,
     TITLE_TRUNCATION_LENGTH,
     TITLE_TRUNCATION_SUFFIX,
 )
-from app.providers import BaseLLMProvider, LLMConfig, create_provider
+from app.providers import BaseLLMProvider, create_provider
 from app.tools import ToolRegistry, get_tool_registry
-
-if TYPE_CHECKING:
-    from langchain_core.language_models import BaseChatModel
 
 logger = logging.getLogger(__name__)
 
@@ -30,42 +23,6 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = """You are a helpful AI assistant. You have access to calculator tools for arithmetic operations.
 When the user asks for calculations, use the appropriate tool (add, subtract, multiply, divide).
 Please respond in the same language as the user."""
-
-
-@dataclass
-class AgentConfig:
-    """Configuration for the AI agent.
-
-    This class encapsulates all configuration needed for the agent,
-    allowing for easy testing and dependency injection.
-
-    Note: This class is kept for backward compatibility.
-    New code should use LLMConfig from app.providers.
-    """
-
-    provider: str = DEFAULT_LLM_PROVIDER
-    model_name: str = DEFAULT_LLM_MODEL
-    max_tokens: int = DEFAULT_MAX_TOKENS
-    system_prompt: str = SYSTEM_PROMPT
-
-    @classmethod
-    def from_env(cls) -> "AgentConfig":
-        """Create configuration from environment variables."""
-        return cls(
-            provider=os.getenv("LLM_PROVIDER", DEFAULT_LLM_PROVIDER),
-            model_name=os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL),
-            max_tokens=int(os.getenv("CLAUDE_MAX_TOKENS", str(DEFAULT_MAX_TOKENS))),
-            system_prompt=SYSTEM_PROMPT,
-        )
-
-    def to_llm_config(self) -> LLMConfig:
-        """Convert to LLMConfig for use with providers."""
-        return LLMConfig(
-            provider=self.provider,
-            model=self.model_name,
-            max_tokens=self.max_tokens,
-            streaming=True,
-        )
 
 
 @dataclass
@@ -106,64 +63,38 @@ AgentEvent = ToolCallEvent | ToolResultEvent | TextDeltaEvent | MessageCompleteE
 class AgentService:
     """Service for AI agent functionality using LangGraph ReAct pattern.
 
-    This service can be initialized in two ways:
-    1. With a BaseLLMProvider instance (recommended for new code)
-    2. With an AgentConfig (backward compatible)
+    This service is initialized with a BaseLLMProvider instance.
 
     Example:
-        # Using provider (recommended)
         from app.providers import create_provider
         provider = create_provider()
         service = AgentService(provider=provider)
 
-        # Using config (backward compatible)
-        config = AgentConfig.from_env()
-        service = AgentService(config=config)
+        # Or use default provider from environment
+        service = AgentService()
     """
 
     def __init__(
         self,
-        config: AgentConfig | None = None,
-        tool_registry: ToolRegistry | None = None,
         provider: BaseLLMProvider | None = None,
+        tool_registry: ToolRegistry | None = None,
         system_prompt: str | None = None,
     ) -> None:
         """Initialize agent service with LLM and tools.
 
         Args:
-            config: Agent configuration. Deprecated, use provider instead.
+            provider: LLM provider instance. If None, creates from environment.
             tool_registry: Tool registry instance. If None, uses global registry.
-            provider: LLM provider instance. If None, creates from config.
-            system_prompt: System prompt override. Takes precedence over config.system_prompt.
+            system_prompt: System prompt override. Defaults to SYSTEM_PROMPT.
         """
-        # Handle backward compatibility: config takes precedence if both provided
-        if config is not None:
-            self.config = config
-            self._provider = None
-            # Honor config.system_prompt unless explicitly overridden by system_prompt arg
-            self._system_prompt = system_prompt if system_prompt is not None else config.system_prompt
-            self.llm = self._create_llm_from_config()
-        elif provider is not None:
+        self._system_prompt = system_prompt or SYSTEM_PROMPT
+
+        if provider is not None:
             self._provider = provider
-            self._system_prompt = system_prompt or SYSTEM_PROMPT
-            self.config = AgentConfig(
-                provider=provider.provider_name,
-                model_name=provider.model_name,
-                max_tokens=provider.config.max_tokens,
-                system_prompt=self._system_prompt,
-            )
-            self.llm = provider.create_chat_model()
         else:
-            # Default: create provider from environment
             self._provider = create_provider()
-            self._system_prompt = system_prompt or SYSTEM_PROMPT
-            self.config = AgentConfig(
-                provider=self._provider.provider_name,
-                model_name=self._provider.model_name,
-                max_tokens=self._provider.config.max_tokens,
-                system_prompt=self._system_prompt,
-            )
-            self.llm = self._provider.create_chat_model()
+
+        self.llm = self._provider.create_chat_model()
 
         # Get tools from registry
         registry = tool_registry or get_tool_registry()
@@ -178,16 +109,25 @@ class AgentService:
 
         logger.info(f"AgentService initialized with {len(self.tools)} tools")
 
-    def _create_llm_from_config(self) -> "BaseChatModel":
-        """Create LLM instance from AgentConfig (backward compatibility)."""
-        llm_config = self.config.to_llm_config()
-        provider = create_provider(llm_config)
-        return provider.create_chat_model()
+    @property
+    def provider(self) -> BaseLLMProvider:
+        """Return the LLM provider."""
+        return self._provider
 
     @property
-    def provider(self) -> BaseLLMProvider | None:
-        """Return the LLM provider if available."""
-        return self._provider
+    def provider_name(self) -> str:
+        """Return the provider name."""
+        return self._provider.provider_name
+
+    @property
+    def model_name(self) -> str:
+        """Return the model name."""
+        return self._provider.model_name
+
+    @property
+    def max_tokens(self) -> int:
+        """Return max tokens."""
+        return self._provider.config.max_tokens
 
     def _convert_messages(self, messages: list[dict[str, str]]) -> list[HumanMessage | AIMessage]:
         """Convert simple message dicts to LangChain message objects."""
@@ -385,7 +325,6 @@ class AgentService:
 
 
 __all__ = [
-    "AgentConfig",
     "AgentService",
     "AgentEvent",
     "ToolCallEvent",

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from langchain_anthropic import ChatAnthropic
 
+from app.core.exceptions import ProviderAPIKeyError
 from app.providers.base import BaseLLMProvider, LLMConfig
 
 if TYPE_CHECKING:
@@ -105,10 +106,10 @@ class AnthropicProvider(BaseLLMProvider):
             Configured ChatAnthropic model.
 
         Raises:
-            ValueError: If API key is not configured.
+            ProviderAPIKeyError: If API key is not configured.
         """
         if not self._anthropic_config.api_key:
-            raise ValueError("Anthropic API key is required. Set ANTHROPIC_API_KEY environment variable " "or provide api_key in configuration.")
+            raise ProviderAPIKeyError("Anthropic")
 
         logger.debug(f"Creating ChatAnthropic model: {self.model_name}, " f"max_tokens={self.config.max_tokens}, streaming={self.config.streaming}")
 

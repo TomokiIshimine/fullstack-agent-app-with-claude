@@ -26,6 +26,7 @@ import os
 from typing import TYPE_CHECKING
 
 from app.constants.agent import DEFAULT_LLM_MODEL, DEFAULT_LLM_PROVIDER, DEFAULT_MAX_TOKENS
+from app.core.exceptions import ProviderConfigurationError, ProviderNotFoundError
 from app.providers.anthropic import AnthropicConfig, AnthropicProvider
 from app.providers.base import BaseLLMProvider, LLMConfig
 
@@ -48,10 +49,10 @@ def register_provider(name: str, provider_class: type[BaseLLMProvider]) -> None:
         provider_class: Provider class that extends BaseLLMProvider.
 
     Raises:
-        ValueError: If provider name is already registered.
+        ProviderConfigurationError: If provider name is already registered.
     """
     if name in _PROVIDER_REGISTRY:
-        raise ValueError(f"Provider '{name}' is already registered")
+        raise ProviderConfigurationError(f"プロバイダー '{name}' は既に登録されています", field="name")
     _PROVIDER_REGISTRY[name] = provider_class
     logger.info(f"Registered LLM provider: {name}")
 
@@ -101,7 +102,7 @@ def create_provider(config: LLMConfig | None = None) -> BaseLLMProvider:
         Configured BaseLLMProvider instance.
 
     Raises:
-        ValueError: If the specified provider is not supported.
+        ProviderNotFoundError: If the specified provider is not supported.
 
     Example:
         # Using default configuration from environment
@@ -117,8 +118,7 @@ def create_provider(config: LLMConfig | None = None) -> BaseLLMProvider:
     provider_name = config.provider.lower()
 
     if provider_name not in _PROVIDER_REGISTRY:
-        supported = ", ".join(get_supported_providers())
-        raise ValueError(f"Unsupported LLM provider: '{provider_name}'. " f"Supported providers: {supported}")
+        raise ProviderNotFoundError(provider_name, get_supported_providers())
 
     provider_class = _PROVIDER_REGISTRY[provider_name]
     provider = provider_class(config)

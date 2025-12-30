@@ -22,8 +22,12 @@ from app.core.exceptions import (
     InvalidCredentialsError,
     InvalidPasswordError,
     InvalidRefreshTokenError,
+    LLMProviderError,
     PasswordChangeFailedError,
     PasswordServiceError,
+    ProviderAPIKeyError,
+    ProviderConfigurationError,
+    ProviderNotFoundError,
     UserAlreadyExistsError,
     UserNotFoundError,
     UserServiceError,
@@ -146,11 +150,29 @@ def get_llm_provider() -> BaseLLMProvider:
 
     Returns:
         BaseLLMProvider instance configured from environment variables.
+
+    Raises:
+        BadRequest: If provider configuration is invalid or provider not found.
+        InternalServerError: If API key is missing or other provider errors.
     """
     if provider := g.get("llm_provider"):
         return provider
 
-    provider = create_provider()
+    try:
+        provider = create_provider()
+    except ProviderNotFoundError as exc:
+        logger.error(f"LLM provider not found: {exc}")
+        raise BadRequest(description=str(exc)) from exc
+    except ProviderConfigurationError as exc:
+        logger.error(f"LLM provider configuration error: {exc}")
+        raise BadRequest(description=str(exc)) from exc
+    except ProviderAPIKeyError as exc:
+        logger.error(f"LLM provider API key error: {exc}")
+        raise InternalServerError(description=str(exc)) from exc
+    except LLMProviderError as exc:
+        logger.error(f"LLM provider error: {exc}")
+        raise InternalServerError(description=str(exc)) from exc
+
     g.llm_provider = provider
     return provider
 

@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.core.exceptions import ProviderAPIKeyError, ProviderConfigurationError, ProviderNotFoundError
 from app.providers import (
     AnthropicConfig,
     AnthropicProvider,
@@ -45,21 +46,21 @@ class TestLLMConfig:
         assert config.streaming is False
 
     def test_empty_provider_raises_error(self):
-        """Test that empty provider raises ValueError."""
-        with pytest.raises(ValueError, match="Provider name is required"):
+        """Test that empty provider raises ProviderConfigurationError."""
+        with pytest.raises(ProviderConfigurationError, match="プロバイダー名は必須です"):
             LLMConfig(provider="", model="model")
 
     def test_empty_model_raises_error(self):
-        """Test that empty model raises ValueError."""
-        with pytest.raises(ValueError, match="Model name is required"):
+        """Test that empty model raises ProviderConfigurationError."""
+        with pytest.raises(ProviderConfigurationError, match="モデル名は必須です"):
             LLMConfig(provider="test", model="")
 
     def test_invalid_max_tokens_raises_error(self):
-        """Test that non-positive max_tokens raises ValueError."""
-        with pytest.raises(ValueError, match="max_tokens must be positive"):
+        """Test that non-positive max_tokens raises ProviderConfigurationError."""
+        with pytest.raises(ProviderConfigurationError, match="max_tokensは正の整数"):
             LLMConfig(provider="test", model="model", max_tokens=0)
 
-        with pytest.raises(ValueError, match="max_tokens must be positive"):
+        with pytest.raises(ProviderConfigurationError, match="max_tokensは正の整数"):
             LLMConfig(provider="test", model="model", max_tokens=-1)
 
 
@@ -151,7 +152,7 @@ class TestAnthropicProvider:
         mock_chat_anthropic.assert_called_once()
 
     def test_create_chat_model_missing_api_key(self, monkeypatch):
-        """Test that missing API key raises ValueError."""
+        """Test that missing API key raises ProviderAPIKeyError."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
         config = AnthropicConfig(
@@ -161,7 +162,7 @@ class TestAnthropicProvider:
         )
         provider = AnthropicProvider(config)
 
-        with pytest.raises(ValueError, match="Anthropic API key is required"):
+        with pytest.raises(ProviderAPIKeyError, match="AnthropicのAPIキーが設定されていません"):
             provider.create_chat_model()
 
     def test_repr(self):
@@ -224,10 +225,10 @@ class TestProviderFactory:
         assert provider.provider_name == "anthropic"
 
     def test_create_provider_unsupported(self):
-        """Test that unsupported provider raises ValueError."""
+        """Test that unsupported provider raises ProviderNotFoundError."""
         config = LLMConfig(provider="unsupported", model="model")
 
-        with pytest.raises(ValueError, match="Unsupported LLM provider"):
+        with pytest.raises(ProviderNotFoundError, match="サポートされていないLLMプロバイダー"):
             create_provider(config)
 
     @patch("app.providers.anthropic.ChatAnthropic")
@@ -257,7 +258,7 @@ class TestRegisterProvider:
         assert "mock_test" in get_supported_providers()
 
     def test_register_duplicate_provider_raises_error(self):
-        """Test that registering duplicate provider raises ValueError."""
+        """Test that registering duplicate provider raises ProviderConfigurationError."""
 
         class MockProvider(BaseLLMProvider):
             def create_chat_model(self):
@@ -267,5 +268,5 @@ class TestRegisterProvider:
         register_provider("mock_duplicate", MockProvider)
 
         # Second registration should fail
-        with pytest.raises(ValueError, match="already registered"):
+        with pytest.raises(ProviderConfigurationError, match="既に登録されています"):
             register_provider("mock_duplicate", MockProvider)

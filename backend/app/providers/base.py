@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from app.core.exceptions import ProviderConfigurationError
+
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
 
@@ -26,11 +28,11 @@ class LLMConfig:
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         if not self.provider:
-            raise ValueError("Provider name is required")
+            raise ProviderConfigurationError("プロバイダー名は必須です", field="provider")
         if not self.model:
-            raise ValueError("Model name is required")
+            raise ProviderConfigurationError("モデル名は必須です", field="model")
         if self.max_tokens <= 0:
-            raise ValueError("max_tokens must be positive")
+            raise ProviderConfigurationError("max_tokensは正の整数である必要があります", field="max_tokens")
 
 
 class BaseLLMProvider(ABC):

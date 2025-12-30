@@ -7,60 +7,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from langchain_core.messages import AIMessageChunk, ToolMessage
 
-from app.services.agent_service import SYSTEM_PROMPT, AgentConfig, AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
+from app.core.exceptions import ProviderNotFoundError
+from app.providers import LLMConfig, create_provider
+from app.services.agent_service import AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 from app.tools import ToolRegistry
-
-
-class TestAgentConfig:
-    """Tests for AgentConfig dataclass."""
-
-    def test_default_values(self):
-        """Test default configuration values."""
-        config = AgentConfig()
-
-        assert config.provider == "anthropic"
-        assert config.model_name == "claude-sonnet-4-5-20250929"
-        assert config.max_tokens == 4096
-        assert config.system_prompt == SYSTEM_PROMPT
-
-    def test_custom_values(self):
-        """Test custom configuration values."""
-        config = AgentConfig(
-            provider="custom",
-            model_name="custom-model",
-            max_tokens=8192,
-            system_prompt="Custom prompt",
-        )
-
-        assert config.provider == "custom"
-        assert config.model_name == "custom-model"
-        assert config.max_tokens == 8192
-        assert config.system_prompt == "Custom prompt"
-
-    def test_from_env_with_defaults(self, monkeypatch):
-        """Test from_env uses default values when env vars not set."""
-        # Clear any existing env vars
-        monkeypatch.delenv("LLM_PROVIDER", raising=False)
-        monkeypatch.delenv("LLM_MODEL", raising=False)
-        monkeypatch.delenv("CLAUDE_MAX_TOKENS", raising=False)
-
-        config = AgentConfig.from_env()
-
-        assert config.provider == "anthropic"
-        assert config.model_name == "claude-sonnet-4-5-20250929"
-        assert config.max_tokens == 4096
-
-    def test_from_env_with_custom_values(self, monkeypatch):
-        """Test from_env reads custom values from environment."""
-        monkeypatch.setenv("LLM_PROVIDER", "custom_provider")
-        monkeypatch.setenv("LLM_MODEL", "custom-model-v2")
-        monkeypatch.setenv("CLAUDE_MAX_TOKENS", "2048")
-
-        config = AgentConfig.from_env()
-
-        assert config.provider == "custom_provider"
-        assert config.model_name == "custom-model-v2"
-        assert config.max_tokens == 2048
 
 
 class TestAgentServiceInit:
@@ -68,8 +18,8 @@ class TestAgentServiceInit:
 
     @patch("app.services.agent_service.create_react_agent")
     @patch("app.services.agent_service.create_provider")
-    def test_init_with_default_config(self, mock_create_provider, mock_create_agent):
-        """Test initialization with default configuration."""
+    def test_init_with_default_provider(self, mock_create_provider, mock_create_agent):
+        """Test initialization with default provider from environment."""
         mock_llm = MagicMock()
         mock_provider = MagicMock()
         mock_provider.create_chat_model.return_value = mock_llm
@@ -80,79 +30,12 @@ class TestAgentServiceInit:
 
         service = AgentService()
 
-        assert service.config.provider == "anthropic"
+        assert service.provider_name == "anthropic"
         mock_create_provider.assert_called_once()
         mock_create_agent.assert_called_once()
 
     @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.create_provider")
-    def test_init_with_custom_config(self, mock_create_provider, mock_create_agent):
-        """Test initialization with custom configuration (backward compatibility)."""
-        mock_llm = MagicMock()
-        mock_provider = MagicMock()
-        mock_provider.create_chat_model.return_value = mock_llm
-        mock_create_provider.return_value = mock_provider
-
-        config = AgentConfig(
-            provider="anthropic",
-            model_name="claude-opus-4",
-            max_tokens=8192,
-        )
-        service = AgentService(config=config)
-
-        assert service.config.model_name == "claude-opus-4"
-        assert service.config.max_tokens == 8192
-
-    @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.create_provider")
-    def test_init_with_config_honors_system_prompt(self, mock_create_provider, mock_create_agent):
-        """Test that config.system_prompt is honored when using AgentConfig."""
-        mock_llm = MagicMock()
-        mock_provider = MagicMock()
-        mock_provider.create_chat_model.return_value = mock_llm
-        mock_create_provider.return_value = mock_provider
-
-        custom_prompt = "You are a specialized assistant from config."
-        config = AgentConfig(
-            provider="anthropic",
-            model_name="claude-opus-4",
-            system_prompt=custom_prompt,
-        )
-        service = AgentService(config=config)
-
-        assert service._system_prompt == custom_prompt
-        # Verify the custom prompt was passed to create_react_agent
-        mock_create_agent.assert_called_once()
-        call_kwargs = mock_create_agent.call_args
-        assert call_kwargs.kwargs.get("prompt") == custom_prompt
-
-    @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.create_provider")
-    def test_init_system_prompt_arg_overrides_config(self, mock_create_provider, mock_create_agent):
-        """Test that system_prompt argument takes precedence over config.system_prompt."""
-        mock_llm = MagicMock()
-        mock_provider = MagicMock()
-        mock_provider.create_chat_model.return_value = mock_llm
-        mock_create_provider.return_value = mock_provider
-
-        config_prompt = "Prompt from config."
-        override_prompt = "Override prompt from argument."
-        config = AgentConfig(
-            provider="anthropic",
-            model_name="claude-opus-4",
-            system_prompt=config_prompt,
-        )
-        service = AgentService(config=config, system_prompt=override_prompt)
-
-        assert service._system_prompt == override_prompt
-        # Verify the override prompt was passed to create_react_agent
-        mock_create_agent.assert_called_once()
-        call_kwargs = mock_create_agent.call_args
-        assert call_kwargs.kwargs.get("prompt") == override_prompt
-
-    @patch("app.services.agent_service.create_react_agent")
-    @patch("app.services.agent_service.create_provider")
-    def test_init_with_provider(self, mock_create_provider, mock_create_agent):
+    def test_init_with_provider(self, mock_create_agent):
         """Test initialization with LLM provider instance."""
         mock_llm = MagicMock()
         mock_provider = MagicMock()
@@ -163,11 +46,10 @@ class TestAgentServiceInit:
 
         service = AgentService(provider=mock_provider)
 
-        assert service.config.provider == "anthropic"
-        assert service.config.model_name == "claude-opus-4"
+        assert service.provider_name == "anthropic"
+        assert service.model_name == "claude-opus-4"
+        assert service.max_tokens == 8192
         assert service.provider is mock_provider
-        # create_provider should not be called when provider is passed
-        mock_create_provider.assert_not_called()
 
     @patch("app.services.agent_service.create_react_agent")
     @patch("app.services.agent_service.create_provider")
@@ -204,11 +86,11 @@ class TestAgentServiceInit:
         assert len(service.tools) > 0
 
     def test_init_unsupported_provider_raises_error(self):
-        """Test that unsupported provider raises ValueError."""
-        config = AgentConfig(provider="unsupported_provider")
+        """Test that unsupported provider raises ProviderNotFoundError."""
+        config = LLMConfig(provider="unsupported_provider", model="test-model")
 
-        with pytest.raises(ValueError, match="Unsupported LLM provider"):
-            AgentService(config=config)
+        with pytest.raises(ProviderNotFoundError, match="サポートされていないLLMプロバイダー"):
+            create_provider(config)
 
     @patch("app.services.agent_service.create_react_agent")
     def test_init_with_custom_system_prompt(self, mock_create_agent):
