@@ -784,21 +784,18 @@ The AI chat feature demonstrates integration with external AI APIs and streaming
        created_at: datetime
    ```
 
-3. **Implement AI Service** (`app/services/ai_service.py`)
+3. **Configure LLM Provider** (`app/providers/`)
    ```python
-   class AIService:
-       def __init__(self):
-           self.client = Anthropic()
-           self.model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+   # app/providers/__init__.py
+   from app.providers import create_provider, load_llm_config
 
-       def generate_response(self, messages: list[dict], stream: bool = True) -> Generator[str] | str:
-           if stream:
-               return self._stream_response(messages)
-           return self._sync_response(messages)
+   config = load_llm_config()  # Loads from env: LLM_PROVIDER, LLM_MODEL
+   provider = create_provider(config)
+   chat_model = provider.create_chat_model()
 
-       def generate_title(self, first_message: str) -> str:
-           # Generate conversation title from first message
-           ...
+   # Environment variables:
+   # LLM_PROVIDER=anthropic (default)
+   # LLM_MODEL=claude-sonnet-4-5-20250929 (default)
    ```
 
 4. **Implement Conversation Service** (`app/services/conversation_service.py`)
