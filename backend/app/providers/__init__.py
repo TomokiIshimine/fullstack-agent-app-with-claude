@@ -118,10 +118,7 @@ def create_provider(config: LLMConfig | None = None) -> BaseLLMProvider:
 
     if provider_name not in _PROVIDER_REGISTRY:
         supported = ", ".join(get_supported_providers())
-        raise ValueError(
-            f"Unsupported LLM provider: '{provider_name}'. "
-            f"Supported providers: {supported}"
-        )
+        raise ValueError(f"Unsupported LLM provider: '{provider_name}'. " f"Supported providers: {supported}")
 
     provider_class = _PROVIDER_REGISTRY[provider_name]
     provider = provider_class(config)

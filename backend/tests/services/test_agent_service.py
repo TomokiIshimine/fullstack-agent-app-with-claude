@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from langchain_core.messages import AIMessageChunk, ToolMessage
 
-from app.providers import AnthropicConfig, AnthropicProvider, LLMConfig
 from app.services.agent_service import SYSTEM_PROMPT, AgentConfig, AgentService, MessageCompleteEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 from app.tools import ToolRegistry
 

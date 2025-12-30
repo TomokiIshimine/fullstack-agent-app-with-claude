@@ -57,9 +57,7 @@ class AnthropicConfig(LLMConfig):
         from app.constants.agent import DEFAULT_LLM_MODEL, DEFAULT_MAX_TOKENS
 
         resolved_model = model if model is not None else os.getenv("LLM_MODEL", DEFAULT_LLM_MODEL)
-        resolved_max_tokens = max_tokens if max_tokens is not None else int(
-            os.getenv("CLAUDE_MAX_TOKENS", str(DEFAULT_MAX_TOKENS))
-        )
+        resolved_max_tokens = max_tokens if max_tokens is not None else int(os.getenv("CLAUDE_MAX_TOKENS", str(DEFAULT_MAX_TOKENS)))
 
         return cls(
             provider="anthropic",
@@ -110,15 +108,9 @@ class AnthropicProvider(BaseLLMProvider):
             ValueError: If API key is not configured.
         """
         if not self._anthropic_config.api_key:
-            raise ValueError(
-                "Anthropic API key is required. Set ANTHROPIC_API_KEY environment variable "
-                "or provide api_key in configuration."
-            )
+            raise ValueError("Anthropic API key is required. Set ANTHROPIC_API_KEY environment variable " "or provide api_key in configuration.")
 
-        logger.debug(
-            f"Creating ChatAnthropic model: {self.model_name}, "
-            f"max_tokens={self.config.max_tokens}, streaming={self.config.streaming}"
-        )
+        logger.debug(f"Creating ChatAnthropic model: {self.model_name}, " f"max_tokens={self.config.max_tokens}, streaming={self.config.streaming}")
 
         return ChatAnthropic(
             model_name=self.model_name,  # type: ignore[call-arg]
