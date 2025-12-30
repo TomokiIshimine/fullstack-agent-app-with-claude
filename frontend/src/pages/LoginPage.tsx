@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, type FormEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { logger } from '@/lib/logger'
 import { Alert, Input, Button } from '@/components/ui'
@@ -10,9 +10,21 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [sessionExpiredMessage, setSessionExpiredMessage] = useState<string | null>(null)
   const { error, handleError, clearError } = useErrorHandler()
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Check for session expired query parameter
+  useEffect(() => {
+    if (searchParams.get('expired') === 'true') {
+      setSessionExpiredMessage('セッションが切れました。再度ログインしてください。')
+      // Remove the query parameter from URL
+      searchParams.delete('expired')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -38,6 +50,11 @@ export function LoginPage() {
         <div className="bg-white rounded-xl shadow-lg p-8">
           <h1 className="text-3xl font-bold text-slate-900 text-center mb-8">ログイン</h1>
           <form onSubmit={handleSubmit} className="space-y-6" aria-label="ログインフォーム">
+            {sessionExpiredMessage && (
+              <Alert variant="warning" onDismiss={() => setSessionExpiredMessage(null)}>
+                {sessionExpiredMessage}
+              </Alert>
+            )}
             {error && (
               <Alert variant="error" onDismiss={clearError}>
                 {error}

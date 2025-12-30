@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger'
+import { emitSessionExpired } from '@/lib/authEvents'
 /**
  * Custom error class for API errors
  */
@@ -31,6 +32,15 @@ export async function fetchWithLogging(url: string, options?: RequestInit): Prom
     const duration = performance.now() - startTime
 
     logger.logApiResponse(method, url, response.status, duration)
+
+    // Detect session expiration and emit global event
+    // Exclude auth endpoints to avoid false positives on initial page load
+    // (e.g., /api/auth/refresh returning 401 for unauthenticated users)
+    const isAuthEndpoint = url.includes('/api/auth/')
+    if (response.status === 401 && !isAuthEndpoint) {
+      logger.warn('Session expired - 401 received', { url, method })
+      emitSessionExpired()
+    }
 
     return response
   } catch (error) {
@@ -167,8 +177,15 @@ export async function parseSSEStream<T extends Record<string, unknown> = Record<
           try {
             const parsed = JSON.parse(eventData) as T
             options.onEvent(currentEvent, parsed)
-          } catch {
-            // Ignore JSON parse errors for malformed events
+          } catch (parseError) {
+            // Log parse errors in development for debugging
+            if (import.meta.env.DEV) {
+              logger.warn('SSE JSON parse error', {
+                event: currentEvent,
+                data: eventData,
+                error: parseError instanceof Error ? parseError.message : 'Unknown error',
+              })
+            }
           }
           currentEvent = ''
         }
