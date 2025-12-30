@@ -141,7 +141,9 @@ describe('Navbar', () => {
       const toggleButton = await screen.findByRole('button', { name: 'メニューを開く' })
       await user.click(toggleButton)
 
-      expect(await screen.findByRole('navigation', { name: 'モバイルメニュー' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('navigation', { name: 'モバイルメニュー' })
+      ).toBeInTheDocument()
     })
 
     it('should have correct aria-expanded attribute', async () => {

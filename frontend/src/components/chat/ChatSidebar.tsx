@@ -19,7 +19,6 @@ export function ChatSidebar({
   isOpen = true,
   onClose,
 }: ChatSidebarProps) {
-
   const formatDate = (date: Date) => {
     const now = new Date()
     const diff = now.getTime() - date.getTime()
