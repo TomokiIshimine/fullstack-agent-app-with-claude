@@ -93,7 +93,6 @@ describe('Input', () => {
       await user.click(screen.getByLabelText('パスワードを隠す'))
       expect(input).toHaveAttribute('type', 'password')
     })
-
   })
 
   describe('User Input', () => {
@@ -182,7 +181,6 @@ describe('Input', () => {
       render(<Input id="name" helperText="Enter your full name" />)
       expect(screen.getByRole('textbox')).toHaveAttribute('aria-describedby', 'name-helper')
     })
-
 
     it('error message has alert role', () => {
       render(<Input error="This field is required" />)
