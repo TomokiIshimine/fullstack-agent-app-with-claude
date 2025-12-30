@@ -5,11 +5,9 @@ from __future__ import annotations
 import re
 from typing import Type
 
-# Password validation constants
-MIN_PASSWORD_LENGTH = 8
-
-# Message validation constants
-MAX_MESSAGE_LENGTH = 32000
+# Import validation constants from centralized location
+# Re-exported for backward compatibility
+from app.constants.validation import MAX_MESSAGE_LENGTH, MIN_PASSWORD_LENGTH
 
 
 class PasswordValidationError(ValueError):

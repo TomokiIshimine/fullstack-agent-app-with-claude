@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Sequence
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
+from app.constants.pagination import DEFAULT_PER_PAGE
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.repositories.base import BaseRepository
@@ -51,7 +52,7 @@ class ConversationRepository(BaseRepository):
         self,
         user_id: int,
         page: int = 1,
-        per_page: int = 20,
+        per_page: int = DEFAULT_PER_PAGE,
     ) -> tuple[Sequence[Conversation], int]:
         """
         Find all conversations for a user with pagination.
@@ -88,7 +89,7 @@ class ConversationRepository(BaseRepository):
         self,
         user_id: int,
         page: int = 1,
-        per_page: int = 20,
+        per_page: int = DEFAULT_PER_PAGE,
     ) -> tuple[list[dict], int]:
         """
         Find all conversations for a user with message counts.

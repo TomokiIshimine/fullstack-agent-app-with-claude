@@ -8,6 +8,9 @@ import logging
 from flask import Blueprint, Response, g, jsonify, request, stream_with_context
 from werkzeug.exceptions import Forbidden, NotFound
 
+from app.constants.http import HTTP_CREATED, HTTP_NO_CONTENT, HTTP_OK
+from app.constants.pagination import DEFAULT_PER_PAGE
+from app.constants.rate_limit import CREATE_CONVERSATION_RATE_LIMIT, SEND_MESSAGE_RATE_LIMIT
 from app.constants.sse_events import SERVICE_TO_SSE_EVENT_MAP, SSEEvent
 from app.core.exceptions import ConversationAccessDeniedError, ConversationNotFoundError
 from app.limiter import limiter
@@ -45,7 +48,7 @@ def list_conversations(*, conversation_service: ConversationService):
     """
     user_id = g.user_id
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    per_page = request.args.get("per_page", DEFAULT_PER_PAGE, type=int)
 
     logger.info(f"GET /api/conversations - Listing conversations for user_id={user_id}")
 
@@ -56,12 +59,12 @@ def list_conversations(*, conversation_service: ConversationService):
     )
 
     logger.info(f"GET /api/conversations - Retrieved {len(response.conversations)} conversations")
-    return jsonify(response.model_dump(mode="json")), 200
+    return jsonify(response.model_dump(mode="json")), HTTP_OK
 
 
 @conversation_bp.post("")
 @require_auth
-@limiter.limit("30/minute")
+@limiter.limit(CREATE_CONVERSATION_RATE_LIMIT)
 @with_conversation_service
 @validate_request_body(CreateConversationRequest)
 def create_conversation(*, data: CreateConversationRequest, conversation_service: ConversationService):
@@ -137,7 +140,7 @@ def create_conversation(*, data: CreateConversationRequest, conversation_service
             first_message=data.message,
         )
         logger.info(f"POST /api/conversations - Created conversation {response.conversation.uuid}")
-        return jsonify(response.model_dump(mode="json")), 201
+        return jsonify(response.model_dump(mode="json")), HTTP_CREATED
 
 
 @conversation_bp.get("/<uuid>")
@@ -165,7 +168,7 @@ def get_conversation(uuid: str, *, conversation_service: ConversationService):
     )
 
     logger.info(f"GET /api/conversations/{uuid} - Retrieved {len(response.messages)} messages")
-    return jsonify(response.model_dump(mode="json")), 200
+    return jsonify(response.model_dump(mode="json")), HTTP_OK
 
 
 @conversation_bp.delete("/<uuid>")
@@ -190,12 +193,12 @@ def delete_conversation(uuid: str, *, conversation_service: ConversationService)
     )
 
     logger.info(f"DELETE /api/conversations/{uuid} - Deleted successfully")
-    return "", 204
+    return "", HTTP_NO_CONTENT
 
 
 @conversation_bp.post("/<uuid>/messages")
 @require_auth
-@limiter.limit("30/minute")
+@limiter.limit(SEND_MESSAGE_RATE_LIMIT)
 @with_conversation_service
 @validate_request_body(SendMessageRequest)
 def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: ConversationService):
@@ -285,7 +288,7 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
             content=data.content,
         )
         logger.info(f"POST /api/conversations/{uuid}/messages - Message exchange completed")
-        return jsonify(response.model_dump(mode="json")), 200
+        return jsonify(response.model_dump(mode="json")), HTTP_OK
 
 
 __all__ = ["conversation_bp"]

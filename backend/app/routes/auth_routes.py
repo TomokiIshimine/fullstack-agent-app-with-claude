@@ -8,6 +8,9 @@ from flask import Blueprint, jsonify, make_response, request
 from werkzeug.exceptions import Unauthorized
 
 from app.config import load_cookie_config, load_jwt_config
+from app.constants.http import HTTP_OK
+from app.constants.jwt import SECONDS_PER_DAY, SECONDS_PER_MINUTE
+from app.constants.rate_limit import LOGIN_RATE_LIMIT, LOGOUT_RATE_LIMIT, REFRESH_RATE_LIMIT
 from app.limiter import limiter
 from app.routes.dependencies import validate_request_body, with_auth_service
 from app.schemas.auth import LoginRequest, LogoutResponse, RefreshTokenResponse, UserResponse
@@ -23,8 +26,8 @@ def _set_auth_cookies(response, access_token: str, refresh_token: str):
     cookie_config = load_cookie_config()
     jwt_config = load_jwt_config()
 
-    access_token_max_age = jwt_config.access_token_expire_minutes * 60
-    refresh_token_max_age = jwt_config.refresh_token_expire_days * 24 * 60 * 60
+    access_token_max_age = jwt_config.access_token_expire_minutes * SECONDS_PER_MINUTE
+    refresh_token_max_age = jwt_config.refresh_token_expire_days * SECONDS_PER_DAY
 
     response.set_cookie(
         "access_token",
@@ -74,7 +77,7 @@ def _clear_auth_cookies(response):
 
 
 @auth_bp.post("/login")
-@limiter.limit("10 per minute")
+@limiter.limit(LOGIN_RATE_LIMIT)
 @with_auth_service
 @validate_request_body(LoginRequest)
 def login(*, data: LoginRequest, auth_service: AuthService):
@@ -101,7 +104,7 @@ def login(*, data: LoginRequest, auth_service: AuthService):
     """
     response_data, access_token, refresh_token = auth_service.login(data.email, data.password)
 
-    response = make_response(jsonify(response_data.model_dump()), 200)
+    response = make_response(jsonify(response_data.model_dump()), HTTP_OK)
     _set_auth_cookies(response, access_token, refresh_token)
 
     logger.info(f"Login successful: {data.email}")
@@ -109,7 +112,7 @@ def login(*, data: LoginRequest, auth_service: AuthService):
 
 
 @auth_bp.post("/refresh")
-@limiter.limit("30 per minute")
+@limiter.limit(REFRESH_RATE_LIMIT)
 @with_auth_service
 def refresh(*, auth_service: AuthService):
     """
@@ -142,7 +145,7 @@ def refresh(*, auth_service: AuthService):
     # Create response with user information
     user_response = UserResponse.model_validate(user, from_attributes=True)
     response_data = RefreshTokenResponse(message="トークンを更新しました", user=user_response)
-    response = make_response(jsonify(response_data.model_dump()), 200)
+    response = make_response(jsonify(response_data.model_dump()), HTTP_OK)
 
     _set_auth_cookies(response, new_access_token, new_refresh_token)
 
@@ -151,7 +154,7 @@ def refresh(*, auth_service: AuthService):
 
 
 @auth_bp.post("/logout")
-@limiter.limit("20 per minute")
+@limiter.limit(LOGOUT_RATE_LIMIT)
 @with_auth_service
 def logout(*, auth_service: AuthService):
     """
@@ -176,7 +179,7 @@ def logout(*, auth_service: AuthService):
 
     # Create response
     response_data = LogoutResponse(message="ログアウトしました")
-    response = make_response(jsonify(response_data.model_dump()), 200)
+    response = make_response(jsonify(response_data.model_dump()), HTTP_OK)
     _clear_auth_cookies(response)
 
     logger.info("Logout successful")

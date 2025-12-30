@@ -9,8 +9,10 @@ from __future__ import annotations
 import secrets
 import string
 
+from app.constants.validation import DEFAULT_GENERATED_PASSWORD_LENGTH
 
-def generate_initial_password(length: int = 12) -> str:
+
+def generate_initial_password(length: int = DEFAULT_GENERATED_PASSWORD_LENGTH) -> str:
     """Generate a secure random password for initial user creation.
 
     The generated password contains:

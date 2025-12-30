@@ -10,6 +10,8 @@ from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import TooManyRequests
 
 from app.config import get_rate_limit_storage_uri, load_rate_limit_config
+from app.constants.http import HTTP_TOO_MANY_REQUESTS
+from app.constants.redis import DEFAULT_SOCKET_CONNECT_TIMEOUT, DEFAULT_SOCKET_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +50,10 @@ _rate_limit_config = load_rate_limit_config()
 limiter = Limiter(
     key_func=get_remote_address,  # Use client IP as rate limit key
     storage_uri=_init_limiter_storage_uri(),  # Redis or memory storage
-    storage_options={"socket_connect_timeout": 30, "socket_timeout": 30},
+    storage_options={
+        "socket_connect_timeout": DEFAULT_SOCKET_CONNECT_TIMEOUT,
+        "socket_timeout": DEFAULT_SOCKET_TIMEOUT,
+    },
     # Default limits (can be overridden per route)
     default_limits=list(_rate_limit_config.default_limits),
     # Swallow errors (don't fail requests if Redis is down)
@@ -71,7 +76,7 @@ def rate_limit_error_handler(e: TooManyRequests) -> tuple[Response, int]:
         JSON error response with 429 status code
     """
     logger.warning(f"Rate limit exceeded: {e.description}")
-    return jsonify({"error": "リクエストが多すぎます。しばらく待ってから再試行してください。"}), 429
+    return jsonify({"error": "リクエストが多すぎます。しばらく待ってから再試行してください。"}), HTTP_TOO_MANY_REQUESTS
 
 
 def init_limiter(app: Flask) -> Limiter:
@@ -92,7 +97,7 @@ def init_limiter(app: Flask) -> Limiter:
     limiter.init_app(app)
 
     # Register custom error handler for 429 responses
-    app.register_error_handler(429, rate_limit_error_handler)
+    app.register_error_handler(HTTP_TOO_MANY_REQUESTS, rate_limit_error_handler)
 
     # Log the storage backend being used
     if limiter._storage and hasattr(limiter._storage, "storage_uri"):

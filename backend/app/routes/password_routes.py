@@ -6,6 +6,7 @@ import logging
 
 from flask import Blueprint, g, jsonify
 
+from app.constants.http import HTTP_OK
 from app.routes.dependencies import validate_request_body, with_password_service
 from app.schemas.password import PasswordChangeRequest, PasswordChangeResponse
 from app.services.password_service import PasswordService
@@ -46,7 +47,7 @@ def change_password(*, data: PasswordChangeRequest, password_service: PasswordSe
 
     response = PasswordChangeResponse(message="パスワードを変更しました")
     logger.info(f"POST /api/password/change - Password changed successfully for user_id={user_id}")
-    return jsonify(response.model_dump()), 200
+    return jsonify(response.model_dump()), HTTP_OK
 
 
 __all__ = ["password_bp"]
