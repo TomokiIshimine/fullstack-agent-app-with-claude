@@ -8,6 +8,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, field_validator
 
 from app.schemas.tool_call import ToolCallResponse
+from app.schemas.validators import validate_message_content
 
 
 class CreateConversationRequest(BaseModel):
@@ -19,11 +20,7 @@ class CreateConversationRequest(BaseModel):
     @classmethod
     def validate_message(cls, v: str) -> str:
         """Validate message content."""
-        if not v or not v.strip():
-            raise ValueError("Message is required")
-        if len(v) > 32000:
-            raise ValueError("Message must be at most 32000 characters")
-        return v.strip()
+        return validate_message_content(v, field_name="Message")
 
 
 class SendMessageRequest(BaseModel):
@@ -35,11 +32,7 @@ class SendMessageRequest(BaseModel):
     @classmethod
     def validate_content(cls, v: str) -> str:
         """Validate message content."""
-        if not v or not v.strip():
-            raise ValueError("Content is required")
-        if len(v) > 32000:
-            raise ValueError("Content must be at most 32000 characters")
-        return v.strip()
+        return validate_message_content(v, field_name="Content")
 
 
 class MessageResponse(BaseModel):
