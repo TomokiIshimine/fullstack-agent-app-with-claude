@@ -27,7 +27,16 @@ from app.schemas.conversation import (
     SendMessageResponse,
 )
 from app.schemas.tool_call import ToolCallResponse
-from app.services.agent_service import AgentEvent, AgentService, MessageCompleteEvent, MessageMetadataEvent, RetryEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
+from app.services.agent_service import (
+    AgentEvent,
+    AgentService,
+    MessageCompleteEvent,
+    MessageMetadataEvent,
+    RetryEvent,
+    TextDeltaEvent,
+    ToolCallEvent,
+    ToolResultEvent,
+)
 from app.utils.cost_calculator import calculate_cost
 
 logger = logging.getLogger(__name__)
