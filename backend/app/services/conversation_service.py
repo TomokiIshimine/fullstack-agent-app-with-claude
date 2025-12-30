@@ -381,17 +381,32 @@ class ConversationService:
         self.session.flush()
 
         # Generate AI response using agent with common event processing
-        full_response = ""
-        for event in self.agent_service.generate_response(messages, stream=True):
-            _, text_content = self._process_agent_event(event, assistant_message.id)
-            if text_content is not None:
-                if isinstance(event, TextDeltaEvent):
-                    full_response += text_content
-                elif isinstance(event, MessageCompleteEvent):
-                    full_response = text_content
+        # Consume streaming generator to get result with metadata (don't yield events)
+        response_generator = self._stream_agent_response(messages, assistant_message.id)
+        result: StreamingResult | None = None
+        try:
+            while True:
+                next(response_generator)  # Consume events without yielding
+        except StopIteration as e:
+            result = e.value
 
-        # Update assistant message with final content
-        assistant_message.content = full_response
+        if result is None:
+            result = StreamingResult(
+                content="",
+                input_tokens=0,
+                output_tokens=0,
+                model="",
+                response_time_ms=0,
+                cost_usd=0.0,
+            )
+
+        # Update assistant message with final content and metadata
+        assistant_message.content = result.content
+        assistant_message.input_tokens = result.input_tokens if result.input_tokens > 0 else None
+        assistant_message.output_tokens = result.output_tokens if result.output_tokens > 0 else None
+        assistant_message.model = result.model if result.model else None
+        assistant_message.response_time_ms = result.response_time_ms if result.response_time_ms > 0 else None
+        assistant_message.cost_usd = result.cost_usd if result.cost_usd > 0 else None
         self.session.flush()
 
         # Update conversation timestamp
