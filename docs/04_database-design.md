@@ -31,6 +31,7 @@
 | refresh_tokens    | JWT リフレッシュトークン管理  |
 | conversations     | AIチャット会話管理            |
 | messages          | チャットメッセージ管理        |
+| tool_calls        | ツール呼び出し履歴管理        |
 | schema_migrations | データベースマイグレーション履歴 |
 
 ---
@@ -42,6 +43,7 @@ erDiagram
     users ||--o{ refresh_tokens : "has"
     users ||--o{ conversations : "has"
     conversations ||--o{ messages : "has"
+    messages ||--o{ tool_calls : "has"
 
     users {
         BIGINT id PK "ユーザーID"
@@ -78,6 +80,19 @@ erDiagram
         ENUM role "ロール(user/assistant)"
         TEXT content "メッセージ本文"
         DATETIME created_at "作成日時"
+    }
+
+    tool_calls {
+        BIGINT id PK "ツール呼び出しID"
+        BIGINT message_id FK "メッセージID"
+        VARCHAR tool_call_id "ツール呼び出しID"
+        VARCHAR tool_name "ツール名"
+        JSON input "入力パラメータ"
+        TEXT output "出力"
+        TEXT error "エラー"
+        ENUM status "状態(pending/success/error)"
+        DATETIME started_at "開始日時"
+        DATETIME completed_at "完了日時"
     }
 ```
 
@@ -192,6 +207,37 @@ AIチャットの会話を管理するテーブル。
 
 ---
 
+### 3.5 tool_calls テーブル
+
+エージェントのツール呼び出し履歴を管理するテーブル。
+
+| カラム名        | データ型           | 制約                     | 説明                          |
+|----------------|-------------------|-------------------------|-------------------------------|
+| id             | BIGINT UNSIGNED   | PRIMARY KEY, AUTO_INC   | ツール呼び出しID              |
+| message_id     | BIGINT UNSIGNED   | NOT NULL, FOREIGN KEY   | メッセージID (messages.id)    |
+| tool_call_id   | VARCHAR(64)       | NOT NULL                | ツール呼び出しID（LLM由来）    |
+| tool_name      | VARCHAR(100)      | NOT NULL                | ツール名                       |
+| input          | JSON              | NOT NULL                | ツール入力パラメータ           |
+| output         | TEXT              | NULL                    | ツール出力                     |
+| error          | TEXT              | NULL                    | エラー内容                     |
+| status         | ENUM('pending', 'success', 'error') | NOT NULL, DEFAULT 'pending' | 実行状態 |
+| started_at     | DATETIME          | NOT NULL, DEFAULT NOW   | 実行開始日時                   |
+| completed_at   | DATETIME          | NULL                    | 実行完了日時                   |
+
+**インデックス:**
+- `idx_tool_calls_message_id` on `message_id` (メッセージ別ツール呼び出し取得)
+- `idx_tool_calls_tool_call_id` on `tool_call_id` (ツール呼び出しID検索)
+
+**外部キー:**
+- `message_id` → `messages.id` (ON DELETE CASCADE)
+
+**ビジネスルール:**
+- tool_call_id は会話中で一意になるよう生成される
+- status は `pending` → `success`/`error` の遷移で更新される
+- メッセージ削除時に関連するツール呼び出しも削除される
+
+---
+
 ## 4. データベーススキーマ管理
 
 ### 4.1 スキーマファイル
@@ -199,12 +245,14 @@ AIチャットの会話を管理するテーブル。
 - **初期化スクリプト**: `infra/mysql/init/001_init.sql`
   - Docker コンテナ初回起動時に自動実行
   - 全テーブルの作成とインデックス設定
+  - `schema_migrations` テーブルは `apply_sql_migrations.py` 実行時に作成
 
 - **SQLAlchemy モデル**: `backend/app/models/`
   - `user.py` - User モデル
   - `refresh_token.py` - RefreshToken モデル
   - `conversation.py` - Conversation モデル（AIチャット会話）
   - `message.py` - Message モデル（チャットメッセージ）
+  - `tool_call.py` - ToolCall モデル（ツール呼び出し）
   - `schema_migration.py` - SchemaMigration モデル（マイグレーション追跡用）
 
 ### 4.2 マイグレーション
@@ -324,6 +372,10 @@ poetry -C backend run python scripts/create_user.py test@example.com password123
 **messages テーブル:**
 - `conversation_id` にインデックス（会話別メッセージ取得）
 - `created_at` にインデックス（時系列順ソート）
+
+**tool_calls テーブル:**
+- `message_id` にインデックス（メッセージ別ツール呼び出し取得）
+- `tool_call_id` にインデックス（ツール呼び出しID検索）
 
 ### 5.2 クエリ最適化
 

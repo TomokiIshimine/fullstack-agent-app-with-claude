@@ -90,13 +90,15 @@ AIチャット機能を使用するには、以下の環境変数を設定する
 | 環境変数 | 必須 | デフォルト | 説明 |
 |---------|------|-----------|------|
 | `ANTHROPIC_API_KEY` | はい | - | Anthropic APIキー |
-| `CLAUDE_MODEL` | いいえ | `claude-sonnet-4-5-20250929` | 使用するClaudeモデル |
+| `LLM_PROVIDER` | いいえ | `anthropic` | LLMプロバイダー（現状はanthropicのみ） |
+| `LLM_MODEL` | いいえ | `claude-sonnet-4-5-20250929` | 使用するClaudeモデル |
 | `CLAUDE_MAX_TOKENS` | いいえ | `4096` | AI応答の最大トークン数 |
 
 **設定例:**
 ```env
 ANTHROPIC_API_KEY=sk-ant-your-api-key-here
-CLAUDE_MODEL=claude-sonnet-4-5-20250929
+LLM_PROVIDER=anthropic
+LLM_MODEL=claude-sonnet-4-5-20250929
 CLAUDE_MAX_TOKENS=4096
 ```
 
@@ -209,6 +211,9 @@ make up                   # すべてのサービスを起動（MySQL含む）
 MySQL コンテナは初回起動時に `infra/mysql/init/001_init.sql` を実行し、以下のテーブルを作成します:
 - `users` - ユーザー認証
 - `refresh_tokens` - JWT トークン管理
+- `conversations` - 会話管理
+- `messages` - メッセージ管理
+- `tool_calls` - ツール呼び出し履歴
 
 ### 手動スキーマ管理
 
