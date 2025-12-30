@@ -6,6 +6,8 @@ import { UserManagementPage } from '@/pages/admin/UserManagementPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { RoleBasedRedirect } from '@/components/RoleBasedRedirect'
+import { AuthenticatedLayout } from '@/components/layout'
+import '@/styles/navbar.css'
 
 function App() {
   return (
@@ -18,7 +20,9 @@ function App() {
             path="/chat"
             element={
               <ProtectedRoute>
-                <ChatPage />
+                <AuthenticatedLayout>
+                  <ChatPage />
+                </AuthenticatedLayout>
               </ProtectedRoute>
             }
           />
@@ -26,7 +30,9 @@ function App() {
             path="/chat/:uuid"
             element={
               <ProtectedRoute>
-                <ChatPage />
+                <AuthenticatedLayout>
+                  <ChatPage />
+                </AuthenticatedLayout>
               </ProtectedRoute>
             }
           />
@@ -35,7 +41,9 @@ function App() {
             path="/admin/users"
             element={
               <ProtectedRoute requiredRole="admin">
-                <UserManagementPage />
+                <AuthenticatedLayout>
+                  <UserManagementPage />
+                </AuthenticatedLayout>
               </ProtectedRoute>
             }
           />
@@ -43,7 +51,9 @@ function App() {
             path="/settings"
             element={
               <ProtectedRoute>
-                <SettingsPage />
+                <AuthenticatedLayout>
+                  <SettingsPage />
+                </AuthenticatedLayout>
               </ProtectedRoute>
             }
           />

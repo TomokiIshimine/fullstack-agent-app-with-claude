@@ -1,13 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import type { Conversation } from '@/types/chat'
 
 interface ChatSidebarProps {
   conversations: Conversation[]
   currentUuid?: string
   isLoading: boolean
-  userName?: string
-  userEmail?: string
   onNewChat: () => void
   onSelectConversation: (uuid: string) => void
   isOpen?: boolean
@@ -18,43 +14,11 @@ export function ChatSidebar({
   conversations,
   currentUuid,
   isLoading,
-  userName,
-  userEmail,
   onNewChat,
   onSelectConversation,
   isOpen = true,
   onClose,
 }: ChatSidebarProps) {
-  const navigate = useNavigate()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  const displayName = userName || userEmail || 'User'
-  const avatarLetter = (userName?.[0] || userEmail?.[0] || 'U').toUpperCase()
-
-  useEffect(() => {
-    if (!isMenuOpen) return
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false)
-      }
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsMenuOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleEscape)
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [isMenuOpen])
 
   const formatDate = (date: Date) => {
     const now = new Date()
@@ -126,54 +90,6 @@ export function ChatSidebar({
               </div>
             ))
           )}
-        </div>
-
-        <div className="chat-sidebar__footer">
-          <div className="chat-sidebar__user-info" ref={menuRef}>
-            <div className="chat-sidebar__user-avatar">{avatarLetter}</div>
-            <div className="chat-sidebar__user-name">{displayName}</div>
-            <button
-              type="button"
-              className="chat-sidebar__menu-btn"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-expanded={isMenuOpen}
-              aria-haspopup="menu"
-              aria-label="メニュー"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="1" />
-                <circle cx="12" cy="5" r="1" />
-                <circle cx="12" cy="19" r="1" />
-              </svg>
-            </button>
-            {isMenuOpen && (
-              <div
-                className="absolute right-0 bottom-full mb-2 min-w-[10rem] bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden"
-                role="menu"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="block w-full px-4 py-3 text-left text-sm text-slate-700 bg-transparent border-none cursor-pointer transition-colors hover:bg-slate-50"
-                  onClick={() => {
-                    navigate('/settings')
-                    setIsMenuOpen(false)
-                  }}
-                >
-                  設定
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </aside>
     </>
