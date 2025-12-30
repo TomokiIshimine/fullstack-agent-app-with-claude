@@ -88,6 +88,12 @@ https://{domain}/api/{version}/{resource}/{id}/{sub-resource}
 | **ユーザー管理** | `PATCH /api/users/me` | プロフィール更新（認証ユーザー） |
 | **ユーザー管理** | `DELETE /api/users/{id}` | ユーザー削除（管理者のみ） |
 | **パスワード管理** | `POST /api/password/change` | パスワード変更（認証ユーザー） |
+| **会話** | `GET /api/conversations` | 会話一覧取得（認証ユーザー） |
+| **会話** | `POST /api/conversations` | 新規会話作成（ストリーミング対応） |
+| **会話** | `GET /api/conversations/{uuid}` | 会話取得（認証ユーザー） |
+| **会話** | `DELETE /api/conversations/{uuid}` | 会話削除（認証ユーザー） |
+| **会話** | `POST /api/conversations/{uuid}/messages` | メッセージ送信（ストリーミング対応） |
+| **監視** | `GET /api/health` | ヘルスチェック（認証不要） |
 
 ---
 
@@ -408,13 +414,17 @@ def handle_http_exception(err: HTTPException):
 
 ## 6. クエリパラメータ設計
 
-### 6.1 フィルタリング
+### 6.1 フィルタリング（将来対応予定）
 
 ```
 GET /api/users?role=admin         # 管理者ユーザーのみ
 GET /api/users?role=user          # 一般ユーザーのみ
 GET /api/users                    # 全ユーザー
 ```
+
+**現状:**
+- `GET /api/users` はクエリパラメータによるフィルタリングを実装していません。
+- 上記は将来の拡張案としての例です。
 
 **パラメータ:**
 
@@ -427,12 +437,16 @@ GET /api/users                    # 全ユーザー
 - 値: 小文字、アンダースコア区切り
 - 複数条件: `&` で結合
 
-### 6.2 ソート
+### 6.2 ソート（将来対応予定）
 
 ```
 GET /api/users?sort_by=created_at&order=desc
 GET /api/users?sort_by=email&order=asc
 ```
+
+**現状:**
+- `GET /api/users` はソート指定に対応していません。
+- 上記は将来の拡張案としての例です。
 
 **ルール:**
 - `sort_by`: ソート対象フィールド（スネークケース）
@@ -536,6 +550,12 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 | `PATCH /api/users/me` | 必要 | 全ユーザー |
 | `DELETE /api/users/{id}` | 必要 | 管理者のみ |
 | `POST /api/password/change` | 必要 | 全ユーザー |
+| `GET /api/conversations` | 必要 | 全ユーザー |
+| `POST /api/conversations` | 必要 | 全ユーザー |
+| `GET /api/conversations/{uuid}` | 必要 | 全ユーザー |
+| `DELETE /api/conversations/{uuid}` | 必要 | 全ユーザー |
+| `POST /api/conversations/{uuid}/messages` | 必要 | 全ユーザー |
+| `GET /api/health` | 不要 | - |
 
 **実装方法:**
 - 認証: `@require_auth` デコレータ（`backend/app/utils/auth_decorator.py`）
@@ -561,6 +581,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 |---------|------|------|-----|
 | `Content-Type` | POST/PATCH時 | リクエストボディの形式 | `application/json` |
 | `Cookie` | 認証必須API | JWT トークン | `access_token=...` |
+| `X-Stream` | 会話APIのみ | SSEストリーミングを無効化する（`false`で無効） | `false` |
 
 ### 9.2 レスポンスヘッダー
 
@@ -620,7 +641,7 @@ Flask-Limiterが自動的に以下のヘッダーを返します:
 
 - **N+1クエリの回避**: SQLAlchemyの `joinedload` を使用
 - **適切なインデックス**: データベース設計書参照
-- **ページネーション**: 大量データには必須（将来実装予定）
+- **ページネーション**: 大量データには必須（会話一覧で実装済み、他一覧は将来対応予定）
 
 ### 10.4 セキュリティ
 
@@ -637,7 +658,7 @@ Flask-Limiterが自動的に以下のヘッダーを返します:
 | テストタイプ | ツール | 対象 |
 |------------|-------|------|
 | **ユニットテスト** | pytest | Serviceレイヤー、Repositoryレイヤー |
-| **統合テスト** | pytest | APIエンドポイント（E2E） |
+| **統合テスト** | pytest | APIエンドポイント（統合テスト） |
 | **フロントエンド統合** | Vitest | API呼び出しのモック |
 
 ### 11.2 テストケース例
