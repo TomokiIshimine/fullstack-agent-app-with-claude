@@ -124,7 +124,7 @@ def load_jwt_config() -> JWTConfig:
     if env == "production" and not jwt_secret:
         raise ValueError(
             "JWT_SECRET_KEY must be set in production environment. "
-            "Generate a strong key with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            'Generate a strong key with: python -c "import secrets; print(secrets.token_hex(32))"'
         )
 
     # Use development default only in non-production environments
