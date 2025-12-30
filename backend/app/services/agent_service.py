@@ -15,7 +15,7 @@ from app.constants.agent import (
     DEFAULT_LLM_MODEL,
     DEFAULT_LLM_PROVIDER,
     DEFAULT_MAX_TOKENS,
-    MAX_TITLE_LENGTH,
+    MAX_CONVERSATION_TITLE_LENGTH,
     TITLE_TRUNCATION_LENGTH,
     TITLE_TRUNCATION_SUFFIX,
 )
@@ -318,11 +318,11 @@ class AgentService:
             first_message: The first user message in the conversation
 
         Returns:
-            Generated title (max MAX_TITLE_LENGTH characters)
+            Generated title (max MAX_CONVERSATION_TITLE_LENGTH characters)
         """
         # Simple approach: truncate the first message
         title = first_message.strip()
-        if len(title) > MAX_TITLE_LENGTH:
+        if len(title) > MAX_CONVERSATION_TITLE_LENGTH:
             title = title[:TITLE_TRUNCATION_LENGTH] + TITLE_TRUNCATION_SUFFIX
         return title
 
