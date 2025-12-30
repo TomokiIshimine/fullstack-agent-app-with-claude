@@ -91,7 +91,8 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
   const [streamingContent, setStreamingContent] = useState('')
 
   // Track current UUID to handle navigation during async operations
-  const currentUuidRef = useRef<string | undefined>(initialUuid)
+  // Initialize as undefined to ensure loadConversation is called on first mount
+  const currentUuidRef = useRef<string | undefined>(undefined)
 
   const { streamingToolCalls, addToolCall, completeToolCall, resetToolCalls, getToolCalls } =
     useStreamingToolCalls()
