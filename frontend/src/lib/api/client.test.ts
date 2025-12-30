@@ -343,7 +343,12 @@ describe('fetchWithLogging', () => {
     const emitSpy = vi.spyOn(authEvents, 'emitSessionExpired')
 
     // Test various auth endpoints
-    const authEndpoints = ['/api/auth/login', '/api/auth/logout', '/api/auth/refresh', '/api/auth/me']
+    const authEndpoints = [
+      '/api/auth/login',
+      '/api/auth/logout',
+      '/api/auth/refresh',
+      '/api/auth/me',
+    ]
 
     for (const endpoint of authEndpoints) {
       emitSpy.mockClear()
