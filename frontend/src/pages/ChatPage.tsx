@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConversations } from '@/hooks/useConversations'
-import { useChat } from '@/hooks/useChat'
-import { useNewConversation } from '@/hooks/useNewConversation'
+import { useUnifiedChat } from '@/hooks/useUnifiedChat'
 import { ChatSidebar, ChatInput, MessageList } from '@/components/chat'
 import { Alert } from '@/components/ui'
+import { isConversationError } from '@/types/errors'
 import { logger } from '@/lib/logger'
 import '@/styles/chat.css'
 
@@ -15,7 +15,6 @@ export function ChatPage() {
   const { user } = useAuth()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
-  // Existing conversation management
   const {
     conversations,
     isLoading: isLoadingConversations,
@@ -23,44 +22,13 @@ export function ChatPage() {
     loadConversations,
   } = useConversations()
 
-  // Selected conversation (when uuid is present)
-  const {
-    conversation,
-    messages,
-    isLoading: isLoadingChat,
-    isStreaming,
-    streamingContent,
-    streamingToolCalls,
-    error: chatError,
-    sendMessage,
-  } = useChat({ uuid: uuid || '', autoLoad: !!uuid })
-
-  // New conversation creation
-  const {
-    conversation: newConversation,
-    messages: newMessages,
-    isStreaming: newIsStreaming,
-    streamingContent: newStreamingContent,
-    streamingToolCalls: newStreamingToolCalls,
-    error: newConversationError,
-    createConversation: createNewConversation,
-    reset: resetNewConversation,
-  } = useNewConversation()
-
-  // Reset new conversation state when navigating to a chat with uuid
-  useEffect(() => {
-    if (uuid) {
-      resetNewConversation()
-    } else {
-      logger.debug('Ready for new chat')
-    }
-  }, [uuid, resetNewConversation])
+  const chat = useUnifiedChat({ initialUuid: uuid })
 
   const handleNewChat = useCallback(() => {
-    resetNewConversation()
+    chat.reset()
     navigate('/chat')
     setIsSidebarOpen(false)
-  }, [navigate, resetNewConversation])
+  }, [navigate, chat])
 
   const handleSelectConversation = useCallback(
     (selectedUuid: string) => {
@@ -72,58 +40,32 @@ export function ChatPage() {
 
   const handleSendMessage = useCallback(
     async (content: string) => {
-      if (isStreaming || newIsStreaming) return
+      if (chat.isStreaming) return
 
-      if (uuid) {
-        // Existing conversation
-        await sendMessage(content)
-      } else {
-        // New conversation
-        try {
-          const { uuid: createdUuid } = await createNewConversation(content)
-          // Reload sidebar to include new conversation
+      try {
+        const result = await chat.sendMessage(content)
+
+        if (result.isNew) {
           void loadConversations()
-          navigate(`/chat/${createdUuid}`, { replace: true })
-        } catch (err) {
-          // Check if we should navigate despite error
-          const error = err as Error & { uuid?: string; userMessagePersisted?: boolean }
-          if (error.userMessagePersisted && error.uuid) {
-            logger.warn('Error after message persisted, navigating to conversation', {
-              uuid: error.uuid,
-            })
-            // Reload sidebar even on error if conversation was created
-            void loadConversations()
-            navigate(`/chat/${error.uuid}`, { replace: true })
-          }
-          // Error is already set in hook state
+          navigate(`/chat/${result.uuid}`, { replace: true })
         }
+      } catch (err) {
+        // Check if we should navigate despite error
+        if (isConversationError(err) && err.userMessagePersisted && err.uuid) {
+          logger.warn('Error after message persisted, navigating to conversation', {
+            uuid: err.uuid,
+          })
+          void loadConversations()
+          navigate(`/chat/${err.uuid}`, { replace: true })
+        }
+        // Error is already set in hook state
       }
     },
-    [
-      uuid,
-      isStreaming,
-      newIsStreaming,
-      sendMessage,
-      createNewConversation,
-      loadConversations,
-      navigate,
-    ]
+    [chat, loadConversations, navigate]
   )
 
-  const error = conversationsError || chatError || newConversationError
-  const isInputDisabled = isStreaming || newIsStreaming
-
-  // Determine which messages and streaming content to show
-  const displayMessages = uuid ? messages : newMessages
-  const displayStreamingContent = uuid ? streamingContent : newStreamingContent
-  const displayStreamingToolCalls = uuid ? streamingToolCalls : newStreamingToolCalls
-  const displayIsStreaming = uuid ? isStreaming : newIsStreaming
-  const displayTitle = uuid
-    ? conversation?.title || '読み込み中...'
-    : newConversation?.title || '新しいチャット'
-
-  // Show message list if we have messages or are streaming (new or existing conversation)
-  const hasContent = displayMessages.length > 0 || displayIsStreaming
+  const error = conversationsError || chat.error
+  const hasContent = chat.messages.length > 0 || chat.isStreaming
 
   return (
     <div className="chat-layout">
@@ -162,7 +104,7 @@ export function ChatPage() {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <h1 className="chat-main__title">{displayTitle}</h1>
+          <h1 className="chat-main__title">{chat.title}</h1>
         </header>
 
         {error && (
@@ -171,15 +113,15 @@ export function ChatPage() {
           </div>
         )}
 
-        {uuid && isLoadingChat ? (
+        {uuid && chat.isLoading ? (
           <div className="chat-main__empty">読み込み中...</div>
         ) : hasContent ? (
           <div className="chat-main__messages">
             <MessageList
-              messages={displayMessages}
-              isStreaming={displayIsStreaming}
-              streamingContent={displayStreamingContent}
-              streamingToolCalls={displayStreamingToolCalls}
+              messages={chat.messages}
+              isStreaming={chat.isStreaming}
+              streamingContent={chat.streamingContent}
+              streamingToolCalls={chat.streamingToolCalls}
               userName={user?.name || undefined}
             />
           </div>
@@ -187,7 +129,7 @@ export function ChatPage() {
           <div className="chat-main__empty">メッセージを入力して新しい会話を始めましょう</div>
         )}
 
-        <ChatInput onSend={handleSendMessage} disabled={isInputDisabled} />
+        <ChatInput onSend={handleSendMessage} disabled={chat.isStreaming} />
       </main>
     </div>
   )

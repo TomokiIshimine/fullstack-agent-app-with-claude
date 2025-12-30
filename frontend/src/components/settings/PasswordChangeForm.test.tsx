@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PasswordChangeForm } from './PasswordChangeForm'
 import * as passwordApi from '@/lib/api/password'
+import { ApiError } from '@/lib/api/client'
 
 describe('PasswordChangeForm', () => {
   const mockOnSuccess = vi.fn()
@@ -68,7 +69,10 @@ describe('PasswordChangeForm', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent('すべてのフィールドを入力してください')
+        // Field-level validation shows individual errors
+        expect(screen.getByText('現在のパスワードを入力してください')).toBeInTheDocument()
+        expect(screen.getByText('新しいパスワードを入力してください')).toBeInTheDocument()
+        expect(screen.getByText('確認用パスワードを入力してください')).toBeInTheDocument()
       })
     })
 
@@ -84,9 +88,9 @@ describe('PasswordChangeForm', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(
-          '新しいパスワードは8文字以上で入力してください'
-        )
+        expect(
+          screen.getByText('新しいパスワードは8文字以上で入力してください')
+        ).toBeInTheDocument()
       })
     })
 
@@ -102,9 +106,9 @@ describe('PasswordChangeForm', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(
-          '新しいパスワードと確認用パスワードが一致しません'
-        )
+        expect(
+          screen.getByText('新しいパスワードと確認用パスワードが一致しません')
+        ).toBeInTheDocument()
       })
     })
 
@@ -226,7 +230,7 @@ describe('PasswordChangeForm', () => {
 
     it('should show error message on API error', async () => {
       const user = userEvent.setup()
-      const apiError = new Error('現在のパスワードが間違っています')
+      const apiError = new ApiError(400, '現在のパスワードが間違っています')
       vi.spyOn(passwordApi, 'changePassword').mockRejectedValue(apiError)
 
       render(<PasswordChangeForm onSuccess={mockOnSuccess} />)
@@ -239,7 +243,7 @@ describe('PasswordChangeForm', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent('パスワードの変更に失敗しました')
+        expect(screen.getByRole('alert')).toHaveTextContent('現在のパスワードが間違っています')
         expect(mockOnSuccess).not.toHaveBeenCalled()
       })
     })
@@ -253,7 +257,8 @@ describe('PasswordChangeForm', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toBeInTheDocument()
+        // Field-level errors are shown
+        expect(screen.getByText('現在のパスワードを入力してください')).toBeInTheDocument()
       })
 
       // Fill form and submit again
@@ -268,6 +273,7 @@ describe('PasswordChangeForm', () => {
 
       await waitFor(() => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+        expect(screen.queryByText('現在のパスワードを入力してください')).not.toBeInTheDocument()
       })
     })
   })
@@ -291,7 +297,13 @@ describe('PasswordChangeForm', () => {
     })
 
     it('should have error message with alert role', async () => {
+      const user = userEvent.setup()
       render(<PasswordChangeForm onSuccess={mockOnSuccess} />)
+
+      // Type valid values then invalid to trigger form-level validation
+      await user.type(screen.getByLabelText('現在のパスワード'), 'samepassword123')
+      await user.type(screen.getByLabelText('新しいパスワード'), 'samepassword123')
+      await user.type(screen.getByLabelText('新しいパスワード（確認）'), 'samepassword123')
 
       const submitButton = screen.getByRole('button', { name: 'パスワードを変更' })
       fireEvent.click(submitButton)

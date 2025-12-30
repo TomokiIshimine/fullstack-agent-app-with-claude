@@ -11,6 +11,20 @@ interface UseChatOptions {
   autoLoad?: boolean
 }
 
+/**
+ * @deprecated Use `useUnifiedChat` instead. This hook will be removed in a future version.
+ *
+ * Migration guide:
+ * ```typescript
+ * // Before
+ * const { messages, isStreaming, sendMessage } = useChat({ uuid })
+ *
+ * // After
+ * const { messages, isStreaming, sendMessage } = useUnifiedChat({ initialUuid: uuid })
+ * ```
+ *
+ * @see useUnifiedChat for the new unified conversation hook
+ */
 export function useChat(options: UseChatOptions) {
   const { uuid, autoLoad = true } = options
 

@@ -17,6 +17,23 @@ export interface CreateConversationResult {
 }
 
 /**
+ * @deprecated Use `useUnifiedChat` instead. This hook will be removed in a future version.
+ *
+ * Migration guide:
+ * ```typescript
+ * // Before
+ * const { messages, isStreaming, createConversation } = useNewConversation()
+ * const { uuid } = await createConversation(content)
+ *
+ * // After
+ * const { messages, isStreaming, sendMessage } = useUnifiedChat()
+ * const { uuid, isNew } = await sendMessage(content)
+ * ```
+ *
+ * @see useUnifiedChat for the new unified conversation hook
+ *
+ * ---
+ *
  * Hook for managing new conversation creation with streaming
  *
  * Handles:

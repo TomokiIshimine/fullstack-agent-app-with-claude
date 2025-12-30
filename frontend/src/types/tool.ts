@@ -61,3 +61,39 @@ export function toToolCall(dto: ToolCallDto): ToolCall {
     completedAt: dto.completed_at ? new Date(dto.completed_at) : undefined,
   }
 }
+
+/**
+ * Type guard to check if a tool call is a persisted ToolCall (has numeric id)
+ *
+ * Use this to safely access properties specific to persisted tool calls:
+ * ```typescript
+ * if (isPersistedToolCall(tc)) {
+ *   console.log(tc.id)        // number - safe to access
+ *   console.log(tc.startedAt) // Date - safe to access
+ * }
+ * ```
+ */
+export function isPersistedToolCall(tc: ToolCall | StreamingToolCall): tc is ToolCall {
+  return 'id' in tc && typeof (tc as ToolCall).id === 'number'
+}
+
+/**
+ * Type guard to check if a tool call is a streaming tool call
+ */
+export function isStreamingToolCall(tc: ToolCall | StreamingToolCall): tc is StreamingToolCall {
+  return !isPersistedToolCall(tc)
+}
+
+/**
+ * Get a unique key for any tool call type (for React list rendering)
+ *
+ * Usage:
+ * ```typescript
+ * {toolCalls.map(tc => (
+ *   <ToolCallItem key={getToolCallKey(tc)} toolCall={tc} />
+ * ))}
+ * ```
+ */
+export function getToolCallKey(tc: ToolCall | StreamingToolCall): string | number {
+  return isPersistedToolCall(tc) ? tc.id : tc.toolCallId
+}

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UserCreateForm } from './UserCreateForm'
 import * as usersApi from '@/lib/api/users'
+import { ApiError } from '@/lib/api/client'
 import type { UserCreateRequest, UserCreateResponse } from '@/types/user'
 
 describe('UserCreateForm', () => {
@@ -75,7 +76,7 @@ describe('UserCreateForm', () => {
   })
 
   describe('Validation', () => {
-    it('should show error when email is empty', async () => {
+    it('should show error when all fields are empty', async () => {
       render(
         <UserCreateForm onCreate={mockOnCreate} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />
       )
@@ -84,9 +85,9 @@ describe('UserCreateForm', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(
-          'メールアドレスと名前を入力してください'
-        )
+        // Field-level validation shows individual errors
+        expect(screen.getByText('メールアドレスを入力してください')).toBeInTheDocument()
+        expect(screen.getByText('名前を入力してください')).toBeInTheDocument()
       })
     })
 
@@ -103,9 +104,7 @@ describe('UserCreateForm', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(
-          'メールアドレスと名前を入力してください'
-        )
+        expect(screen.getByText('名前を入力してください')).toBeInTheDocument()
       })
     })
 
@@ -126,7 +125,7 @@ describe('UserCreateForm', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent('名前は100文字以内で入力してください')
+        expect(screen.getByText('名前は100文字以内で入力してください')).toBeInTheDocument()
       })
     })
   })
@@ -264,7 +263,7 @@ describe('UserCreateForm', () => {
 
     it('should show error message on API error', async () => {
       const user = userEvent.setup()
-      const apiError = new Error('Email already exists')
+      const apiError = new ApiError(400, 'メールアドレスが既に使用されています')
       mockOnCreate.mockRejectedValue(apiError)
 
       render(
@@ -278,7 +277,7 @@ describe('UserCreateForm', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent('ユーザーの作成に失敗しました')
+        expect(screen.getByRole('alert')).toHaveTextContent('メールアドレスが既に使用されています')
       })
     })
 
@@ -293,7 +292,8 @@ describe('UserCreateForm', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toBeInTheDocument()
+        // Field-level errors are shown
+        expect(screen.getByText('メールアドレスを入力してください')).toBeInTheDocument()
       })
 
       // Fill form and submit again
@@ -314,6 +314,7 @@ describe('UserCreateForm', () => {
 
       await waitFor(() => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+        expect(screen.queryByText('メールアドレスを入力してください')).not.toBeInTheDocument()
       })
     })
   })

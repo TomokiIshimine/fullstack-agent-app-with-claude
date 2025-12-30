@@ -36,7 +36,9 @@ describe('ProfileUpdateForm', () => {
     await user.click(screen.getByRole('button', { name: '変更を保存' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('名前とメールアドレスを入力してください')
+      // Field-level validation shows individual errors
+      expect(screen.getByText('名前を入力してください')).toBeInTheDocument()
+      expect(screen.getByText('メールアドレスを入力してください')).toBeInTheDocument()
     })
   })
 
@@ -49,7 +51,7 @@ describe('ProfileUpdateForm', () => {
     await user.click(screen.getByRole('button', { name: '変更を保存' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('メールアドレスの形式が正しくありません')
+      expect(screen.getByText('メールアドレスの形式が正しくありません')).toBeInTheDocument()
     })
   })
 

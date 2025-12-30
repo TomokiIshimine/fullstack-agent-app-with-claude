@@ -1,76 +1,73 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect } from 'react'
 import type { User } from '@/types/auth'
 import { updateProfile } from '@/lib/api/profile'
-import { ApiError } from '@/lib/api/client'
 import { logger } from '@/lib/logger'
 import { Input, Button, Alert } from '@/components/ui'
+import { useForm } from '@/hooks/useForm'
+import { validators } from '@/lib/validation'
 
 interface ProfileUpdateFormProps {
   user: User | null
   onSuccess: (user: User) => void
 }
 
-const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+interface ProfileFormValues {
+  email: string
+  name: string
+}
 
 export function ProfileUpdateForm({ user, onSuccess }: ProfileUpdateFormProps) {
-  const [email, setEmail] = useState(user?.email ?? '')
-  const [name, setName] = useState(user?.name ?? '')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const form = useForm<ProfileFormValues>({
+    fields: {
+      email: {
+        initialValue: user?.email ?? '',
+        validate: validators.compose(
+          validators.required('メールアドレスを入力してください'),
+          validators.email('メールアドレスの形式が正しくありません')
+        ),
+      },
+      name: {
+        initialValue: user?.name ?? '',
+        validate: validators.required('名前を入力してください'),
+      },
+    },
+    defaultErrorMessage: 'プロフィールの更新に失敗しました',
+  })
 
+  // Sync form values when user prop changes
   useEffect(() => {
-    setEmail(user?.email ?? '')
-    setName(user?.name ?? '')
-  }, [user?.email, user?.name])
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setError(null)
-
-    if (!user) {
-      setError('ユーザー情報を取得できませんでした')
-      return
-    }
-
-    if (!email.trim() || !name.trim()) {
-      setError('名前とメールアドレスを入力してください')
-      return
-    }
-
-    if (!emailPattern.test(email.trim())) {
-      setError('メールアドレスの形式が正しくありません')
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      const updatedUser = await updateProfile({ email: email.trim(), name: name.trim() })
-      logger.info('Profile updated successfully', {
-        userId: updatedUser.id,
-        email: updatedUser.email,
+    if (user) {
+      form.setInitialValues({
+        email: user.email,
+        name: user.name ?? '',
       })
-      onSuccess(updatedUser)
-    } catch (err) {
-      logger.error('Failed to update profile', err as Error)
-      if (err instanceof ApiError) {
-        setError(err.message)
-      } else {
-        setError('プロフィールの更新に失敗しました')
-      }
-    } finally {
-      setIsSubmitting(false)
     }
-  }
+  }, [user?.email, user?.name, form.setInitialValues])
+
+  const handleSubmit = form.handleSubmit(async values => {
+    if (!user) {
+      form.setError('ユーザー情報を取得できませんでした')
+      return
+    }
+
+    const updatedUser = await updateProfile({
+      email: values.email.trim(),
+      name: values.name.trim(),
+    })
+    logger.info('Profile updated successfully', {
+      userId: updatedUser.id,
+      email: updatedUser.email,
+    })
+    onSuccess(updatedUser)
+  })
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
       <h2 className="text-2xl font-semibold text-slate-900 mb-6">プロフィール</h2>
       <form className="space-y-4" onSubmit={handleSubmit} aria-label="プロフィール更新フォーム">
-        {error && (
-          <Alert variant="error" onDismiss={() => setError(null)}>
-            {error}
+        {form.error && (
+          <Alert variant="error" onDismiss={form.clearError}>
+            {form.error}
           </Alert>
         )}
 
@@ -78,9 +75,10 @@ export function ProfileUpdateForm({ user, onSuccess }: ProfileUpdateFormProps) {
           id="profile-name"
           label="名前"
           type="text"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          disabled={isSubmitting}
+          value={form.fields.name.value}
+          onChange={form.fields.name.onChange}
+          error={form.fields.name.error}
+          disabled={form.isSubmitting}
           autoComplete="name"
           fullWidth
         />
@@ -89,16 +87,17 @@ export function ProfileUpdateForm({ user, onSuccess }: ProfileUpdateFormProps) {
           id="profile-email"
           label="メールアドレス"
           type="email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          disabled={isSubmitting}
+          value={form.fields.email.value}
+          onChange={form.fields.email.onChange}
+          error={form.fields.email.error}
+          disabled={form.isSubmitting}
           autoComplete="email"
           helperText="ログインに使用するメールアドレスを設定します"
           fullWidth
         />
 
-        <Button type="submit" disabled={isSubmitting} loading={isSubmitting} fullWidth>
-          {isSubmitting ? '保存中...' : '変更を保存'}
+        <Button type="submit" disabled={form.isSubmitting} loading={form.isSubmitting} fullWidth>
+          {form.isSubmitting ? '保存中...' : '変更を保存'}
         </Button>
       </form>
     </div>

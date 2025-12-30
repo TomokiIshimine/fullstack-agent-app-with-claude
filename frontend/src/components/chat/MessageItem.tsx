@@ -1,4 +1,5 @@
 import type { Message } from '@/types/chat'
+import { getToolCallKey } from '@/types/tool'
 import { ToolCallItem } from './ToolCallItem'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
@@ -19,7 +20,7 @@ export function MessageItem({ message, userName }: MessageItemProps) {
         {hasToolCalls && (
           <div className="message-item__tool-calls">
             {message.toolCalls!.map(tc => (
-              <ToolCallItem key={'id' in tc ? tc.id : tc.toolCallId} toolCall={tc} />
+              <ToolCallItem key={getToolCallKey(tc)} toolCall={tc} />
             ))}
           </div>
         )}
