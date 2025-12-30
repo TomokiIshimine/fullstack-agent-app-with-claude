@@ -57,6 +57,12 @@ CREATE TABLE IF NOT EXISTS messages (
   role ENUM('user', 'assistant') NOT NULL,
   content TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- Metadata fields (only populated for assistant messages)
+  input_tokens INT UNSIGNED NULL COMMENT 'Number of input tokens used',
+  output_tokens INT UNSIGNED NULL COMMENT 'Number of output tokens generated',
+  model VARCHAR(255) NULL COMMENT 'Model name used for generation',
+  response_time_ms INT UNSIGNED NULL COMMENT 'Response time in milliseconds',
+  cost_usd FLOAT NULL COMMENT 'Cost in USD for this message',
   FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

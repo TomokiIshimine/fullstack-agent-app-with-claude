@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Literal
 
-from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Index, Integer, Text, func
+from sqlalchemy import BigInteger, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from . import Base
@@ -45,6 +45,13 @@ class Message(Base):
         nullable=False,
         server_default=func.now(),
     )
+
+    # Metadata fields (only populated for assistant messages)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    response_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Relationships
     conversation: Mapped["Conversation"] = relationship("Conversation", back_populates="messages")

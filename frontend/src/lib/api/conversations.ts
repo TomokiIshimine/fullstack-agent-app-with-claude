@@ -4,6 +4,7 @@ import type {
   ConversationListResponse,
   CreateConversationRequest,
   CreateConversationResponse,
+  MessageMetadata,
   SendMessageRequest,
   SendMessageResponse,
 } from '@/types/chat'
@@ -93,7 +94,7 @@ export interface CreateConversationStreamCallbacks {
   onToolCallStart?: (toolCallId: string, toolName: string, input: Record<string, unknown>) => void
   onToolCallEnd?: (toolCallId: string, output?: string, error?: string) => void
   onDelta?: (delta: string) => void
-  onEnd?: (assistantMessageId: number, content: string) => void
+  onEnd?: (assistantMessageId: number, content: string, metadata?: MessageMetadata) => void
   /** Called when retry is attempted during streaming */
   onRetry?: (event: RetryEvent) => void
   /** Called on error with structured error details */
@@ -120,6 +121,30 @@ export async function createConversationStreaming(
       },
     }
   )
+}
+
+/**
+ * Extract metadata from SSE event data
+ */
+function extractMetadataFromEvent(data: Record<string, unknown>): MessageMetadata | undefined {
+  const hasMetadata =
+    data.input_tokens != null ||
+    data.output_tokens != null ||
+    data.model != null ||
+    data.response_time_ms != null ||
+    data.cost_usd != null
+
+  if (!hasMetadata) {
+    return undefined
+  }
+
+  return {
+    inputTokens: (data.input_tokens as number | null) ?? undefined,
+    outputTokens: (data.output_tokens as number | null) ?? undefined,
+    model: (data.model as string | null) ?? undefined,
+    responseTimeMs: (data.response_time_ms as number | null) ?? undefined,
+    costUsd: (data.cost_usd as number | null) ?? undefined,
+  }
 }
 
 /**
@@ -152,7 +177,11 @@ function handleCreateConversationStreamEvent(
       callbacks.onDelta?.(data.delta as string)
       break
     case 'message_end':
-      callbacks.onEnd?.(data.assistant_message_id as number, data.content as string)
+      callbacks.onEnd?.(
+        data.assistant_message_id as number,
+        data.content as string,
+        extractMetadataFromEvent(data)
+      )
       break
     case 'retry':
       callbacks.onRetry?.({
@@ -206,7 +235,7 @@ export interface StreamCallbacks {
   onToolCallStart?: (toolCallId: string, toolName: string, input: Record<string, unknown>) => void
   onToolCallEnd?: (toolCallId: string, output?: string, error?: string) => void
   onDelta?: (delta: string) => void
-  onEnd?: (assistantMessageId: number, content: string) => void
+  onEnd?: (assistantMessageId: number, content: string, metadata?: MessageMetadata) => void
   /** Called when retry is attempted during streaming */
   onRetry?: (event: RetryEvent) => void
   /** Called on error with structured error details */
@@ -266,7 +295,11 @@ function handleStreamEvent(
       callbacks.onDelta?.(data.delta as string)
       break
     case 'message_end':
-      callbacks.onEnd?.(data.assistant_message_id as number, data.content as string)
+      callbacks.onEnd?.(
+        data.assistant_message_id as number,
+        data.content as string,
+        extractMetadataFromEvent(data)
+      )
       break
     case 'retry':
       callbacks.onRetry?.({

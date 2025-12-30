@@ -124,6 +124,7 @@ class AnthropicProvider(BaseLLMProvider):
             streaming=self.config.streaming,
             api_key=self._anthropic_config.api_key,  # type: ignore[call-arg, arg-type]
             max_retries=self.config.max_retries,  # type: ignore[call-arg]
+            stream_usage=True,  # Enable token usage tracking in streaming
         )
 
 

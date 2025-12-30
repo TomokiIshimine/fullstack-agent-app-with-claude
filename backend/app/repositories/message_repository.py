@@ -35,6 +35,12 @@ class MessageRepository(BaseRepository):
         conversation_id: int,
         role: Literal["user", "assistant"],
         content: str,
+        *,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        model: str | None = None,
+        response_time_ms: int | None = None,
+        cost_usd: float | None = None,
     ) -> Message:
         """
         Create a new message.
@@ -43,6 +49,11 @@ class MessageRepository(BaseRepository):
             conversation_id: Parent conversation ID
             role: Message role ('user' or 'assistant')
             content: Message content
+            input_tokens: Number of input tokens (for assistant messages)
+            output_tokens: Number of output tokens (for assistant messages)
+            model: Model name used (for assistant messages)
+            response_time_ms: Response time in milliseconds (for assistant messages)
+            cost_usd: Cost in USD (for assistant messages)
 
         Returns:
             Created Message instance
@@ -51,8 +62,55 @@ class MessageRepository(BaseRepository):
             conversation_id=conversation_id,
             role=role,
             content=content,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            model=model,
+            response_time_ms=response_time_ms,
+            cost_usd=cost_usd,
         )
         self.session.add(message)
+        self.session.flush()
+        return message
+
+    def update_metadata(
+        self,
+        message_id: int,
+        *,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        model: str | None = None,
+        response_time_ms: int | None = None,
+        cost_usd: float | None = None,
+    ) -> Message | None:
+        """
+        Update message metadata.
+
+        Args:
+            message_id: Message ID to update
+            input_tokens: Number of input tokens
+            output_tokens: Number of output tokens
+            model: Model name used
+            response_time_ms: Response time in milliseconds
+            cost_usd: Cost in USD
+
+        Returns:
+            Updated Message instance or None if not found
+        """
+        message = self.session.query(Message).filter(Message.id == message_id).first()
+        if message is None:
+            return None
+
+        if input_tokens is not None:
+            message.input_tokens = input_tokens
+        if output_tokens is not None:
+            message.output_tokens = output_tokens
+        if model is not None:
+            message.model = model
+        if response_time_ms is not None:
+            message.response_time_ms = response_time_ms
+        if cost_usd is not None:
+            message.cost_usd = cost_usd
+
         self.session.flush()
         return message
 

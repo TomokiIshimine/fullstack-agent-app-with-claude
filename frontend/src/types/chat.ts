@@ -7,6 +7,17 @@ import { toToolCall } from './tool'
 export type MessageRole = 'user' | 'assistant'
 
 /**
+ * Message metadata for tracking usage
+ */
+export interface MessageMetadata {
+  inputTokens?: number
+  outputTokens?: number
+  model?: string
+  responseTimeMs?: number
+  costUsd?: number
+}
+
+/**
  * Message DTO from API
  */
 export interface MessageDto {
@@ -15,6 +26,12 @@ export interface MessageDto {
   content: string
   tool_calls?: ToolCallDto[]
   created_at: string
+  // Metadata fields (only for assistant messages)
+  input_tokens?: number | null
+  output_tokens?: number | null
+  model?: string | null
+  response_time_ms?: number | null
+  cost_usd?: number | null
 }
 
 /**
@@ -26,6 +43,8 @@ export interface Message {
   content: string
   toolCalls?: (ToolCall | StreamingToolCall)[]
   createdAt: Date
+  // Metadata (only for assistant messages)
+  metadata?: MessageMetadata
 }
 
 /**
@@ -154,6 +173,12 @@ export interface ContentDeltaEvent {
 export interface MessageEndEvent {
   assistant_message_id: number
   content: string
+  // Metadata fields
+  input_tokens?: number | null
+  output_tokens?: number | null
+  model?: string | null
+  response_time_ms?: number | null
+  cost_usd?: number | null
 }
 
 /**
@@ -185,12 +210,31 @@ export interface StreamErrorEvent {
  * Helper function to convert MessageDto to Message
  */
 export function toMessage(dto: MessageDto): Message {
+  // Build metadata object if any metadata fields are present
+  const hasMetadata =
+    dto.input_tokens != null ||
+    dto.output_tokens != null ||
+    dto.model != null ||
+    dto.response_time_ms != null ||
+    dto.cost_usd != null
+
+  const metadata: MessageMetadata | undefined = hasMetadata
+    ? {
+        inputTokens: dto.input_tokens ?? undefined,
+        outputTokens: dto.output_tokens ?? undefined,
+        model: dto.model ?? undefined,
+        responseTimeMs: dto.response_time_ms ?? undefined,
+        costUsd: dto.cost_usd ?? undefined,
+      }
+    : undefined
+
   return {
     id: dto.id,
     role: dto.role,
     content: dto.content,
     toolCalls: dto.tool_calls?.map(toToolCall),
     createdAt: new Date(dto.created_at),
+    metadata,
   }
 }
 

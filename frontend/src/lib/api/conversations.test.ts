@@ -217,7 +217,7 @@ describe('API Client - conversations', () => {
       expect(callbacks.onDelta).toHaveBeenCalledTimes(2)
       expect(callbacks.onDelta).toHaveBeenCalledWith('Hello')
       expect(callbacks.onDelta).toHaveBeenCalledWith(' World')
-      expect(callbacks.onEnd).toHaveBeenCalledWith(2, 'Hello World')
+      expect(callbacks.onEnd).toHaveBeenCalledWith(2, 'Hello World', undefined)
       expect(callbacks.onError).not.toHaveBeenCalled()
     })
 
