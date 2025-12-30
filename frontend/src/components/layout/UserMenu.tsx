@@ -1,19 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import type { User } from '@/types/auth'
+import { isPathActive } from '@/lib/utils/routing'
+import { getDisplayName, getAvatarLetter } from '@/lib/utils/user'
+import { NavIcon } from './NavIcon'
+import type { NavLinkItem } from './Navbar'
 
 interface UserMenuProps {
   user: User
   version?: string
+  navLinks: NavLinkItem[]
   onLogout: () => void
 }
 
-export function UserMenu({ user, version, onLogout }: UserMenuProps) {
+export function UserMenu({ user, version, navLinks, onLogout }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const location = useLocation()
 
-  const displayName = user.name || user.email
-  const avatarLetter = (user.name?.[0] || user.email[0] || 'U').toUpperCase()
+  const displayName = getDisplayName(user)
+  const avatarLetter = getAvatarLetter(user)
 
   useEffect(() => {
     if (!isOpen) return
@@ -50,19 +56,10 @@ export function UserMenu({ user, version, onLogout }: UserMenuProps) {
         aria-label="ユーザーメニューを開く"
       >
         <div className="user-menu__avatar">{avatarLetter}</div>
-        <svg
+        <NavIcon
+          icon="chevron"
           className={`user-menu__chevron ${isOpen ? 'user-menu__chevron--open' : ''}`}
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        />
       </button>
 
       {isOpen && (
@@ -73,14 +70,20 @@ export function UserMenu({ user, version, onLogout }: UserMenuProps) {
             {user.name && <div className="user-menu__email">{user.email}</div>}
           </div>
 
-          <Link
-            to="/settings"
-            className="user-menu__item"
-            role="menuitem"
-            onClick={() => setIsOpen(false)}
-          >
-            設定
-          </Link>
+          <div className="user-menu__nav">
+            {navLinks.map(link => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`user-menu__nav-item ${isPathActive(location.pathname, link.path) ? 'user-menu__nav-item--active' : ''}`}
+                role="menuitem"
+                onClick={() => setIsOpen(false)}
+              >
+                {link.icon && <NavIcon icon={link.icon} />}
+                {link.label}
+              </Link>
+            ))}
+          </div>
 
           <div className="user-menu__divider" />
 
@@ -93,6 +96,7 @@ export function UserMenu({ user, version, onLogout }: UserMenuProps) {
               setIsOpen(false)
             }}
           >
+            <NavIcon icon="logout" />
             ログアウト
           </button>
         </div>

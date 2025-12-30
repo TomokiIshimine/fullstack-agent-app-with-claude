@@ -884,3 +884,35 @@
 .streaming-message__content .markdown-content > *:last-child {
   display: inline;
 }
+
+/* ==========================================================================
+   Settings Layout (with sidebar)
+   ========================================================================== */
+
+.settings-layout {
+  display: flex;
+  height: calc(100vh - 4rem);
+  overflow: hidden;
+  background-color: #f8fafc;
+}
+
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f1f5f9;
+}
+
+/* Responsive settings layout */
+@media (max-width: 768px) {
+  .settings-layout {
+    flex-direction: column;
+  }
+
+  .settings-layout .chat-sidebar {
+    display: none;
+  }
+
+  .settings-content {
+    height: 100%;
+  }
+}

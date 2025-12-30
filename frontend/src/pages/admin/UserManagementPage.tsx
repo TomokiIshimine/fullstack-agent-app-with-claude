@@ -20,7 +20,7 @@ export function UserManagementPage() {
   } = useUserManagement()
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="bg-slate-100">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-slate-800 mb-8">ユーザー管理</h1>
 

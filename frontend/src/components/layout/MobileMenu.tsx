@@ -1,11 +1,10 @@
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { User } from '@/types/auth'
-
-interface NavLinkItem {
-  path: string
-  label: string
-}
+import { isPathActive } from '@/lib/utils/routing'
+import { getDisplayName, getAvatarLetter } from '@/lib/utils/user'
+import { NavIcon } from './NavIcon'
+import type { NavLinkItem } from './Navbar'
 
 interface MobileMenuProps {
   isOpen: boolean
@@ -26,8 +25,8 @@ export function MobileMenu({
 }: MobileMenuProps) {
   const location = useLocation()
 
-  const displayName = user.name || user.email
-  const avatarLetter = (user.name?.[0] || user.email[0] || 'U').toUpperCase()
+  const displayName = getDisplayName(user)
+  const avatarLetter = getAvatarLetter(user)
 
   // Handle Escape key
   useEffect(() => {
@@ -56,13 +55,6 @@ export function MobileMenu({
     }
   }, [isOpen])
 
-  const isActive = (path: string) => {
-    if (path === '/chat') {
-      return location.pathname === '/chat' || location.pathname.startsWith('/chat/')
-    }
-    return location.pathname === path
-  }
-
   return (
     <>
       {/* Overlay */}
@@ -87,19 +79,7 @@ export function MobileMenu({
             onClick={onClose}
             aria-label="メニューを閉じる"
           >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <NavIcon icon="close" size={24} />
           </button>
         </div>
 
@@ -118,9 +98,10 @@ export function MobileMenu({
             <Link
               key={link.path}
               to={link.path}
-              className={`mobile-menu__link ${isActive(link.path) ? 'mobile-menu__link--active' : ''}`}
+              className={`mobile-menu__link ${isPathActive(location.pathname, link.path) ? 'mobile-menu__link--active' : ''}`}
               onClick={onClose}
             >
+              {link.icon && <NavIcon icon={link.icon} size={20} />}
               {link.label}
             </Link>
           ))}

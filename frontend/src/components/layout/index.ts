@@ -1,4 +1,5 @@
 export { AuthenticatedLayout } from './AuthenticatedLayout'
 export { MobileMenu } from './MobileMenu'
+export { NavIcon, type NavIconType } from './NavIcon'
 export { Navbar } from './Navbar'
 export { UserMenu } from './UserMenu'
