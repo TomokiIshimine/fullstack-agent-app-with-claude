@@ -40,15 +40,15 @@ def test_change_password_admin_can_change(app):
 def test_change_password_invalid_current_password(app):
     """Test that incorrect current password is rejected.
 
-    Returns 403 Forbidden because the user is authenticated but not authorized
-    to change the password with the wrong current password.
+    Returns 401 Unauthorized because the current password verification
+    is an authentication check, not an authorization check.
     """
     user_id = create_user(app, email="user@example.com", password="correctpass123", role="user")
     user_client = create_auth_client(app, user_id, email="user@example.com", role="user")
 
     response = user_client.post("/api/password/change", json={"current_password": "wrongpass123", "new_password": "newpassword456"})
 
-    assert_response_error(response, 403)
+    assert_response_error(response, 401)
     data = response.get_json()
     assert "パスワード" in data["error"]
 

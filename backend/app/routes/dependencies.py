@@ -178,7 +178,7 @@ def with_password_service(func: RouteCallable) -> RouteCallable:
         try:
             return func(*args, password_service=password_service, **kwargs)
         except InvalidPasswordError as exc:
-            raise Forbidden(description=str(exc)) from exc
+            raise Unauthorized(description=str(exc)) from exc
         except PasswordChangeFailedError as exc:
             raise InternalServerError(description=str(exc)) from exc
         except PasswordServiceError as exc:
