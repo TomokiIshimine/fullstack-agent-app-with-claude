@@ -1,22 +1,99 @@
-.PHONY: install setup up down lint lint-frontend lint-backend format format-check test test-frontend test-backend test-fast test-cov test-parallel test-frontend-ci test-backend-ci security ci pre-commit-install pre-commit-run pre-commit-update db-init db-create-user db-reset doctor health
+.PHONY: help install install-frontend install-backend setup up down \
+        lint lint-frontend lint-backend \
+        format format-frontend format-backend format-check format-check-frontend format-check-backend \
+        test test-frontend test-backend test-fast test-coverage test-parallel \
+        test-frontend-ci test-backend-ci lint-ci format-check-ci \
+        security ci pre-commit-install pre-commit-run pre-commit-update \
+        db-init db-create-user db-reset doctor health
 
-PNPM ?= pnpm --dir frontend
-POETRY ?= poetry -C backend
-COMPOSE ?= docker compose -f infra/docker-compose.yml --env-file infra/.env.development
+# ==============================================================================
+# Variables
+# ==============================================================================
+PNPM        ?= pnpm --dir frontend
+POETRY      ?= poetry -C backend
+COMPOSE     ?= docker compose -f infra/docker-compose.yml --env-file infra/.env.development
 
-# Suppress command echo and add quiet flags where appropriate
-PNPM_QUIET = $(PNPM) --silent
+# Quiet mode variables (use consistently for suppressed output)
+PNPM_QUIET   = $(PNPM) --silent
 POETRY_QUIET = $(POETRY) --quiet
 
-install:
+# Prettier file patterns
+PRETTIER_PATTERNS = "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}"
+
+# ==============================================================================
+# Help
+# ==============================================================================
+help:
+	@printf 'Usage: make [target]\n\n'
+	@printf 'Development:\n'
+	@printf '  install              Install all dependencies\n'
+	@printf '  install-frontend     Install frontend dependencies only\n'
+	@printf '  install-backend      Install backend dependencies only\n'
+	@printf '  setup                Install dependencies and setup environment\n'
+	@printf '  up                   Start all services\n'
+	@printf '  down                 Stop all services\n'
+	@printf '\n'
+	@printf 'Code Quality:\n'
+	@printf '  lint                 Run all linters (frontend + backend)\n'
+	@printf '  lint-frontend        Run frontend linters (ESLint, TypeScript)\n'
+	@printf '  lint-backend         Run backend linters (flake8, mypy)\n'
+	@printf '  format               Format all code\n'
+	@printf '  format-frontend      Format frontend code (Prettier)\n'
+	@printf '  format-backend       Format backend code (Black, isort)\n'
+	@printf '  format-check         Check formatting without changes\n'
+	@printf '  format-check-frontend Check frontend formatting\n'
+	@printf '  format-check-backend Check backend formatting\n'
+	@printf '\n'
+	@printf 'Testing:\n'
+	@printf '  test                 Run all tests with coverage\n'
+	@printf '  test-frontend        Run frontend tests\n'
+	@printf '  test-backend         Run backend tests with coverage\n'
+	@printf '  test-fast            Run all tests without coverage\n'
+	@printf '  test-coverage        Run tests and generate coverage report\n'
+	@printf '  test-parallel        Run tests in parallel\n'
+	@printf '\n'
+	@printf 'CI:\n'
+	@printf '  ci                   Run lint, format-check, and test\n'
+	@printf '  lint-ci              Run linters (CI mode, no progress output)\n'
+	@printf '  format-check-ci      Check formatting (CI mode)\n'
+	@printf '  test-frontend-ci     Run frontend tests (CI mode)\n'
+	@printf '  test-backend-ci      Run backend tests (CI mode)\n'
+	@printf '\n'
+	@printf 'Security:\n'
+	@printf '  security             Run security audit\n'
+	@printf '\n'
+	@printf 'Pre-commit:\n'
+	@printf '  pre-commit-install   Install pre-commit hooks\n'
+	@printf '  pre-commit-run       Run pre-commit on all files\n'
+	@printf '  pre-commit-update    Update pre-commit hooks\n'
+	@printf '\n'
+	@printf 'Database:\n'
+	@printf '  db-init              Create database tables\n'
+	@printf '  db-create-user       Create a user (EMAIL=... PASSWORD=...)\n'
+	@printf '  db-reset             Reset database (destructive)\n'
+	@printf '\n'
+	@printf 'Diagnostics:\n'
+	@printf '  doctor               Check development environment\n'
+	@printf '  health               Check service health\n'
+
+# ==============================================================================
+# Development
+# ==============================================================================
+install: install-frontend install-backend
+	@printf '✅ All dependencies installed\n'
+
+install-frontend:
 	@printf '📦 Installing frontend dependencies...\n'
 	@CI=true $(PNPM_QUIET) install --config.allow-scripts=true
+	@printf '✅ Frontend dependencies installed\n'
+
+install-backend:
 	@printf '📦 Installing backend dependencies...\n'
 	@$(POETRY_QUIET) install
-	@printf '✅ Dependencies installed\n'
+	@printf '✅ Backend dependencies installed\n'
 
 setup: install
-	@printf '✅ Environment setup complete. You can now run `make up` to start the stack.\n'
+	@printf '✅ Environment setup complete. Run "make up" to start the stack.\n'
 
 up:
 	@printf '🚀 Starting services...\n'
@@ -24,116 +101,153 @@ up:
 	@printf '✅ Services started (frontend :5174, backend :5000)\n'
 
 down:
-	@$(COMPOSE) down --remove-orphans 2>/dev/null
+	@printf '🛑 Stopping services...\n'
+	@$(COMPOSE) down --remove-orphans 2>/dev/null || true
 	@printf '✅ Services stopped\n'
 
-lint:
-	@printf '🔍 Linting frontend...\n'
-	@$(PNPM_QUIET) run lint
-	@$(PNPM) exec tsc --noEmit
-	@printf '🔍 Linting backend...\n'
-	@$(POETRY) run flake8 app tests --quiet || $(POETRY) run flake8 app tests
-	@$(POETRY) run mypy app --no-error-summary 2>/dev/null || $(POETRY) run mypy app
-	@printf '✅ Lint passed\n'
+# ==============================================================================
+# Linting (static analysis, no formatting)
+# ==============================================================================
+lint: lint-frontend lint-backend
+	@printf '✅ All lint checks passed\n'
 
 lint-frontend:
 	@printf '🔍 Linting frontend...\n'
 	@$(PNPM_QUIET) run lint
-	@$(PNPM) exec tsc --noEmit
-	@$(PNPM) exec prettier --check --log-level warn "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}"
+	@$(PNPM_QUIET) exec tsc --noEmit
 	@printf '✅ Frontend lint passed\n'
 
 lint-backend:
 	@printf '🔍 Linting backend...\n'
-	@$(POETRY) run flake8 app tests --quiet || $(POETRY) run flake8 app tests
-	@$(POETRY) run mypy app --no-error-summary 2>/dev/null || $(POETRY) run mypy app
-	@$(POETRY) run isort --check-only --quiet app tests
-	@$(POETRY) run black --check --quiet app tests
+	@$(POETRY_QUIET) run flake8 app tests
+	@$(POETRY_QUIET) run mypy app
 	@printf '✅ Backend lint passed\n'
 
-test:
-	@printf '🧪 Running frontend tests...\n'
-	@$(PNPM_QUIET) run test:coverage
-	@printf '🧪 Running backend tests...\n'
-	@$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html -q
+# ==============================================================================
+# Formatting
+# ==============================================================================
+format: format-frontend format-backend
+	@printf '✅ All code formatted\n'
+
+format-frontend:
+	@printf '✨ Formatting frontend...\n'
+	@$(PNPM_QUIET) exec prettier --ignore-unknown --write --log-level warn .
+	@printf '✅ Frontend formatted\n'
+
+format-backend:
+	@printf '✨ Formatting backend...\n'
+	@$(POETRY_QUIET) run isort app tests
+	@$(POETRY_QUIET) run black app tests
+	@printf '✅ Backend formatted\n'
+
+format-check: format-check-frontend format-check-backend
+	@printf '✅ All format checks passed\n'
+
+format-check-frontend:
+	@printf '🔍 Checking frontend format...\n'
+	@$(PNPM_QUIET) exec prettier --check --log-level warn $(PRETTIER_PATTERNS)
+	@printf '✅ Frontend format check passed\n'
+
+format-check-backend:
+	@printf '🔍 Checking backend format...\n'
+	@$(POETRY_QUIET) run isort --check-only app tests
+	@$(POETRY_QUIET) run black --check app tests
+	@printf '✅ Backend format check passed\n'
+
+# ==============================================================================
+# Testing
+# ==============================================================================
+test: test-frontend test-backend
 	@printf '✅ All tests passed\n'
 
 test-frontend:
 	@printf '🧪 Running frontend tests...\n'
-	@$(PNPM_QUIET) run test -- --runInBand
+	@$(PNPM_QUIET) run test:coverage
 	@printf '✅ Frontend tests passed\n'
 
 test-backend:
 	@printf '🧪 Running backend tests...\n'
-	@$(POETRY) run pytest --cov=app --cov-report=term-missing -q
+	@$(POETRY_QUIET) run pytest --cov=app --cov-report=term-missing -q
 	@printf '✅ Backend tests passed\n'
 
 test-fast:
 	@printf '🧪 Running tests (no coverage)...\n'
 	@$(PNPM_QUIET) run test -- --runInBand
-	@$(POETRY) run pytest --no-cov -q
+	@$(POETRY_QUIET) run pytest --no-cov -q
 	@printf '✅ All tests passed\n'
 
-test-cov:
+test-coverage:
 	@printf '🧪 Running tests with coverage...\n'
-	@$(PNPM_QUIET) run test -- --runInBand
-	@$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html -q
-	@printf '\n✅ Coverage report generated in backend/htmlcov/index.html\n'
+	@$(PNPM_QUIET) run test:coverage
+	@$(POETRY_QUIET) run pytest --cov=app --cov-report=term-missing --cov-report=html -q
+	@printf '✅ Coverage report generated in backend/htmlcov/index.html\n'
 
 test-parallel:
 	@printf '🧪 Running tests in parallel...\n'
 	@$(PNPM_QUIET) run test -- --runInBand
-	@$(POETRY) run pytest -n auto --cov=app --cov-report=term-missing -q
+	@$(POETRY_QUIET) run pytest -n auto --cov=app --cov-report=term-missing -q
 	@printf '✅ All tests passed\n'
+
+# ==============================================================================
+# CI Targets (minimal output, for automated pipelines)
+# ==============================================================================
+ci: lint-ci format-check-ci test-frontend-ci test-backend-ci
+	@printf '✅ CI pipeline passed\n'
+
+lint-ci:
+	@$(PNPM_QUIET) run lint
+	@$(PNPM_QUIET) exec tsc --noEmit
+	@$(POETRY_QUIET) run flake8 app tests
+	@$(POETRY_QUIET) run mypy app
+
+format-check-ci:
+	@$(PNPM_QUIET) exec prettier --check --log-level error $(PRETTIER_PATTERNS)
+	@$(POETRY_QUIET) run isort --check-only app tests
+	@$(POETRY_QUIET) run black --check app tests
 
 test-frontend-ci:
 	@$(PNPM_QUIET) run test:coverage
 
 test-backend-ci:
-	@$(POETRY) run pytest --cov=app --cov-report=term-missing --cov-report=html -q
+	@$(POETRY_QUIET) run pytest --cov=app --cov-report=term-missing --cov-report=html -q
 
-format:
-	@printf '✨ Formatting code...\n'
-	@$(PNPM) exec prettier --ignore-unknown --write --log-level warn .
-	@$(POETRY) run isort app tests --quiet
-	@$(POETRY) run black app tests --quiet
-	@printf '✅ Code formatted\n'
-
-format-check:
-	@printf '🔍 Checking format...\n'
-	@$(PNPM) exec prettier --check --log-level warn "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}"
-	@$(POETRY) run isort --check-only --quiet app tests
-	@$(POETRY) run black --check --quiet app tests
-	@printf '✅ Format check passed\n'
-
+# ==============================================================================
+# Security
+# ==============================================================================
 security:
 	@printf '🔒 Running security audit...\n'
 	@EXIT_CODE=0; \
-	$(PNPM) audit --audit-level=moderate || EXIT_CODE=$$?; \
+	$(PNPM_QUIET) audit --audit-level=moderate || EXIT_CODE=$$?; \
 	$(POETRY_QUIET) check || EXIT_CODE=$$?; \
-	$(POETRY) run pip-audit || EXIT_CODE=$$?; \
+	$(POETRY_QUIET) run pip-audit || EXIT_CODE=$$?; \
 	if [ $$EXIT_CODE -eq 0 ]; then printf '✅ Security audit passed\n'; fi; \
 	exit $$EXIT_CODE
 
-ci: lint format-check test
-
+# ==============================================================================
+# Pre-commit
+# ==============================================================================
 pre-commit-install:
-	@$(POETRY) run pre-commit install >/dev/null
-	@$(POETRY) run pre-commit install --hook-type pre-push >/dev/null
+	@printf '🔧 Installing pre-commit hooks...\n'
+	@$(POETRY_QUIET) run pre-commit install
+	@$(POETRY_QUIET) run pre-commit install --hook-type pre-push
 	@printf '✅ Pre-commit and pre-push hooks installed\n'
 
 pre-commit-run:
 	@printf '🔍 Running pre-commit hooks...\n'
-	@$(POETRY) run pre-commit run --all-files
+	@$(POETRY_QUIET) run pre-commit run --all-files
+	@printf '✅ Pre-commit hooks passed\n'
 
 pre-commit-update:
-	@$(POETRY) run pre-commit autoupdate
+	@printf '🔄 Updating pre-commit hooks...\n'
+	@$(POETRY_QUIET) run pre-commit autoupdate
 	@printf '✅ Pre-commit hooks updated\n'
 
-# Database management targets
+# ==============================================================================
+# Database
+# ==============================================================================
 db-init:
 	@printf '🗄️  Creating database tables...\n'
-	@$(POETRY) run python scripts/create_tables.py 2>/dev/null || $(POETRY) run python scripts/create_tables.py
+	@$(POETRY_QUIET) run python scripts/create_tables.py 2>/dev/null || $(POETRY_QUIET) run python scripts/create_tables.py
 	@printf '✅ Database tables created\n'
 
 db-create-user:
@@ -141,18 +255,23 @@ db-create-user:
 		printf 'Usage: make db-create-user EMAIL=user@example.com PASSWORD=password123\n'; \
 		exit 1; \
 	fi
-	@$(POETRY) run python scripts/create_user.py $(EMAIL) $(PASSWORD)
+	@printf '👤 Creating user...\n'
+	@$(POETRY_QUIET) run python scripts/create_user.py $(EMAIL) $(PASSWORD)
+	@printf '✅ User created\n'
 
 db-reset:
 	@printf '⚠️  This will reset the database. Are you sure? [y/N] ' && read ans && [ $${ans:-N} = y ]
-	@$(COMPOSE) down -v 2>/dev/null
+	@printf '🗄️  Resetting database...\n'
+	@$(COMPOSE) down -v 2>/dev/null || true
 	@printf '🗄️  Starting database...\n'
 	@$(COMPOSE) up -d db --quiet-pull 2>/dev/null || $(COMPOSE) up -d db
-	@printf 'Waiting for database to be ready...\n'
+	@printf '⏳ Waiting for database to be ready...\n'
 	@sleep 5
 	@printf '✅ Database reset complete\n'
 
-# Environment validation
+# ==============================================================================
+# Diagnostics
+# ==============================================================================
 doctor:
 	@printf '🩺 Checking development environment...\n\n'
 	@ERRORS=0; \
@@ -221,14 +340,13 @@ doctor:
 	fi; \
 	printf '\n'; \
 	if [ $$ERRORS -eq 0 ]; then \
-		printf '✅ Environment is ready! Run `make install` to install dependencies.\n'; \
+		printf '✅ Environment is ready! Run "make install" to install dependencies.\n'; \
 	else \
 		printf '❌ Some issues found. Please fix them before continuing.\n'; \
 		printf '   See docs/10_troubleshooting.md for help.\n'; \
 		exit 1; \
 	fi
 
-# Service health check
 health:
 	@printf '🏥 Checking service health...\n\n'
 	@ERRORS=0; \
@@ -271,6 +389,6 @@ health:
 	if [ $$ERRORS -eq 0 ]; then \
 		printf '✅ All services are healthy!\n'; \
 	else \
-		printf '❌ Some services are not healthy. Try `make down && make up`.\n'; \
+		printf '❌ Some services are not healthy. Try "make down && make up".\n'; \
 		printf '   See docs/10_troubleshooting.md for help.\n'; \
 	fi
