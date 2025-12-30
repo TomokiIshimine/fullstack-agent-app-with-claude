@@ -296,6 +296,7 @@ class AgentService:
 
         full_content = ""
         emitted_tool_calls: set[str] = set()
+        needs_newline_before_text = False
 
         # Track token usage from streaming chunks
         total_input_tokens = 0
@@ -316,6 +317,10 @@ class AgentService:
             if stream_mode == "messages":
                 text_content = self._handle_messages_stream(data)
                 if text_content:
+                    # Add newline before text that follows tool result
+                    if needs_newline_before_text:
+                        text_content = "\n" + text_content
+                        needs_newline_before_text = False
                     full_content += text_content
                     yield TextDeltaEvent(delta=text_content)
 
@@ -332,7 +337,11 @@ class AgentService:
                                 total_output_tokens += usage_metadata["output_tokens"]
 
             elif stream_mode == "updates" and isinstance(data, dict):
-                yield from self._handle_updates_stream(data, emitted_tool_calls)
+                for event in self._handle_updates_stream(data, emitted_tool_calls):
+                    yield event
+                    # Set flag after tool result to add newline before next text
+                    if isinstance(event, ToolResultEvent):
+                        needs_newline_before_text = True
 
         # Calculate response time
         response_time_ms = int((time.time() - start_time) * 1000)
