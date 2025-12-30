@@ -87,9 +87,9 @@ graph TB
 | 機能 | エンドポイント | 実装箇所 | 主な仕様 |
 |------|--------------|---------|---------|
 | **会話一覧取得** | `GET /api/conversations` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - 認証済みユーザーの会話一覧取得<br/>- ページネーション対応<br/>- メッセージ数を含む情報 |
-| **新規会話作成** | `POST /api/conversations` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - 初期メッセージ付きで会話を作成<br/>- AIによるタイトル自動生成<br/>- レート制限: 30リクエスト/分 |
+| **新規会話作成** | `POST /api/conversations` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - 初期メッセージ付きで会話を作成<br/>- LangGraph ReAct + Claude による応答生成<br/>- ツール呼び出し履歴を保存<br/>- レート制限: 30リクエスト/分 |
 | **会話詳細取得** | `GET /api/conversations/{uuid}` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - 会話の全メッセージを取得<br/>- アクセス権限の検証 |
-| **メッセージ送信** | `POST /api/conversations/{uuid}/messages` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - Claude APIとの連携<br/>- SSEストリーミング対応<br/>- レート制限: 30リクエスト/分 |
+| **メッセージ送信** | `POST /api/conversations/{uuid}/messages` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - LangGraph ReAct + Claude による応答生成<br/>- SSEストリーミング対応（ツール呼び出しイベントあり）<br/>- レート制限: 30リクエスト/分 |
 | **会話削除** | `DELETE /api/conversations/{uuid}` | FE: `ChatPage.tsx`<br/>BE: `conversation_routes.py` | - 会話とメッセージをカスケード削除<br/>- 所有者のみ削除可能 |
 
 ---
@@ -190,8 +190,11 @@ graph TB
 **ストリーミング応答:**
 - デフォルトでSSE（Server-Sent Events）ストリーミングが有効
 - `X-Stream: false` ヘッダーで非ストリーミングモードに切り替え可能
-- 会話作成 (`POST /api/conversations`): `conversation_created`, `content_delta`, `message_end`, `error`
-- メッセージ送信 (`POST /api/conversations/{uuid}/messages`): `message_start`, `content_delta`, `message_end`, `error`
+- 会話作成 (`POST /api/conversations`): `conversation_created`, `tool_call_start`, `tool_call_end`, `content_delta`, `message_end`, `error`
+- メッセージ送信 (`POST /api/conversations/{uuid}/messages`): `message_start`, `tool_call_start`, `tool_call_end`, `content_delta`, `message_end`, `error`
+
+**非ストリーミング応答:**
+- `message`/`assistant_message`/`user_message` の各オブジェクトに `tool_calls` 配列が含まれる
 
 ---
 
