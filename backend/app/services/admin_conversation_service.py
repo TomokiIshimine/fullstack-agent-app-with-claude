@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.constants.pagination import DEFAULT_PER_PAGE, MAX_PER_PAGE, MIN_PER_PAGE
 from app.core.exceptions import ConversationNotFoundError
 from app.repositories.conversation_repository import ConversationRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.admin_conversation import AdminConversationDetailResponse, AdminConversationListResponse, AdminConversationResponse, AdminUserInfo
 from app.schemas.conversation import MessageResponse, PaginationMeta
 
@@ -27,6 +28,7 @@ class AdminConversationService:
         """
         self.session = session
         self.conversation_repo = ConversationRepository(session)
+        self.user_repo = UserRepository(session)
 
     def list_all_conversations(
         self,
@@ -118,10 +120,7 @@ class AdminConversationService:
         if not conversation:
             raise ConversationNotFoundError(uuid)
 
-        # Get user info
-        from app.models.user import User
-
-        user = self.session.query(User).filter(User.id == conversation.user_id).first()
+        user = self.user_repo.find_by_id(conversation.user_id)
 
         if not user:
             raise ConversationNotFoundError(uuid)
