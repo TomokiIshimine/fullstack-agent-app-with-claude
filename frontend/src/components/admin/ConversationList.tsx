@@ -42,7 +42,7 @@ export function ConversationList({ conversations, onViewDetail }: ConversationLi
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
-            {conversations.map((conversation) => (
+            {conversations.map(conversation => (
               <tr key={conversation.uuid} className="hover:bg-slate-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 max-w-xs truncate">
                   {conversation.title}

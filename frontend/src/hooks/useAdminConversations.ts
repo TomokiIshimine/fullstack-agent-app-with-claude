@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import {
-  fetchAdminConversations,
-  fetchAdminConversationDetail,
-} from '@/lib/api/adminConversations'
+import { fetchAdminConversations, fetchAdminConversationDetail } from '@/lib/api/adminConversations'
 import { fetchUsers } from '@/lib/api/users'
 import { useErrorHandler } from './useErrorHandler'
 import type { AdminConversation, AdminConversationFilters } from '@/types/adminConversation'
@@ -49,7 +46,7 @@ export function useAdminConversations() {
       clearError()
       try {
         const data = await fetchAdminConversations(page, 20, appliedFilters || filters)
-        const converted: AdminConversation[] = data.conversations.map((dto) => ({
+        const converted: AdminConversation[] = data.conversations.map(dto => ({
           uuid: dto.uuid,
           title: dto.title,
           messageCount: dto.message_count,
@@ -84,7 +81,10 @@ export function useAdminConversations() {
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
         })
-        logger.info('Admin conversation detail loaded', { uuid, messageCount: data.messages.length })
+        logger.info('Admin conversation detail loaded', {
+          uuid,
+          messageCount: data.messages.length,
+        })
       } catch (err) {
         handleError(err, 'Failed to load conversation detail')
       } finally {

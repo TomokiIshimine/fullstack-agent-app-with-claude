@@ -48,7 +48,7 @@ export function Pagination({ meta, currentPage, onPageChange }: PaginationProps)
             {startPage > 2 && <span className="text-slate-400">...</span>}
           </>
         )}
-        {pages.map((page) => (
+        {pages.map(page => (
           <Button
             key={page}
             size="sm"

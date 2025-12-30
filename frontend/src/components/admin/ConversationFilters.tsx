@@ -60,11 +60,11 @@ export function ConversationFilters({
           <select
             id="user-filter"
             value={userId}
-            onChange={(e) => setUserId(e.target.value)}
+            onChange={e => setUserId(e.target.value)}
             className="block w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
           >
             <option value="">全てのユーザー</option>
-            {users.map((user) => (
+            {users.map(user => (
               <option key={user.id} value={user.id}>
                 {user.name || user.email}
               </option>
@@ -79,7 +79,7 @@ export function ConversationFilters({
             id="start-date"
             type="date"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={e => setStartDate(e.target.value)}
             className="block w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
           />
         </div>
@@ -91,7 +91,7 @@ export function ConversationFilters({
             id="end-date"
             type="date"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={e => setEndDate(e.target.value)}
             className="block w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
           />
         </div>

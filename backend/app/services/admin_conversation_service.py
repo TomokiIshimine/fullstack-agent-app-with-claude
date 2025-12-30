@@ -10,12 +10,7 @@ from sqlalchemy.orm import Session
 from app.constants.pagination import DEFAULT_PER_PAGE, MAX_PER_PAGE, MIN_PER_PAGE
 from app.core.exceptions import ConversationNotFoundError
 from app.repositories.conversation_repository import ConversationRepository
-from app.schemas.admin_conversation import (
-    AdminConversationDetailResponse,
-    AdminConversationListResponse,
-    AdminConversationResponse,
-    AdminUserInfo,
-)
+from app.schemas.admin_conversation import AdminConversationDetailResponse, AdminConversationListResponse, AdminConversationResponse, AdminUserInfo
 from app.schemas.conversation import MessageResponse, PaginationMeta
 
 logger = logging.getLogger(__name__)

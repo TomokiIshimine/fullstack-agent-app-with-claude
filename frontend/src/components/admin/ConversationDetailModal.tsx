@@ -63,7 +63,7 @@ export function ConversationDetailModal({
               メッセージ ({conversation.messages.length}件)
             </h5>
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {conversation.messages.map((message) => (
+              {conversation.messages.map(message => (
                 <div
                   key={message.id}
                   className={`p-3 rounded-lg ${
