@@ -3,21 +3,25 @@
 from __future__ import annotations
 
 import uuid as uuid_module
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import joinedload
 
 from app.models.conversation import Conversation
 from app.models.message import Message
+from app.repositories.base import BaseRepository
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
-class ConversationRepository:
+class ConversationRepository(BaseRepository):
     """Repository for Conversation model database operations."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session) -> None:
         """Initialize repository with database session."""
-        self.session = session
+        super().__init__(session)
 
     def find_by_uuid(self, uuid: str) -> Conversation | None:
         """

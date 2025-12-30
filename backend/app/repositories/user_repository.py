@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Sequence
-
-from sqlalchemy.orm import Session
+from typing import TYPE_CHECKING, Sequence
 
 from app.models.user import User
+from app.repositories.base import BaseRepository
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
-class UserRepository:
+class UserRepository(BaseRepository):
     """Repository for User model database operations."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session) -> None:
         """Initialize repository with database session."""
-        self.session = session
+        super().__init__(session)
 
     def find_by_email(self, email: str) -> User | None:
         """
