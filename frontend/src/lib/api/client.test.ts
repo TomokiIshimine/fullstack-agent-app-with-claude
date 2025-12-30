@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { parseSSEStream, fetchSSE, ApiError } from './client'
+import { parseSSEStream, fetchSSE, ApiError, fetchWithLogging } from './client'
 import { createMockResponse, restoreFetch } from '@/test/helpers/mockApi'
+import * as authEvents from '@/lib/authEvents'
 
 describe('SSE Utilities', () => {
   describe('parseSSEStream', () => {
@@ -249,5 +250,80 @@ describe('SSE Utilities', () => {
         })
       )
     })
+  })
+})
+
+describe('fetchWithLogging', () => {
+  let originalFetch: typeof global.fetch
+  let mockFetch: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    originalFetch = global.fetch
+    mockFetch = vi.fn()
+    global.fetch = mockFetch as unknown as typeof fetch
+  })
+
+  afterEach(() => {
+    restoreFetch(originalFetch)
+    vi.restoreAllMocks()
+  })
+
+  it('should emit session expired event on 401 response', async () => {
+    const emitSpy = vi.spyOn(authEvents, 'emitSessionExpired')
+
+    mockFetch.mockResolvedValueOnce(
+      createMockResponse({ error: 'Unauthorized' }, { status: 401, ok: false })
+    )
+
+    await fetchWithLogging('/api/protected')
+
+    expect(emitSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not emit session expired event on 200 response', async () => {
+    const emitSpy = vi.spyOn(authEvents, 'emitSessionExpired')
+
+    mockFetch.mockResolvedValueOnce(createMockResponse({ data: 'ok' }, { status: 200, ok: true }))
+
+    await fetchWithLogging('/api/data')
+
+    expect(emitSpy).not.toHaveBeenCalled()
+  })
+
+  it('should not emit session expired event on other error responses', async () => {
+    const emitSpy = vi.spyOn(authEvents, 'emitSessionExpired')
+
+    mockFetch.mockResolvedValueOnce(
+      createMockResponse({ error: 'Forbidden' }, { status: 403, ok: false })
+    )
+
+    await fetchWithLogging('/api/forbidden')
+
+    expect(emitSpy).not.toHaveBeenCalled()
+  })
+
+  it('should include credentials in request', async () => {
+    mockFetch.mockResolvedValueOnce(createMockResponse({ data: 'ok' }, { status: 200, ok: true }))
+
+    await fetchWithLogging('/api/data', { method: 'POST' })
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/data',
+      expect.objectContaining({
+        credentials: 'include',
+        method: 'POST',
+      })
+    )
+  })
+
+  it('should return response even on 401', async () => {
+    mockFetch.mockResolvedValueOnce(
+      createMockResponse({ error: 'Unauthorized' }, { status: 401, ok: false })
+    )
+
+    const response = await fetchWithLogging('/api/protected')
+
+    expect(response.status).toBe(401)
+    expect(response.ok).toBe(false)
   })
 })

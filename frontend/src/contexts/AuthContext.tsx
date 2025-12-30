@@ -1,6 +1,9 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, type ReactNode } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import type { User } from '@/types/auth'
 import { useAuthService } from '@/hooks/useAuthService'
+import { onSessionExpired } from '@/lib/authEvents'
+import { logger } from '@/lib/logger'
 
 interface AuthContextType {
   user: User | null
@@ -19,6 +22,26 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const auth = useAuthService()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Subscribe to session expired events and redirect to login
+  useEffect(() => {
+    // Skip if already on login page
+    if (location.pathname === '/login') {
+      return
+    }
+
+    return onSessionExpired(() => {
+      logger.info('Session expired, redirecting to login')
+      // Clear user state (auth service will handle API logout)
+      auth.logout().catch(() => {
+        // Ignore logout errors during session expiration
+      })
+      // Redirect to login with expired flag
+      navigate('/login?expired=true', { replace: true })
+    })
+  }, [auth, navigate, location.pathname])
 
   const value: AuthContextType = auth
 

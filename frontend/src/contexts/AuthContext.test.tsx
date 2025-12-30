@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, waitFor, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext'
 import * as authApi from '@/lib/api/auth'
 import { createMockUser } from '@/test/helpers/mockData'
@@ -21,7 +22,11 @@ describe('AuthContext', () => {
     vi.restoreAllMocks()
   })
 
-  const wrapper = ({ children }: { children: ReactNode }) => <AuthProvider>{children}</AuthProvider>
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <MemoryRouter>
+      <AuthProvider>{children}</AuthProvider>
+    </MemoryRouter>
+  )
 
   describe('Initial Load', () => {
     it('attempts to refresh token on mount', async () => {
@@ -262,9 +267,11 @@ describe('AuthContext', () => {
       vi.spyOn(authApi, 'refreshToken').mockRejectedValue(new Error('Not authenticated'))
 
       render(
-        <AuthProvider>
-          <div>Test Children</div>
-        </AuthProvider>
+        <MemoryRouter>
+          <AuthProvider>
+            <div>Test Children</div>
+          </AuthProvider>
+        </MemoryRouter>
       )
 
       expect(screen.getByText('Test Children')).toBeInTheDocument()
@@ -279,9 +286,11 @@ describe('AuthContext', () => {
       }
 
       render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
+        <MemoryRouter>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </MemoryRouter>
       )
 
       await waitFor(() => {
