@@ -127,7 +127,13 @@ export function useChat(options: UseChatOptions) {
             setRetryStatus(null)
             logger.debug('Streaming ended', { assistantMessageId })
           },
-          onRetry: createOnRetryHandler(setRetryStatus),
+          onRetry: createOnRetryHandler(setRetryStatus, {
+            onReset: () => {
+              finalContent = ''
+              setStreamingContent('')
+              resetToolCalls()
+            },
+          }),
           onError: streamErr => {
             // If user message was persisted (indicated by presence of ID), mark it
             if (streamErr.user_message_id !== undefined) {

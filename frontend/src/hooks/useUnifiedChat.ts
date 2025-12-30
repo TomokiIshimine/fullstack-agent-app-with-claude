@@ -227,7 +227,13 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
               finalContent = responseContent
               setRetryStatus(null) // Clear retry status on success
             },
-            onRetry: createOnRetryHandler(setRetryStatus),
+            onRetry: createOnRetryHandler(setRetryStatus, {
+              onReset: () => {
+                finalContent = ''
+                setStreamingContent('')
+                resetToolCalls()
+              },
+            }),
             onError: streamErr => {
               if (streamErr.user_message_id !== undefined) {
                 userMessagePersisted = true
@@ -263,7 +269,13 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
               finalContent = responseContent
               setRetryStatus(null) // Clear retry status on success
             },
-            onRetry: createOnRetryHandler(setRetryStatus),
+            onRetry: createOnRetryHandler(setRetryStatus, {
+              onReset: () => {
+                finalContent = ''
+                setStreamingContent('')
+                resetToolCalls()
+              },
+            }),
             onError: streamErr => {
               if (streamErr.user_message_id !== undefined) {
                 userMessagePersisted = true

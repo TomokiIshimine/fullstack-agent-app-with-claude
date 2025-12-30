@@ -324,7 +324,10 @@ class AgentService:
         """
         logger.debug(f"Generating agent response with {len(messages)} messages")
 
-        max_attempts = self._provider.config.max_retries
+        # max_retries is the number of retries, so we need max_retries + 1 attempts
+        # (1 initial attempt + max_retries retry attempts)
+        max_retries = self._provider.config.max_retries
+        max_attempts = max_retries + 1
         base_delay = self._provider.config.retry_delay
 
         for attempt in range(1, max_attempts + 1):
