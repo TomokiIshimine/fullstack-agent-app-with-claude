@@ -54,6 +54,10 @@ export const validators = {
       if (value === '' || value === null || value === undefined) {
         return message
       }
+      // Treat whitespace-only strings as empty
+      if (typeof value === 'string' && value.trim() === '') {
+        return message
+      }
       return null
     },
 

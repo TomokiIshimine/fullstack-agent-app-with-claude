@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UserCreateForm } from './UserCreateForm'
 import * as usersApi from '@/lib/api/users'
+import { ApiError } from '@/lib/api/client'
 import type { UserCreateRequest, UserCreateResponse } from '@/types/user'
 
 describe('UserCreateForm', () => {
@@ -262,7 +263,7 @@ describe('UserCreateForm', () => {
 
     it('should show error message on API error', async () => {
       const user = userEvent.setup()
-      const apiError = new Error('メールアドレスが既に使用されています')
+      const apiError = new ApiError(400, 'メールアドレスが既に使用されています')
       mockOnCreate.mockRejectedValue(apiError)
 
       render(

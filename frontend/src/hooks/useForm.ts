@@ -221,10 +221,10 @@ export function useForm<T extends FormValues>(options: UseFormOptions<T>): FormS
       } catch (err) {
         logger.error('Form submission failed', err as Error)
         if (err instanceof ApiError) {
-          setError(err.message)
-        } else if (err instanceof Error) {
+          // ApiError has a localized message from the backend
           setError(err.message)
         } else {
+          // Non-ApiError (network errors, etc.) should use the default message
           setError(defaultErrorMessage || 'エラーが発生しました')
         }
       } finally {

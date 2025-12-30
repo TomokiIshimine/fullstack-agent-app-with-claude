@@ -352,7 +352,29 @@ describe('useForm', () => {
       expect(result.current.error).toBe('メールアドレスが既に登録されています')
     })
 
-    it('通常のErrorのメッセージがセットされる', async () => {
+    it('通常のErrorではdefaultErrorMessageがセットされる', async () => {
+      const { result } = renderHook(() =>
+        useForm({
+          fields: {
+            name: { initialValue: 'John' },
+          },
+          defaultErrorMessage: 'ユーザー作成に失敗しました',
+        })
+      )
+
+      await act(async () => {
+        await result.current.handleSubmit(async () => {
+          throw new Error('Network error')
+        })({
+          preventDefault: vi.fn(),
+        } as unknown as React.FormEvent)
+      })
+
+      // Non-ApiError should use defaultErrorMessage, not the raw error message
+      expect(result.current.error).toBe('ユーザー作成に失敗しました')
+    })
+
+    it('通常のErrorでdefaultErrorMessageがない場合はフォールバックメッセージがセットされる', async () => {
       const { result } = renderHook(() =>
         useForm({
           fields: {
@@ -363,13 +385,14 @@ describe('useForm', () => {
 
       await act(async () => {
         await result.current.handleSubmit(async () => {
-          throw new Error('ネットワークエラー')
+          throw new Error('Network error')
         })({
           preventDefault: vi.fn(),
         } as unknown as React.FormEvent)
       })
 
-      expect(result.current.error).toBe('ネットワークエラー')
+      // Non-ApiError without defaultErrorMessage should use the fallback message
+      expect(result.current.error).toBe('エラーが発生しました')
     })
 
     it('不明なエラーはデフォルトメッセージがセットされる', async () => {

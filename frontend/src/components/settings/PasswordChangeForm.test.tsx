@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PasswordChangeForm } from './PasswordChangeForm'
 import * as passwordApi from '@/lib/api/password'
+import { ApiError } from '@/lib/api/client'
 
 describe('PasswordChangeForm', () => {
   const mockOnSuccess = vi.fn()
@@ -229,7 +230,7 @@ describe('PasswordChangeForm', () => {
 
     it('should show error message on API error', async () => {
       const user = userEvent.setup()
-      const apiError = new Error('現在のパスワードが間違っています')
+      const apiError = new ApiError(400, '現在のパスワードが間違っています')
       vi.spyOn(passwordApi, 'changePassword').mockRejectedValue(apiError)
 
       render(<PasswordChangeForm onSuccess={mockOnSuccess} />)
