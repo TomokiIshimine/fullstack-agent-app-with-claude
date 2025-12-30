@@ -30,6 +30,7 @@ repos:
         language: system
         files: ^frontend/.*\.(ts|tsx)$
         pass_filenames: false
+        stages: [pre-push]
       - id: backend-isort
         name: backend isort
         entry: python3 backend/scripts/run_poetry_tool.py isort
@@ -54,3 +55,4 @@ repos:
         language: system
         files: ^backend/.*\.py$
         pass_filenames: true
+        stages: [pre-push]

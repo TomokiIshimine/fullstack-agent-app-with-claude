@@ -119,7 +119,8 @@ ci: lint format-check test
 
 pre-commit-install:
 	@$(POETRY) run pre-commit install >/dev/null
-	@printf '✅ Pre-commit hooks installed\n'
+	@$(POETRY) run pre-commit install --hook-type pre-push >/dev/null
+	@printf '✅ Pre-commit and pre-push hooks installed\n'
 
 pre-commit-run:
 	@printf '🔍 Running pre-commit hooks...\n'
