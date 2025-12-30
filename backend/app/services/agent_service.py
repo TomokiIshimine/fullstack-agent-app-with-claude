@@ -9,11 +9,7 @@ from typing import Any, Generator
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 
-from app.constants.agent import (
-    MAX_CONVERSATION_TITLE_LENGTH,
-    TITLE_TRUNCATION_LENGTH,
-    TITLE_TRUNCATION_SUFFIX,
-)
+from app.constants.agent import MAX_CONVERSATION_TITLE_LENGTH, TITLE_TRUNCATION_LENGTH, TITLE_TRUNCATION_SUFFIX
 from app.providers import BaseLLMProvider, create_provider
 from app.tools import ToolRegistry, get_tool_registry
 
