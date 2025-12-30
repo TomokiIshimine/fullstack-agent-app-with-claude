@@ -255,8 +255,8 @@ health:
 	else \
 		printf '❌ Not accessible\n'; ERRORS=1; \
 	fi; \
-	printf '    Backend  (http://localhost:5001/health): '; \
-	HEALTH_RESP=$$(curl -sf http://localhost:5001/health 2>/dev/null); \
+	printf '    Backend  (http://localhost:5001/api/health): '; \
+	HEALTH_RESP=$$(curl -sf http://localhost:5001/api/health 2>/dev/null); \
 	if [ $$? -eq 0 ]; then \
 		DB_STATUS=$$(echo "$$HEALTH_RESP" | grep -o '"database":"[^"]*"' | cut -d'"' -f4); \
 		if [ "$$DB_STATUS" = "connected" ]; then \
