@@ -52,8 +52,6 @@ def main() -> int:
             relative_files.append(rel)
 
     cmd = COMMANDS[tool][:]
-    if tool == "flake8":
-        cmd.append("--max-line-length=150")
 
     if tool in {"isort", "black", "flake8"}:
         python_targets = [f for f in relative_files if f.endswith((".py", ".pyi"))]

@@ -26,7 +26,7 @@ lint:
 lint-frontend:
 	$(PNPM) run lint
 	$(PNPM) exec tsc --noEmit
-	$(PNPM) exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md}"
+	$(PNPM) exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}"
 
 lint-backend:
 	$(POETRY) run flake8 app tests
@@ -69,7 +69,7 @@ format:
 	$(POETRY) run black app tests
 
 format-check:
-	$(PNPM) exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md}"
+	$(PNPM) exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md,html,yaml,yml,cjs,mjs}"
 	$(POETRY) run isort --check-only app tests
 	$(POETRY) run black --check app tests
 
