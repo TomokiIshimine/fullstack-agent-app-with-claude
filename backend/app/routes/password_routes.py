@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import logging
 
-from flask import Blueprint, g, jsonify, request
-from pydantic import ValidationError
+from flask import Blueprint, g, jsonify
 
-from app.database import get_session
-from app.schemas.password import PasswordChangeRequest, PasswordChangeResponse, PasswordValidationError
+from app.routes.dependencies import validate_request_body, with_password_service
+from app.schemas.password import PasswordChangeRequest, PasswordChangeResponse
 from app.services.password_service import PasswordService
 from app.utils.auth_decorator import require_auth
 
@@ -19,7 +18,9 @@ password_bp = Blueprint("password", __name__, url_prefix="/password")
 
 @password_bp.post("/change")
 @require_auth
-def change_password():
+@with_password_service
+@validate_request_body(PasswordChangeRequest)
+def change_password(*, data: PasswordChangeRequest, password_service: PasswordService):
     """
     Change password endpoint (all authenticated users).
 
@@ -34,31 +35,9 @@ def change_password():
             "message": "パスワードを変更しました"
         }
     """
-    logger.info("POST /api/password/change - Changing password")
-
-    # Get user ID from Flask g (set by @require_auth)
     user_id = g.user_id
+    logger.info(f"POST /api/password/change - Changing password for user_id={user_id}")
 
-    # Parse and validate request
-    payload = request.get_json()
-    if not payload:
-        logger.warning("POST /api/password/change - Request body is required")
-        return jsonify({"error": "Request body is required"}), 400
-
-    try:
-        data = PasswordChangeRequest.model_validate(payload)
-    except ValidationError as e:
-        logger.warning(f"POST /api/password/change - Validation error: {e}")
-        # Extract error messages from Pydantic validation errors
-        errors = [{"field": err["loc"][0] if err["loc"] else "unknown", "message": err["msg"]} for err in e.errors()]
-        return jsonify({"error": "Validation error", "details": errors}), 400
-    except PasswordValidationError as e:
-        logger.warning(f"POST /api/password/change - Validation error: {e}")
-        return jsonify({"error": str(e)}), 400
-
-    # Change password
-    session = get_session()
-    password_service = PasswordService(session)
     password_service.change_password(
         user_id=user_id,
         current_password=data.current_password,

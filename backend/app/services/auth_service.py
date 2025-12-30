@@ -6,11 +6,11 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import NoReturn
 
 import jwt
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import InvalidCredentialsError, InvalidRefreshTokenError
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import LoginResponse, UserResponse
@@ -46,18 +46,18 @@ class AuthService:
             Tuple of (LoginResponse, access_token, refresh_token)
 
         Raises:
-            ValueError: If authentication fails
+            InvalidCredentialsError: If authentication fails
         """
         # Find user by email
         user = self.user_repo.find_by_email(email)
         if not user:
             logger.warning(f"Login failed: user not found - {email}")
-            raise ValueError("メールアドレスまたはパスワードが間違っています")
+            raise InvalidCredentialsError()
 
         # Verify password
         if not verify_password(password, user.password_hash):
             logger.warning(f"Login failed: invalid password - {email}")
-            raise ValueError("メールアドレスまたはパスワードが間違っています")
+            raise InvalidCredentialsError()
 
         # Generate tokens
         access_token = self._generate_access_token(user.id, user.email, user.role)
@@ -83,7 +83,7 @@ class AuthService:
             Tuple of (new_access_token, new_refresh_token, user)
 
         Raises:
-            ValueError: If refresh token is invalid or expired
+            InvalidRefreshTokenError: If refresh token is invalid or expired
         """
         try:
             # Decode refresh token
@@ -91,29 +91,32 @@ class AuthService:
             user_id = payload.get("user_id")
 
             if not user_id:
-                raise ValueError("Invalid refresh token")
+                logger.warning("Invalid refresh token: missing user_id")
+                raise InvalidRefreshTokenError()
 
             # Check if refresh token exists in database and is not revoked
             token_record = self.refresh_token_repo.find_by_token(refresh_token)
             if not token_record:
-                self._raise_invalid_refresh_token(f"Refresh token not found in database: user_id={user_id}")
-            assert token_record is not None
+                logger.warning(f"Refresh token not found in database: user_id={user_id}")
+                raise InvalidRefreshTokenError()
 
             if token_record.is_revoked:
-                self._raise_invalid_refresh_token(f"Refresh token is revoked: user_id={user_id}")
+                logger.warning(f"Refresh token is revoked: user_id={user_id}")
+                raise InvalidRefreshTokenError()
 
             # Compare timezone-aware datetimes (database returns naive datetime, treat as UTC)
             expires_at_utc = (
                 token_record.expires_at.replace(tzinfo=timezone.utc) if token_record.expires_at.tzinfo is None else token_record.expires_at
             )
             if expires_at_utc < datetime.now(timezone.utc):
-                self._raise_invalid_refresh_token(f"Refresh token expired: user_id={user_id}")
+                logger.warning(f"Refresh token expired: user_id={user_id}")
+                raise InvalidRefreshTokenError()
 
             # Get user
             user = self.user_repo.find_by_id(user_id)
             if not user:
-                self._raise_invalid_refresh_token(f"User not found during token refresh: user_id={user_id}")
-            assert user is not None
+                logger.warning(f"User not found during token refresh: user_id={user_id}")
+                raise InvalidRefreshTokenError()
 
             # Generate new tokens
             new_access_token = self._generate_access_token(user.id, user.email, user.role)
@@ -131,9 +134,11 @@ class AuthService:
             return new_access_token, new_refresh_token, user
 
         except jwt.ExpiredSignatureError:
-            self._raise_invalid_refresh_token("Refresh token expired (JWT)")
+            logger.warning("Refresh token expired (JWT)")
+            raise InvalidRefreshTokenError()
         except jwt.InvalidTokenError as e:
-            self._raise_invalid_refresh_token(f"Invalid refresh token (JWT): {e}")
+            logger.warning(f"Invalid refresh token (JWT): {e}")
+            raise InvalidRefreshTokenError()
 
     def logout(self, refresh_token: str) -> None:
         """
@@ -156,11 +161,6 @@ class AuthService:
         expires_at = datetime.now(timezone.utc) + timedelta(days=self.refresh_token_expire_days)
         payload = {"user_id": user_id, "jti": str(uuid.uuid4()), "exp": expires_at}
         return jwt.encode(payload, self.jwt_secret, algorithm=self.jwt_algorithm)
-
-    @staticmethod
-    def _raise_invalid_refresh_token(message: str) -> NoReturn:
-        logger.warning(message)
-        raise ValueError("リフレッシュトークンが無効です")
 
 
 __all__ = ["AuthService"]

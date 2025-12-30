@@ -8,6 +8,7 @@ from typing import Generator, Literal
 
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import ConversationAccessDeniedError, ConversationNotFoundError
 from app.models.message import Message
 from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.message_repository import MessageRepository
@@ -117,16 +118,16 @@ class ConversationService:
             ConversationDetailResponse with conversation and messages
 
         Raises:
-            ValueError: If conversation not found
-            PermissionError: If user doesn't own the conversation
+            ConversationNotFoundError: If conversation not found
+            ConversationAccessDeniedError: If user doesn't own the conversation
         """
         conversation = self.conversation_repo.find_by_uuid_with_messages(uuid)
 
         if not conversation:
-            raise ValueError("Conversation not found")
+            raise ConversationNotFoundError(uuid)
 
         if conversation.user_id != user_id:
-            raise PermissionError("Access denied")
+            raise ConversationAccessDeniedError(uuid)
 
         return ConversationDetailResponse(
             conversation=ConversationResponse.model_validate(conversation),
@@ -277,16 +278,16 @@ class ConversationService:
             user_id: User ID (for authorization check)
 
         Raises:
-            ValueError: If conversation not found
-            PermissionError: If user doesn't own the conversation
+            ConversationNotFoundError: If conversation not found
+            ConversationAccessDeniedError: If user doesn't own the conversation
         """
         conversation = self.conversation_repo.find_by_uuid(uuid)
 
         if not conversation:
-            raise ValueError("Conversation not found")
+            raise ConversationNotFoundError(uuid)
 
         if conversation.user_id != user_id:
-            raise PermissionError("Access denied")
+            raise ConversationAccessDeniedError(uuid)
 
         self.conversation_repo.delete(conversation)
         logger.info(f"Deleted conversation {uuid}")
@@ -304,16 +305,16 @@ class ConversationService:
             user_id: User ID
 
         Raises:
-            ValueError: If conversation not found
-            PermissionError: If user doesn't own the conversation
+            ConversationNotFoundError: If conversation not found
+            ConversationAccessDeniedError: If user doesn't own the conversation
         """
         conversation = self.conversation_repo.find_by_uuid(uuid)
 
         if not conversation:
-            raise ValueError("Conversation not found")
+            raise ConversationNotFoundError(uuid)
 
         if conversation.user_id != user_id:
-            raise PermissionError("Access denied")
+            raise ConversationAccessDeniedError(uuid)
 
     def send_message(
         self,
@@ -333,16 +334,16 @@ class ConversationService:
             SendMessageResponse with user and assistant messages
 
         Raises:
-            ValueError: If conversation not found
-            PermissionError: If user doesn't own the conversation
+            ConversationNotFoundError: If conversation not found
+            ConversationAccessDeniedError: If user doesn't own the conversation
         """
         conversation = self.conversation_repo.find_by_uuid_with_messages(uuid)
 
         if not conversation:
-            raise ValueError("Conversation not found")
+            raise ConversationNotFoundError(uuid)
 
         if conversation.user_id != user_id:
-            raise PermissionError("Access denied")
+            raise ConversationAccessDeniedError(uuid)
 
         # Save user message
         user_message = self.message_repo.create(
@@ -409,16 +410,16 @@ class ConversationService:
             - ("end", {assistant_message_id, content}): Streaming complete
 
         Raises:
-            ValueError: If conversation not found
-            PermissionError: If user doesn't own the conversation
+            ConversationNotFoundError: If conversation not found
+            ConversationAccessDeniedError: If user doesn't own the conversation
         """
         conversation = self.conversation_repo.find_by_uuid_with_messages(uuid)
 
         if not conversation:
-            raise ValueError("Conversation not found")
+            raise ConversationNotFoundError(uuid)
 
         if conversation.user_id != user_id:
-            raise PermissionError("Access denied")
+            raise ConversationAccessDeniedError(uuid)
 
         # Save user message
         user_message = self.message_repo.create(

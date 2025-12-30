@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 import pytest
 
+from app.core.exceptions import InvalidCredentialsError, InvalidRefreshTokenError
 from app.services.auth_service import AuthService
 
 
@@ -77,25 +78,25 @@ def test_login_generates_valid_jwt_access_token(app, test_user, auth_service):
 
 def test_login_user_not_found(auth_service):
     """Test login fails when user doesn't exist."""
-    with pytest.raises(ValueError, match="メールアドレスまたはパスワードが間違っています"):
+    with pytest.raises(InvalidCredentialsError):
         auth_service.login("nonexistent@example.com", "password123")
 
 
 def test_login_invalid_password(app, test_user, auth_service):
     """Test login fails with incorrect password."""
-    with pytest.raises(ValueError, match="メールアドレスまたはパスワードが間違っています"):
+    with pytest.raises(InvalidCredentialsError):
         auth_service.login("test@example.com", "wrongpassword")
 
 
 def test_login_empty_email(auth_service):
     """Test login fails with empty email."""
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidCredentialsError):
         auth_service.login("", "password123")
 
 
 def test_login_empty_password(app, test_user, auth_service):
     """Test login fails with empty password."""
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidCredentialsError):
         auth_service.login("test@example.com", "")
 
 
@@ -147,7 +148,7 @@ def test_refresh_access_token_revokes_old_token(app, test_user, auth_service):
 
 def test_refresh_access_token_invalid_jwt(auth_service):
     """Test refresh fails with invalid JWT format."""
-    with pytest.raises(ValueError, match="リフレッシュトークンが無効です"):
+    with pytest.raises(InvalidRefreshTokenError):
         auth_service.refresh_access_token("invalid_jwt_token")
 
 
@@ -161,7 +162,7 @@ def test_refresh_access_token_expired(app, test_user, auth_service):
     payload = {"user_id": test_user, "jti": "expired-jti", "exp": expired_time}
     expired_token = jwt.encode(payload, jwt_secret, algorithm=jwt_algorithm)
 
-    with pytest.raises(ValueError, match="リフレッシュトークンが無効です"):
+    with pytest.raises(InvalidRefreshTokenError):
         auth_service.refresh_access_token(expired_token)
 
 
@@ -175,7 +176,7 @@ def test_refresh_access_token_not_in_database(app, test_user, auth_service):
     payload = {"user_id": test_user, "jti": "not-in-db", "exp": expires_at}
     token = jwt.encode(payload, jwt_secret, algorithm=jwt_algorithm)
 
-    with pytest.raises(ValueError, match="リフレッシュトークンが無効です"):
+    with pytest.raises(InvalidRefreshTokenError):
         auth_service.refresh_access_token(token)
 
 
@@ -195,7 +196,7 @@ def test_refresh_access_token_revoked(app, test_user, auth_service):
         session.commit()
 
     # Try to use the revoked token
-    with pytest.raises(ValueError, match="リフレッシュトークンが無効です"):
+    with pytest.raises(InvalidRefreshTokenError):
         auth_service.refresh_access_token(refresh_token)
 
 
@@ -220,7 +221,7 @@ def test_refresh_access_token_user_not_found(app, auth_service):
         session.commit()
 
     # Try to refresh with token for non-existent user
-    with pytest.raises(ValueError, match="リフレッシュトークンが無効です"):
+    with pytest.raises(InvalidRefreshTokenError):
         auth_service.refresh_access_token(token)
 
 
@@ -234,7 +235,7 @@ def test_refresh_access_token_missing_user_id(auth_service):
     payload = {"jti": "no-user-id", "exp": expires_at}  # Missing user_id
     token = jwt.encode(payload, jwt_secret, algorithm=jwt_algorithm)
 
-    with pytest.raises(ValueError, match="Invalid refresh token"):
+    with pytest.raises(InvalidRefreshTokenError):
         auth_service.refresh_access_token(token)
 
 
@@ -409,7 +410,7 @@ def test_token_refresh_prevents_replay_attack(app, test_user, auth_service):
     _, new_refresh_token, _ = auth_service.refresh_access_token(refresh_token)
 
     # Try to use the old token again (should fail)
-    with pytest.raises(ValueError, match="リフレッシュトークンが無効です"):
+    with pytest.raises(InvalidRefreshTokenError):
         auth_service.refresh_access_token(refresh_token)
 
     # New token should still work

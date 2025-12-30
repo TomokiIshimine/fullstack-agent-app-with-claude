@@ -6,6 +6,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import CannotDeleteAdminError, UserAlreadyExistsError, UserNotFoundError, UserServiceError
 from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.message_repository import MessageRepository
 from app.repositories.refresh_token_repository import RefreshTokenRepository
@@ -16,33 +17,6 @@ from app.utils.password import hash_password
 from app.utils.password_generator import generate_initial_password
 
 logger = logging.getLogger(__name__)
-
-
-class UserServiceError(Exception):
-    """Base exception for user service errors."""
-
-
-class UserAlreadyExistsError(UserServiceError):
-    """Raised when attempting to create a user with duplicate email."""
-
-    def __init__(self, email: str):
-        super().__init__(f"User with email '{email}' already exists")
-        self.email = email
-
-
-class UserNotFoundError(UserServiceError):
-    """Raised when user is not found."""
-
-    def __init__(self, user_id: int):
-        super().__init__(f"User with id {user_id} not found")
-        self.user_id = user_id
-
-
-class CannotDeleteAdminError(UserServiceError):
-    """Raised when attempting to delete an admin user."""
-
-    def __init__(self):
-        super().__init__("Admin user cannot be deleted")
 
 
 class UserService:
@@ -141,10 +115,4 @@ class UserService:
         logger.info(f"User deleted successfully: id={user_id}, email={user.email}")
 
 
-__all__ = [
-    "UserService",
-    "UserServiceError",
-    "UserAlreadyExistsError",
-    "UserNotFoundError",
-    "CannotDeleteAdminError",
-]
+__all__ = ["UserService"]

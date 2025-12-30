@@ -38,7 +38,11 @@ def test_change_password_admin_can_change(app):
 
 
 def test_change_password_invalid_current_password(app):
-    """Test that incorrect current password is rejected."""
+    """Test that incorrect current password is rejected.
+
+    Returns 401 Unauthorized because the current password verification
+    is an authentication check, not an authorization check.
+    """
     user_id = create_user(app, email="user@example.com", password="correctpass123", role="user")
     user_client = create_auth_client(app, user_id, email="user@example.com", role="user")
 
@@ -46,7 +50,7 @@ def test_change_password_invalid_current_password(app):
 
     assert_response_error(response, 401)
     data = response.get_json()
-    assert "パスワード" in data["error"]["message"]
+    assert "パスワード" in data["error"]
 
 
 def test_change_password_new_password_too_short(app):

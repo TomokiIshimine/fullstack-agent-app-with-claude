@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.user_service import CannotDeleteAdminError, UserAlreadyExistsError, UserNotFoundError, UserService
+from app.core.exceptions import CannotDeleteAdminError, UserAlreadyExistsError, UserNotFoundError
+from app.services.user_service import UserService
 from tests.helpers import create_user
 
 
@@ -95,7 +96,7 @@ def test_create_user_duplicate_email_raises_error(app, user_service):
     with pytest.raises(UserAlreadyExistsError) as exc_info:
         user_service.create_user(email="existing@example.com", name="Duplicate User")
 
-    assert "existing@example.com" in str(exc_info.value)
+    assert exc_info.value.email == "existing@example.com"
 
 
 def test_create_user_always_creates_with_user_role(app, user_service):
@@ -138,7 +139,7 @@ def test_delete_user_cannot_delete_admin(app, user_service):
     with pytest.raises(CannotDeleteAdminError) as exc_info:
         user_service.delete_user(admin_id)
 
-    assert "admin" in str(exc_info.value).lower()
+    assert "管理者" in str(exc_info.value)
 
     # Verify admin user still exists
     from app.database import get_session
@@ -156,7 +157,7 @@ def test_delete_user_not_found_raises_error(app, user_service):
     with pytest.raises(UserNotFoundError) as exc_info:
         user_service.delete_user(99999)
 
-    assert "99999" in str(exc_info.value)
+    assert exc_info.value.user_id == 99999
 
 
 def test_delete_user_cascades_related_data(app, user_service):

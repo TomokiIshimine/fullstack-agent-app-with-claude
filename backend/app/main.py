@@ -27,7 +27,7 @@ def _register_error_handlers(app: Flask) -> None:
                 "http_method": request.method,
             },
         )
-        response = jsonify(error={"code": err.code, "message": err.description})
+        response = jsonify(error=err.description)
         return response, err.code
 
     @app.errorhandler(Exception)
@@ -37,7 +37,7 @@ def _register_error_handlers(app: Flask) -> None:
             exc_info=True,
             extra={"error_type": type(err).__name__, "path": request.path, "http_method": request.method},
         )
-        response = jsonify(error={"code": 500, "message": "Internal server error"})
+        response = jsonify(error="Internal server error")
         return response, 500
 
 
