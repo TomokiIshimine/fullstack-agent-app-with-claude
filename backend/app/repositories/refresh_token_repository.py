@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 from datetime import datetime
-
-from sqlalchemy.orm import Session
+from typing import TYPE_CHECKING
 
 from app.models.refresh_token import RefreshToken
+from app.repositories.base import BaseRepository
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
-class RefreshTokenRepository:
+class RefreshTokenRepository(BaseRepository):
     """Repository for RefreshToken model database operations."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session) -> None:
         """Initialize repository with database session."""
-        self.session = session
+        super().__init__(session)
 
     def create(self, token: str, user_id: int, expires_at: datetime) -> RefreshToken:
         """
@@ -30,8 +33,7 @@ class RefreshTokenRepository:
         """
         refresh_token = RefreshToken(token=token, user_id=user_id, expires_at=expires_at, is_revoked=False)
         self.session.add(refresh_token)
-        self.session.commit()
-        self.session.refresh(refresh_token)
+        self.session.flush()
         return refresh_token
 
     def find_by_token(self, token: str) -> RefreshToken | None:
@@ -59,7 +61,7 @@ class RefreshTokenRepository:
         refresh_token = self.find_by_token(token)
         if refresh_token:
             refresh_token.is_revoked = True
-            self.session.commit()
+            self.session.flush()
             return True
         return False
 
@@ -78,7 +80,7 @@ class RefreshTokenRepository:
             .filter(RefreshToken.user_id == user_id, RefreshToken.is_revoked.is_(False))
             .update({RefreshToken.is_revoked: True})
         )
-        self.session.commit()
+        self.session.flush()
         return count
 
     def delete_all_for_user(self, user_id: int) -> int:

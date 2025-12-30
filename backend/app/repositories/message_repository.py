@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Literal, Sequence
-
-from sqlalchemy.orm import Session
+from typing import TYPE_CHECKING, Literal, Sequence
 
 from app.models.message import Message
+from app.repositories.base import BaseRepository
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
-class MessageRepository:
+class MessageRepository(BaseRepository):
     """Repository for Message model database operations."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session) -> None:
         """Initialize repository with database session."""
-        self.session = session
+        super().__init__(session)
 
     def find_by_conversation_id(self, conversation_id: int) -> Sequence[Message]:
         """

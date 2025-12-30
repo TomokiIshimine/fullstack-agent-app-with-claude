@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Literal, Sequence
-
-from sqlalchemy.orm import Session
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 from app.models.tool_call import ToolCall
+from app.repositories.base import BaseRepository
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
-class ToolCallRepository:
+class ToolCallRepository(BaseRepository):
     """Repository for ToolCall model database operations."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session) -> None:
         """Initialize repository with database session."""
-        self.session = session
+        super().__init__(session)
 
     def find_by_message_id(self, message_id: int) -> Sequence[ToolCall]:
         """
