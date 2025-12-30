@@ -36,6 +36,7 @@ from app.database import get_session
 from app.providers import BaseLLMProvider, create_provider
 from app.schemas.password import PasswordValidationError
 from app.schemas.user import UserValidationError
+from app.services.admin_conversation_service import AdminConversationService
 from app.services.agent_service import AgentService
 from app.services.auth_service import AuthService
 from app.services.conversation_service import ConversationService
@@ -238,6 +239,17 @@ def get_user_service() -> UserService:
     return service
 
 
+def get_admin_conversation_service() -> AdminConversationService:
+    """Return request-scoped AdminConversationService instance."""
+    if service := g.get("admin_conversation_service"):
+        return service
+
+    session = get_session()
+    service = AdminConversationService(session)
+    g.admin_conversation_service = service
+    return service
+
+
 # === Service Injection Decorators ===
 
 # Error mappings for each service (domain exception -> HTTP exception)
@@ -298,6 +310,19 @@ with_user_service: Callable[[RouteCallable], RouteCallable] = _create_service_de
 )
 with_user_service.__doc__ = "Inject UserService and translate domain errors into HTTP responses."
 
+_ADMIN_CONVERSATION_ERROR_MAPPING: ErrorMapping = {
+    ConversationNotFoundError: NotFound,
+}
+
+with_admin_conversation_service: Callable[[RouteCallable], RouteCallable] = _create_service_decorator(
+    service_getter=get_admin_conversation_service,
+    service_kwarg="admin_conversation_service",
+    error_mapping=_ADMIN_CONVERSATION_ERROR_MAPPING,
+    fallback_error_class=ConversationServiceError,
+    service_name="admin_conversation",
+)
+with_admin_conversation_service.__doc__ = "Inject AdminConversationService and translate domain errors into HTTP responses."
+
 
 # === Request Validation Decorator ===
 
@@ -331,12 +356,14 @@ def validate_request_body(schema: type[SchemaType]) -> Callable[[RouteCallable],
 
 
 __all__ = [
+    "get_admin_conversation_service",
     "get_agent_service",
     "get_auth_service",
     "get_conversation_service",
     "get_llm_provider",
     "get_password_service",
     "get_user_service",
+    "with_admin_conversation_service",
     "with_auth_service",
     "with_conversation_service",
     "with_password_service",

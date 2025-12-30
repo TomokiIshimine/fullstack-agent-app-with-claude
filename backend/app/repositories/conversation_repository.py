@@ -191,5 +191,109 @@ class ConversationRepository(BaseRepository):
         """
         self.session.delete(conversation)
 
+    def find_all_with_user(
+        self,
+        page: int = 1,
+        per_page: int = DEFAULT_PER_PAGE,
+        user_id: int | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> tuple[list[dict], int]:
+        """
+        Find all conversations with user info for admin view.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of items per page
+            user_id: Optional user ID filter
+            start_date: Optional start date filter (ISO format)
+            end_date: Optional end date filter (ISO format)
+
+        Returns:
+            Tuple of (list of dicts with conversation, user, message_count, total count)
+        """
+        from datetime import datetime, time
+
+        from app.models.user import User
+
+        def parse_date_filter(date_str: str, end_of_day: bool = False) -> datetime | None:
+            """Parse date string, optionally normalizing to end of day."""
+            try:
+                dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                # If date-only (time is midnight and no explicit time in input),
+                # normalize to end of day for inclusive filtering
+                if end_of_day and dt.time() == time(0, 0, 0) and "T" not in date_str:
+                    dt = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+                return dt
+            except ValueError:
+                return None
+
+        # Subquery to count messages per conversation
+        message_count_subquery = (
+            self.session.query(
+                Message.conversation_id,
+                func.count(Message.id).label("message_count"),
+            )
+            .group_by(Message.conversation_id)
+            .subquery()
+        )
+
+        query = (
+            self.session.query(
+                Conversation,
+                User,
+                func.coalesce(message_count_subquery.c.message_count, 0).label("message_count"),
+            )
+            .join(User, Conversation.user_id == User.id)
+            .outerjoin(
+                message_count_subquery,
+                Conversation.id == message_count_subquery.c.conversation_id,
+            )
+        )
+
+        # Apply filters
+        if user_id is not None:
+            query = query.filter(Conversation.user_id == user_id)
+
+        if start_date:
+            start_dt = parse_date_filter(start_date, end_of_day=False)
+            if start_dt:
+                query = query.filter(Conversation.created_at >= start_dt)
+
+        if end_date:
+            end_dt = parse_date_filter(end_date, end_of_day=True)
+            if end_dt:
+                query = query.filter(Conversation.created_at <= end_dt)
+
+        query = query.order_by(Conversation.updated_at.desc())
+
+        # Count total with filters
+        count_query = self.session.query(Conversation)
+        if user_id is not None:
+            count_query = count_query.filter(Conversation.user_id == user_id)
+        if start_date:
+            start_dt = parse_date_filter(start_date, end_of_day=False)
+            if start_dt:
+                count_query = count_query.filter(Conversation.created_at >= start_dt)
+        if end_date:
+            end_dt = parse_date_filter(end_date, end_of_day=True)
+            if end_dt:
+                count_query = count_query.filter(Conversation.created_at <= end_dt)
+        total = count_query.count()
+
+        offset = (page - 1) * per_page
+        results = query.offset(offset).limit(per_page).all()
+
+        conversations_with_user = [
+            {
+                "conversation": conv,
+                "user": user,
+                "message_count": count,
+            }
+            for conv, user, count in results
+        ]
+
+        return conversations_with_user, total
+
 
 __all__ = ["ConversationRepository"]

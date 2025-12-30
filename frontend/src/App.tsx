@@ -3,6 +3,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { LoginPage } from '@/pages/LoginPage'
 import { ChatPage } from '@/pages/ChatPage'
 import { UserManagementPage } from '@/pages/admin/UserManagementPage'
+import { ConversationHistoryPage } from '@/pages/admin/ConversationHistoryPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { RoleBasedRedirect } from '@/components/RoleBasedRedirect'
@@ -43,6 +44,16 @@ function App() {
               <ProtectedRoute requiredRole="admin">
                 <AuthenticatedLayout>
                   <UserManagementPage />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/conversations"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AuthenticatedLayout>
+                  <ConversationHistoryPage />
                 </AuthenticatedLayout>
               </ProtectedRoute>
             }
