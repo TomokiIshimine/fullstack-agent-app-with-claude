@@ -56,7 +56,7 @@ Run `make help` to see all available commands.
 make install              # Install all dependencies
 make install-frontend     # Install frontend dependencies only
 make install-backend      # Install backend dependencies only
-make up                   # Start all services (frontend :5174, backend :5000, MySQL, Redis)
+make up                   # Start all services (frontend :5174, backend :5001, MySQL, Redis)
 make down                 # Stop all services
 make doctor               # Check development environment (Node, Python, Docker, etc.)
 make health               # Check if all services are running and healthy
@@ -169,6 +169,6 @@ VITE_API_PROXY=http://localhost:5000
 ## Docker Services
 
 - `frontend` - Node 20, port 5174
-- `backend` - Python 3.12, port 5000
+- `backend` - Python 3.12, port 5001
 - `db` - MySQL 8.0, port 3306
 - `redis` - Redis 7, port 6379 (rate limiting)

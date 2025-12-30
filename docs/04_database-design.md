@@ -192,6 +192,11 @@ AIチャットの会話を管理するテーブル。
 | role             | ENUM('user', 'assistant') | NOT NULL                | メッセージの送信者ロール      |
 | content          | TEXT                      | NOT NULL                | メッセージ本文（最大32000文字）|
 | created_at       | DATETIME                  | NOT NULL, DEFAULT NOW   | レコード作成日時             |
+| input_tokens     | INT UNSIGNED              | NULL                    | 入力トークン数（assistant のみ）|
+| output_tokens    | INT UNSIGNED              | NULL                    | 出力トークン数（assistant のみ）|
+| model            | VARCHAR(255)              | NULL                    | 使用したモデル名（assistant のみ）|
+| response_time_ms | INT UNSIGNED              | NULL                    | 応答時間（ミリ秒、assistant のみ）|
+| cost_usd         | DECIMAL(10, 6)            | NULL                    | コスト（USD、assistant のみ）|
 
 **インデックス:**
 - `idx_messages_conversation_id` on `conversation_id` (会話別メッセージ検索)
@@ -204,6 +209,7 @@ AIチャットの会話を管理するテーブル。
 - role は 'user'（ユーザーの発言）または 'assistant'（AIの応答）
 - content の最大長は32000文字（Claude API の制限に合わせて）
 - 会話削除時に関連するメッセージも削除される
+- メタデータカラム（input_tokens, output_tokens, model, response_time_ms, cost_usd）は assistant メッセージのみに設定される
 
 ---
 

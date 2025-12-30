@@ -101,7 +101,7 @@ describe('LoginForm', () => {
 make up                   # Starts all services including frontend
 
 # Standalone (without Docker)
-pnpm --dir frontend run dev --host 0.0.0.0 --port 5173
+pnpm --dir frontend run dev --host 0.0.0.0 --port 5174
 ```
 
 ### Testing
