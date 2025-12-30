@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from typing import Type
 
-
 # Password validation constants
 MIN_PASSWORD_LENGTH = 8
 
@@ -42,9 +41,7 @@ def validate_password(
         ValueError or exception_class: If password validation fails.
     """
     if not password or len(password) < MIN_PASSWORD_LENGTH:
-        raise exception_class(
-            f"Password must be at least {MIN_PASSWORD_LENGTH} characters long"
-        )
+        raise exception_class(f"Password must be at least {MIN_PASSWORD_LENGTH} characters long")
 
     # Check for alphanumeric characters
     if not re.search(r"[a-zA-Z]", password) or not re.search(r"[0-9]", password):

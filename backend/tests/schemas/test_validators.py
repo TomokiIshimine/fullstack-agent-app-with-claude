@@ -4,13 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.schemas.validators import (
-    MAX_MESSAGE_LENGTH,
-    MIN_PASSWORD_LENGTH,
-    PasswordValidationError,
-    validate_message_content,
-    validate_password,
-)
+from app.schemas.validators import MAX_MESSAGE_LENGTH, MIN_PASSWORD_LENGTH, PasswordValidationError, validate_message_content, validate_password
 
 
 class TestPasswordValidator:
@@ -116,9 +110,7 @@ class TestMessageContentValidator:
         long_content = "a" * (MAX_MESSAGE_LENGTH + 1)
         with pytest.raises(ValueError) as exc_info:
             validate_message_content(long_content, field_name="Message")
-        assert f"Message must be at most {MAX_MESSAGE_LENGTH} characters" in str(
-            exc_info.value
-        )
+        assert f"Message must be at most {MAX_MESSAGE_LENGTH} characters" in str(exc_info.value)
 
     def test_max_message_length_constant(self):
         """Test that MAX_MESSAGE_LENGTH is 32000."""

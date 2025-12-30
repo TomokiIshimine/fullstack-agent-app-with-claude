@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, field_validator
 
-from app.schemas.validators import (
-    PasswordValidationError,
-    validate_password,
-)
+from app.schemas.validators import PasswordValidationError, validate_password
 
 
 class PasswordChangeRequest(BaseModel):
