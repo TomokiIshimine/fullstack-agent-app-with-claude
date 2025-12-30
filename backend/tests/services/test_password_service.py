@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.password_service import InvalidPasswordError, PasswordService
+from app.core.exceptions import InvalidPasswordError
+from app.services.password_service import PasswordService
 from tests.helpers import create_user
 
 
@@ -15,7 +16,7 @@ def password_service(app):
 
     with app.app_context():
         session = get_session()
-        return PasswordService(session)
+        yield PasswordService(session)
 
 
 # change_password tests
@@ -27,6 +28,8 @@ def test_change_password_success(app, password_service, client):
 
     # Change password
     password_service.change_password(user_id=user_id, current_password="oldpassword123", new_password="newpassword456")
+    # Commit session so login request can see the changes
+    password_service.session.commit()
 
     # Verify new password works
     login_response = client.post("/api/auth/login", json={"email": "user@example.com", "password": "newpassword456"})
@@ -52,8 +55,7 @@ def test_change_password_invalid_current_password_raises_error(app, password_ser
     with pytest.raises(InvalidPasswordError) as exc_info:
         password_service.change_password(user_id=user_id, current_password="wrongpass123", new_password="newpass456")
 
-    assert "パスワード" in exc_info.value.description
-    assert exc_info.value.code == 401
+    assert "パスワード" in exc_info.value.message
 
 
 def test_change_password_user_not_found_raises_invalid_password_error(app, password_service):
@@ -93,6 +95,8 @@ def test_change_password_multiple_times(app, password_service, client):
 
     # Third change
     password_service.change_password(user_id=user_id, current_password="password3", new_password="finalpassword123")
+    # Commit session so login request can see the changes
+    password_service.session.commit()
 
     # Verify final password works
     login_response = client.post("/api/auth/login", json={"email": "user@example.com", "password": "finalpassword123"})

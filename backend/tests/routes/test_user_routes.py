@@ -156,7 +156,7 @@ def test_delete_user_cannot_delete_admin(app):
 
     assert_response_error(response, 403)
     data = response.get_json()
-    assert "admin" in data["error"]["message"].lower()
+    assert "admin" in data["error"].lower()
 
 
 def test_delete_user_not_found(app):

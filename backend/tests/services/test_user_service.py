@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.user_service import CannotDeleteAdminError, UserAlreadyExistsError, UserNotFoundError, UserService
+from app.core.exceptions import CannotDeleteAdminError, UserAlreadyExistsError, UserNotFoundError
+from app.services.user_service import UserService
 from tests.helpers import create_user
 
 

@@ -54,8 +54,8 @@ def test_login_missing_body(client):
     """Test login fails when request body is missing."""
     response = client.post("/api/auth/login", data="", content_type="application/json")
 
-    # Implementation returns 500 for missing body (ValueError not caught as 401)
-    assert_response_error(response, 500)
+    # Missing request body returns 400 Bad Request
+    assert_response_error(response, 400)
 
 
 def test_login_invalid_email_format(client):

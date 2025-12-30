@@ -46,7 +46,7 @@ def test_change_password_invalid_current_password(app):
 
     assert_response_error(response, 401)
     data = response.get_json()
-    assert "パスワード" in data["error"]["message"]
+    assert "パスワード" in data["error"]
 
 
 def test_change_password_new_password_too_short(app):

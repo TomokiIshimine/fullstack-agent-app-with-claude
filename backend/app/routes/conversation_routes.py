@@ -12,8 +12,9 @@ from pydantic import BaseModel, ValidationError
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from app.constants.sse_events import SERVICE_TO_SSE_EVENT_MAP, SSEEvent
-from app.database import get_session
+from app.core.exceptions import ConversationAccessDeniedError, ConversationNotFoundError
 from app.limiter import limiter
+from app.routes.dependencies import with_conversation_service
 from app.schemas.conversation import CreateConversationRequest, SendMessageRequest
 from app.services.conversation_service import ConversationService
 from app.utils.auth_decorator import require_auth
@@ -25,36 +26,6 @@ conversation_bp = Blueprint("conversations", __name__, url_prefix="/conversation
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
 RouteCallable = TypeVar("RouteCallable", bound=Callable[..., Any])
-
-
-def get_conversation_service() -> ConversationService:
-    """Return request-scoped ConversationService instance."""
-    if service := g.get("conversation_service"):
-        return service
-
-    session = get_session()
-    service = ConversationService(session)
-    g.conversation_service = service
-    return service
-
-
-def with_conversation_service(func: RouteCallable) -> RouteCallable:
-    """Inject ConversationService and translate domain errors into HTTP responses."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any):
-        service = get_conversation_service()
-        try:
-            return func(*args, conversation_service=service, **kwargs)
-        except ValueError as exc:
-            raise NotFound(description=str(exc)) from exc
-        except PermissionError as exc:
-            raise Forbidden(description=str(exc)) from exc
-        except Exception:  # pragma: no cover - unexpected error path
-            logger.error("Unexpected error in conversation route", exc_info=True)
-            raise
-
-    return wrapper  # type: ignore[return-value]
 
 
 def validate_conversation_request(schema: type[SchemaType]) -> Callable[[RouteCallable], RouteCallable]:
@@ -176,7 +147,8 @@ def create_conversation(*, data: CreateConversationRequest, conversation_service
                         yield f"event: {sse_event}\ndata: {json.dumps(event_data)}\n\n"
             except Exception as exc:
                 logger.error("Error during conversation creation streaming", exc_info=True)
-                error_data = {"error": str(exc) if isinstance(exc, (ValueError, PermissionError)) else "Internal server error"}
+                is_known_error = isinstance(exc, (ConversationNotFoundError, ConversationAccessDeniedError))
+                error_data = {"error": str(exc) if is_known_error else "Internal server error"}
                 if user_message_id is not None:
                     error_data["user_message_id"] = user_message_id
                 yield f"event: {SSEEvent.ERROR}\ndata: {json.dumps(error_data)}\n\n"
@@ -300,9 +272,9 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
         # This allows proper HTTP error codes (404/403) to be returned
         try:
             conversation_service.validate_conversation_access(uuid=uuid, user_id=user_id)
-        except ValueError as exc:
+        except ConversationNotFoundError as exc:
             raise NotFound(description=str(exc)) from exc
-        except PermissionError as exc:
+        except ConversationAccessDeniedError as exc:
             raise Forbidden(description=str(exc)) from exc
 
         # Streaming response using SSE
@@ -322,7 +294,8 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
             except Exception as exc:
                 logger.error("Error during streaming", exc_info=True)
                 # Include user_message_id in error so client knows data was persisted
-                error_data = {"error": str(exc) if isinstance(exc, (ValueError, PermissionError)) else "Internal server error"}
+                is_known_error = isinstance(exc, (ConversationNotFoundError, ConversationAccessDeniedError))
+                error_data = {"error": str(exc) if is_known_error else "Internal server error"}
                 if user_message_id is not None:
                     error_data["user_message_id"] = user_message_id
                 yield f"event: {SSEEvent.ERROR}\ndata: {json.dumps(error_data)}\n\n"
