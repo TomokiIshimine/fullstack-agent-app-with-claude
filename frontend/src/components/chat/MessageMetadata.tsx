@@ -1,37 +1,13 @@
 import type { MessageMetadata as MessageMetadataType } from '@/types/chat'
+import {
+  formatCost,
+  formatModelName,
+  formatResponseTime,
+  formatTokens,
+} from '@/lib/utils/metadataFormat'
 
 interface MessageMetadataProps {
   metadata: MessageMetadataType
-}
-
-/**
- * Format cost in USD with appropriate precision
- */
-function formatCost(cost: number): string {
-  if (cost < 0.0001) {
-    return `$${cost.toFixed(6)}`
-  }
-  if (cost < 0.01) {
-    return `$${cost.toFixed(4)}`
-  }
-  return `$${cost.toFixed(2)}`
-}
-
-/**
- * Format response time in human-readable format
- */
-function formatResponseTime(ms: number): string {
-  if (ms < 1000) {
-    return `${ms}ms`
-  }
-  return `${(ms / 1000).toFixed(1)}s`
-}
-
-/**
- * Format token count with commas for readability
- */
-function formatTokens(count: number): string {
-  return count.toLocaleString()
 }
 
 /**
@@ -97,10 +73,7 @@ export function MessageMetadata({ metadata }: MessageMetadataProps) {
       )}
       {model && (
         <span className="message-metadata__item message-metadata__item--model" title={model}>
-          {model
-            .split('/')
-            .pop()
-            ?.replace(/-\d{8}$/, '') || model}
+          {formatModelName(model)}
         </span>
       )}
     </div>
