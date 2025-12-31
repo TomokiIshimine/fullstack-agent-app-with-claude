@@ -1,6 +1,56 @@
 /**
- * Formatting utilities for message metadata display
+ * Formatting and transformation utilities for message metadata
  */
+
+import type { MessageMetadata } from '@/types/chat'
+
+/**
+ * Raw metadata fields from API (snake_case)
+ */
+export interface RawMetadataFields {
+  input_tokens?: number | null
+  output_tokens?: number | null
+  model?: string | null
+  response_time_ms?: number | null
+  cost_usd?: number | null
+}
+
+/**
+ * Build MessageMetadata from raw API fields.
+ * Returns undefined if no meaningful metadata is present.
+ *
+ * @param data - Raw metadata fields from API (snake_case)
+ * @returns MessageMetadata object or undefined
+ *
+ * @example
+ * const metadata = buildMetadata({
+ *   input_tokens: 100,
+ *   output_tokens: 200,
+ *   model: 'claude-sonnet-4-5-20250929',
+ *   response_time_ms: 1500,
+ *   cost_usd: 0.002
+ * })
+ */
+export function buildMetadata(data: RawMetadataFields): MessageMetadata | undefined {
+  const hasMetadata =
+    data.input_tokens != null ||
+    data.output_tokens != null ||
+    data.model != null ||
+    data.response_time_ms != null ||
+    data.cost_usd != null
+
+  if (!hasMetadata) {
+    return undefined
+  }
+
+  return {
+    inputTokens: data.input_tokens ?? undefined,
+    outputTokens: data.output_tokens ?? undefined,
+    model: data.model ?? undefined,
+    responseTimeMs: data.response_time_ms ?? undefined,
+    costUsd: data.cost_usd ?? undefined,
+  }
+}
 
 /**
  * Threshold constants for cost formatting precision
