@@ -5,11 +5,13 @@ from __future__ import annotations
 import logging
 
 from flask import Blueprint, jsonify, request
+from werkzeug.exceptions import BadRequest
 
 from app.constants.http import HTTP_OK
 from app.routes.dependencies import with_admin_conversation_service
 from app.services.admin_conversation_service import AdminConversationService
 from app.utils.auth_decorator import require_auth, require_role
+from app.utils.date_filter import parse_date_filter
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +63,12 @@ def list_all_conversations(*, admin_conversation_service: AdminConversationServi
     user_id = request.args.get("user_id", type=int)
     start_date = request.args.get("start_date", type=str)
     end_date = request.args.get("end_date", type=str)
+
+    # Validate date format if provided
+    if start_date and parse_date_filter(start_date) is None:
+        raise BadRequest("開始日の形式が不正です。ISO形式（例: 2025-01-01）で指定してください")
+    if end_date and parse_date_filter(end_date) is None:
+        raise BadRequest("終了日の形式が不正です。ISO形式（例: 2025-01-01）で指定してください")
 
     logger.info(
         "GET /api/admin/conversations - Retrieving all conversations",

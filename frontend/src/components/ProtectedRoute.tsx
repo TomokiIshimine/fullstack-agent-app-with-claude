@@ -35,7 +35,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     if (user?.role === 'admin') {
       return <Navigate to="/admin/users" replace />
     } else {
-      return <Navigate to="/todos" replace />
+      return <Navigate to="/chat" replace />
     }
   }
 
