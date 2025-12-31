@@ -87,10 +87,6 @@ class TestMetadataService:
     class TestHasValidData:
         """Tests for has_valid_data method."""
 
-        @pytest.fixture
-        def service(self):
-            return MetadataService()
-
         def test_returns_true_with_input_tokens(self, service):
             """Should return True when input_tokens > 0."""
             metadata = MessageMetadata(
@@ -135,6 +131,17 @@ class TestMetadataService:
             )
             assert service.has_valid_data(metadata) is True
 
+        def test_returns_true_with_model_only(self, service):
+            """Should return True when only model is set."""
+            metadata = MessageMetadata(
+                input_tokens=0,
+                output_tokens=0,
+                model="claude-3",
+                response_time_ms=0,
+                cost_usd=0.0,
+            )
+            assert service.has_valid_data(metadata) is True
+
         def test_returns_false_when_all_zero(self, service):
             """Should return False when all values are zero/empty."""
             metadata = MessageMetadata.empty()
@@ -142,10 +149,6 @@ class TestMetadataService:
 
     class TestToNullableDict:
         """Tests for to_nullable_dict method."""
-
-        @pytest.fixture
-        def service(self):
-            return MetadataService()
 
         def test_converts_zero_to_none(self, service):
             """Should convert zero values to None."""
@@ -177,10 +180,6 @@ class TestMetadataService:
 
     class TestBuildFromEvent:
         """Tests for build_from_event method."""
-
-        @pytest.fixture
-        def service(self):
-            return MetadataService()
 
         def test_returns_empty_for_none_event(self, service):
             """Should return empty metadata when event is None."""
@@ -243,10 +242,6 @@ class TestMetadataService:
     class TestBuildStreamingResult:
         """Tests for build_streaming_result method."""
 
-        @pytest.fixture
-        def service(self):
-            return MetadataService()
-
         def test_builds_result_with_content_and_metadata(self, service):
             """Should build StreamingResult with content and metadata."""
             event = MessageMetadataEvent(
@@ -276,10 +271,6 @@ class TestMetadataService:
 
     class TestApplyToMessage:
         """Tests for apply_to_message method."""
-
-        @pytest.fixture
-        def service(self):
-            return MetadataService()
 
         def test_applies_metadata_fields_to_message(self, service):
             """Should apply all metadata fields to message model."""
@@ -327,10 +318,6 @@ class TestMetadataService:
 
     class TestToResponseDict:
         """Tests for to_response_dict method."""
-
-        @pytest.fixture
-        def service(self):
-            return MetadataService()
 
         def test_converts_streaming_result_to_response_dict(self, service):
             """Should convert StreamingResult metadata to response dict."""
