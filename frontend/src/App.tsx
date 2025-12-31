@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { LoginPage } from '@/pages/LoginPage'
 import { ChatPage } from '@/pages/ChatPage'
+import { DashboardPage } from '@/pages/admin/DashboardPage'
 import { UserManagementPage } from '@/pages/admin/UserManagementPage'
 import { ConversationHistoryPage } from '@/pages/admin/ConversationHistoryPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -38,6 +39,16 @@ function App() {
             }
           />
 
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AuthenticatedLayout>
+                  <DashboardPage />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/admin/users"
             element={
