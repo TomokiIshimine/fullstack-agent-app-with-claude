@@ -53,8 +53,20 @@ const mockConversationsResponse = {
 }
 
 const mockUsers = [
-  { id: 1, email: 'user1@example.com', name: 'User One', role: 'user' as const, created_at: '2025-01-01T00:00:00Z' },
-  { id: 2, email: 'user2@example.com', name: 'User Two', role: 'user' as const, created_at: '2025-01-02T00:00:00Z' },
+  {
+    id: 1,
+    email: 'user1@example.com',
+    name: 'User One',
+    role: 'user' as const,
+    created_at: '2025-01-01T00:00:00Z',
+  },
+  {
+    id: 2,
+    email: 'user2@example.com',
+    name: 'User Two',
+    role: 'user' as const,
+    created_at: '2025-01-02T00:00:00Z',
+  },
 ]
 
 const mockConversationDetail = {

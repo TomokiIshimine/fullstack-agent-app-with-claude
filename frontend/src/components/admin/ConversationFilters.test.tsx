@@ -9,8 +9,20 @@ describe('ConversationFilters', () => {
   const mockOnClearFilters = vi.fn()
 
   const mockUsers: UserResponse[] = [
-    { id: 1, email: 'user1@example.com', name: 'User One', role: 'user', created_at: '2025-01-01T00:00:00Z' },
-    { id: 2, email: 'user2@example.com', name: null, role: 'user', created_at: '2025-01-02T00:00:00Z' },
+    {
+      id: 1,
+      email: 'user1@example.com',
+      name: 'User One',
+      role: 'user',
+      created_at: '2025-01-01T00:00:00Z',
+    },
+    {
+      id: 2,
+      email: 'user2@example.com',
+      name: null,
+      role: 'user',
+      created_at: '2025-01-02T00:00:00Z',
+    },
   ]
 
   beforeEach(() => {
