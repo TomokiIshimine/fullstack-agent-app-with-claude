@@ -549,5 +549,32 @@ describe('UserList', () => {
         expect(resetUserPasswordSpy).toHaveBeenCalledWith(2)
       })
     })
+
+    it('should display new password in modal when onResetPassword is not provided', async () => {
+      vi.spyOn(usersApi, 'resetUserPassword').mockResolvedValue({
+        message: 'パスワードをリセットしました',
+        new_password: 'generatedPass123',
+      })
+
+      render(<UserList users={mockUsers} />)
+
+      const resetButtons = screen.getAllByRole('button', { name: 'パスワードリセット' })
+      fireEvent.click(resetButtons[0])
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      const confirmButton = screen.getByRole('button', { name: 'リセット' })
+      fireEvent.click(confirmButton)
+
+      // Should display the InitialPasswordModal with the new password
+      await waitFor(() => {
+        expect(screen.getByText('generatedPass123')).toBeInTheDocument()
+      })
+
+      // Should show the modal with password label
+      expect(screen.getByText(/初期パスワード/)).toBeInTheDocument()
+    })
   })
 })

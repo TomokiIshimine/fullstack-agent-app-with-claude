@@ -6,11 +6,17 @@ import {
   resetUserPassword as resetUserPasswordApi,
 } from '@/lib/api/users'
 import { Modal, Button, Alert } from '@/components/ui'
+import { InitialPasswordModal } from './InitialPasswordModal'
 
 interface UserListProps {
   users: UserResponse[]
   onDeleteUser?: (user: UserResponse) => Promise<void>
   onResetPassword?: (user: UserResponse) => Promise<string>
+}
+
+interface ResetPasswordResult {
+  email: string
+  password: string
 }
 
 export function UserList({ users, onDeleteUser, onResetPassword }: UserListProps) {
@@ -20,6 +26,7 @@ export function UserList({ users, onDeleteUser, onResetPassword }: UserListProps
   const [resettingUserId, setResettingUserId] = useState<number | null>(null)
   const [resetTarget, setResetTarget] = useState<UserResponse | null>(null)
   const [resetError, setResetError] = useState<string | null>(null)
+  const [resetPasswordResult, setResetPasswordResult] = useState<ResetPasswordResult | null>(null)
 
   const handleDeleteClick = (user: UserResponse) => {
     setDeleteTarget(user)
@@ -64,13 +71,17 @@ export function UserList({ users, onDeleteUser, onResetPassword }: UserListProps
     setResetError(null)
 
     try {
-      const resetPassword =
-        onResetPassword ??
-        (async (target: UserResponse) => {
-          const response = await resetUserPasswordApi(target.id)
-          return response.new_password
+      if (onResetPassword) {
+        // Use provided handler - it handles displaying the password
+        await onResetPassword(resetTarget)
+      } else {
+        // Use default handler - we need to display the password ourselves
+        const response = await resetUserPasswordApi(resetTarget.id)
+        setResetPasswordResult({
+          email: resetTarget.email,
+          password: response.new_password,
         })
-      await resetPassword(resetTarget)
+      }
       setResetTarget(null)
     } catch (err) {
       if (err instanceof ApiError) {
@@ -246,6 +257,14 @@ export function UserList({ users, onDeleteUser, onResetPassword }: UserListProps
           </Button>
         </div>
       </Modal>
+
+      {resetPasswordResult && (
+        <InitialPasswordModal
+          email={resetPasswordResult.email}
+          password={resetPasswordResult.password}
+          onClose={() => setResetPasswordResult(null)}
+        />
+      )}
     </>
   )
 }
