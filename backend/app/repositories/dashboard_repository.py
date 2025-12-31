@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import ColumnElement, func
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from app.models.conversation import Conversation
 from app.models.message import Message
@@ -62,6 +63,63 @@ class DashboardRepository(BaseRepository):
         result = self.session.query(func.coalesce(func.sum(Message.cost_usd), 0)).scalar()
         return float(result) if result else 0.0
 
+    def _get_trends_base(
+        self,
+        date_field: ColumnElement[Any] | InstrumentedAttribute[datetime],
+        value_expr: ColumnElement[Any],
+        days: int = 30,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list[tuple[date, int]]:
+        """Base method for trend data retrieval.
+
+        Args:
+            date_field: The datetime field to group by (e.g., Conversation.created_at)
+            value_expr: The aggregation expression (e.g., func.count(Conversation.id))
+            days: Number of days to include (default 30)
+            start_date: Optional start date (overrides days)
+            end_date: Optional end date (defaults to today)
+
+        Returns:
+            List of (date, value) tuples with missing dates filled with 0
+        """
+        if end_date is None:
+            end_date = date.today()
+        if start_date is None:
+            start_date = end_date - timedelta(days=days - 1)
+
+        # Convert to datetime for comparison
+        start_dt = datetime.combine(start_date, datetime.min.time())
+        end_dt = datetime.combine(end_date, datetime.max.time())
+
+        results = (
+            self.session.query(
+                func.date(date_field).label("date"),
+                value_expr.label("value"),
+            )
+            .filter(date_field >= start_dt)
+            .filter(date_field <= end_dt)
+            .group_by(func.date(date_field))
+            .order_by(func.date(date_field))
+            .all()
+        )
+
+        # Note: func.date() returns string on SQLite, date on MySQL - normalize to date
+        result_dict: dict[date, int] = {}
+        for row in results:
+            row_date = row.date if isinstance(row.date, date) else date.fromisoformat(str(row.date))
+            result_dict[row_date] = int(row.value)
+
+        # Fill in missing dates with 0
+        all_dates: list[tuple[date, int]] = []
+        current = start_date
+        while current <= end_date:
+            value = result_dict.get(current, 0)
+            all_dates.append((current, value))
+            current += timedelta(days=1)
+
+        return all_dates
+
     def get_conversation_trends(
         self,
         days: int = 30,
@@ -78,43 +136,13 @@ class DashboardRepository(BaseRepository):
         Returns:
             List of (date, count) tuples
         """
-        if end_date is None:
-            end_date = date.today()
-        if start_date is None:
-            start_date = end_date - timedelta(days=days - 1)
-
-        # Convert to datetime for comparison
-        start_dt = datetime.combine(start_date, datetime.min.time())
-        end_dt = datetime.combine(end_date, datetime.max.time())
-
-        results = (
-            self.session.query(
-                func.date(Conversation.created_at).label("date"),
-                func.count(Conversation.id).label("count"),
-            )
-            .filter(Conversation.created_at >= start_dt)
-            .filter(Conversation.created_at <= end_dt)
-            .group_by(func.date(Conversation.created_at))
-            .order_by(func.date(Conversation.created_at))
-            .all()
+        return self._get_trends_base(
+            date_field=Conversation.created_at,
+            value_expr=func.count(Conversation.id),
+            days=days,
+            start_date=start_date,
+            end_date=end_date,
         )
-
-        # Convert to dict for easy lookup
-        # Note: func.date() returns string on SQLite, date on MySQL - normalize to date
-        result_dict = {}
-        for row in results:
-            row_date = row.date if isinstance(row.date, date) else date.fromisoformat(str(row.date))
-            result_dict[row_date] = row.count
-
-        # Fill in missing dates with 0
-        all_dates = []
-        current = start_date
-        while current <= end_date:
-            count = result_dict.get(current, 0)
-            all_dates.append((current, count))
-            current += timedelta(days=1)
-
-        return all_dates
 
     def get_message_trends(
         self,
@@ -132,40 +160,13 @@ class DashboardRepository(BaseRepository):
         Returns:
             List of (date, count) tuples
         """
-        if end_date is None:
-            end_date = date.today()
-        if start_date is None:
-            start_date = end_date - timedelta(days=days - 1)
-
-        start_dt = datetime.combine(start_date, datetime.min.time())
-        end_dt = datetime.combine(end_date, datetime.max.time())
-
-        results = (
-            self.session.query(
-                func.date(Message.created_at).label("date"),
-                func.count(Message.id).label("count"),
-            )
-            .filter(Message.created_at >= start_dt)
-            .filter(Message.created_at <= end_dt)
-            .group_by(func.date(Message.created_at))
-            .order_by(func.date(Message.created_at))
-            .all()
+        return self._get_trends_base(
+            date_field=Message.created_at,
+            value_expr=func.count(Message.id),
+            days=days,
+            start_date=start_date,
+            end_date=end_date,
         )
-
-        # Note: func.date() returns string on SQLite, date on MySQL - normalize to date
-        result_dict = {}
-        for row in results:
-            row_date = row.date if isinstance(row.date, date) else date.fromisoformat(str(row.date))
-            result_dict[row_date] = row.count
-
-        all_dates = []
-        current = start_date
-        while current <= end_date:
-            count = result_dict.get(current, 0)
-            all_dates.append((current, count))
-            current += timedelta(days=1)
-
-        return all_dates
 
     def get_token_trends(
         self,
@@ -183,40 +184,13 @@ class DashboardRepository(BaseRepository):
         Returns:
             List of (date, total_tokens) tuples
         """
-        if end_date is None:
-            end_date = date.today()
-        if start_date is None:
-            start_date = end_date - timedelta(days=days - 1)
-
-        start_dt = datetime.combine(start_date, datetime.min.time())
-        end_dt = datetime.combine(end_date, datetime.max.time())
-
-        results = (
-            self.session.query(
-                func.date(Message.created_at).label("date"),
-                (func.coalesce(func.sum(Message.input_tokens), 0) + func.coalesce(func.sum(Message.output_tokens), 0)).label("total_tokens"),
-            )
-            .filter(Message.created_at >= start_dt)
-            .filter(Message.created_at <= end_dt)
-            .group_by(func.date(Message.created_at))
-            .order_by(func.date(Message.created_at))
-            .all()
+        return self._get_trends_base(
+            date_field=Message.created_at,
+            value_expr=(func.coalesce(func.sum(Message.input_tokens), 0) + func.coalesce(func.sum(Message.output_tokens), 0)),
+            days=days,
+            start_date=start_date,
+            end_date=end_date,
         )
-
-        # Note: func.date() returns string on SQLite, date on MySQL - normalize to date
-        result_dict = {}
-        for row in results:
-            row_date = row.date if isinstance(row.date, date) else date.fromisoformat(str(row.date))
-            result_dict[row_date] = int(row.total_tokens)
-
-        all_dates = []
-        current = start_date
-        while current <= end_date:
-            count = result_dict.get(current, 0)
-            all_dates.append((current, count))
-            current += timedelta(days=1)
-
-        return all_dates
 
     def get_user_rankings(
         self,
@@ -236,51 +210,43 @@ class DashboardRepository(BaseRepository):
         """
         cutoff = datetime.utcnow() - timedelta(days=days) if days else None
 
-        query: Any
-        value_expr: ColumnElement[Any]
-        if metric == "conversations":
-            value_expr = func.count(Conversation.id)
-            query = self.session.query(
-                User.id,
-                User.email,
-                User.name,
-                value_expr.label("value"),
-            ).outerjoin(Conversation, User.id == Conversation.user_id)
-            if cutoff:
-                query = query.filter(Conversation.created_at >= cutoff)
-            query = query.group_by(User.id, User.email, User.name)
+        # Define metric configurations
+        metric_configs: dict[str, dict[str, Any]] = {
+            "conversations": {
+                "value_expr": func.count(Conversation.id),
+                "needs_message_join": False,
+                "cutoff_field": Conversation.created_at,
+            },
+            "messages": {
+                "value_expr": func.count(Message.id),
+                "needs_message_join": True,
+                "cutoff_field": Message.created_at,
+            },
+            "tokens": {
+                "value_expr": (func.coalesce(func.sum(Message.input_tokens), 0) + func.coalesce(func.sum(Message.output_tokens), 0)),
+                "needs_message_join": True,
+                "cutoff_field": Message.created_at,
+            },
+        }
 
-        elif metric == "messages":
-            value_expr = func.count(Message.id)
-            query = (
-                self.session.query(
-                    User.id,
-                    User.email,
-                    User.name,
-                    value_expr.label("value"),
-                )
-                .outerjoin(Conversation, User.id == Conversation.user_id)
-                .outerjoin(Message, Conversation.id == Message.conversation_id)
-            )
-            if cutoff:
-                query = query.filter(Message.created_at >= cutoff)
-            query = query.group_by(User.id, User.email, User.name)
+        config = metric_configs[metric]
+        value_expr: ColumnElement[Any] = config["value_expr"]
 
-        else:  # tokens
-            value_expr = func.coalesce(func.sum(Message.input_tokens), 0) + func.coalesce(func.sum(Message.output_tokens), 0)
-            query = (
-                self.session.query(
-                    User.id,
-                    User.email,
-                    User.name,
-                    value_expr.label("value"),
-                )
-                .outerjoin(Conversation, User.id == Conversation.user_id)
-                .outerjoin(Message, Conversation.id == Message.conversation_id)
-            )
-            if cutoff:
-                query = query.filter(Message.created_at >= cutoff)
-            query = query.group_by(User.id, User.email, User.name)
+        # Build query
+        query = self.session.query(
+            User.id,
+            User.email,
+            User.name,
+            value_expr.label("value"),
+        ).outerjoin(Conversation, User.id == Conversation.user_id)
+
+        if config["needs_message_join"]:
+            query = query.outerjoin(Message, Conversation.id == Message.conversation_id)
+
+        if cutoff:
+            query = query.filter(config["cutoff_field"] >= cutoff)
+
+        query = query.group_by(User.id, User.email, User.name)
 
         results = query.order_by(value_expr.desc()).limit(limit).all()
         return [(row[0], row[1], row[2], int(row[3])) for row in results]

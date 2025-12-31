@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 class AdminDashboardService:
     """Service for admin dashboard operations."""
 
+    # Period string to days mapping
+    PERIOD_DAYS_MAP: dict[str, int] = {"7d": 7, "30d": 30, "90d": 90}
+
     def __init__(self, session: Session):
         """Initialize service with database session.
 
@@ -89,8 +92,7 @@ class AdminDashboardService:
         if period == "custom" and start_date and end_date:
             days = (end_date - start_date).days + 1
         else:
-            period_map = {"7d": 7, "30d": 30, "90d": 90}
-            days = period_map.get(period, 30)
+            days = self.PERIOD_DAYS_MAP.get(period, 30)
             start_date = None
             end_date = None
 
@@ -134,9 +136,8 @@ class AdminDashboardService:
         # Clamp limit
         limit = max(1, min(limit, 50))
 
-        # Parse period to days
-        period_map = {"7d": 7, "30d": 30, "90d": 90}
-        days = period_map.get(period)  # None for "all"
+        # Parse period to days (None for "all")
+        days = self.PERIOD_DAYS_MAP.get(period)
 
         raw_data = self.dashboard_repo.get_user_rankings(metric=metric, limit=limit, days=days)
 
