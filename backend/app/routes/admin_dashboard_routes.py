@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from typing import Literal, cast
 
 from flask import Blueprint, jsonify, request
 from werkzeug.exceptions import BadRequest
@@ -12,6 +13,8 @@ from app.constants.http import HTTP_OK
 from app.routes.dependencies import with_admin_dashboard_service
 from app.services.admin_dashboard_service import AdminDashboardService
 from app.utils.auth_decorator import require_auth, require_role
+
+TrendMetric = Literal["conversations", "messages", "tokens"]
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +116,7 @@ def get_trends(*, admin_dashboard_service: AdminDashboardService):
 
     response = admin_dashboard_service.get_trends(
         period=period,
-        metric=metric,
+        metric=cast(TrendMetric, metric),
         start_date=start_date,
         end_date=end_date,
     )
@@ -167,7 +170,7 @@ def get_rankings(*, admin_dashboard_service: AdminDashboardService):
     )
 
     response = admin_dashboard_service.get_rankings(
-        metric=metric,
+        metric=cast(TrendMetric, metric),
         limit=limit,
         period=period,
     )

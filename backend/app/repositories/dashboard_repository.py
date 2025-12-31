@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import func
 
@@ -224,6 +224,7 @@ class DashboardRepository(BaseRepository):
         """
         cutoff = datetime.utcnow() - timedelta(days=days) if days else None
 
+        query: Any
         if metric == "conversations":
             query = self.session.query(
                 User.id,
