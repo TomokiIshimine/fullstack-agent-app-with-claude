@@ -34,7 +34,7 @@ class UserService:
             logger.error(f"Failed to list users: {exc}", exc_info=True)
             raise UserServiceError("Failed to retrieve users") from exc
 
-    def create_user(self, email: str, name: str) -> UserCreateResponse:
+    def create_user(self, email: str, name: str, role: str = "user") -> UserCreateResponse:
         """Create a new user with random initial password."""
         existing_user = self.user_repo.find_by_email(email)
         if existing_user:
@@ -47,7 +47,7 @@ class UserService:
         user = self.user_repo.create(
             email=email,
             password_hash=password_hash,
-            role="user",
+            role=role,
             name=name,
         )
 
@@ -55,7 +55,7 @@ class UserService:
         self.session.flush()
         self.session.refresh(user)
 
-        logger.info(f"User created successfully: {email} (id={user.id}, name={name})")
+        logger.info(f"User created successfully: {email} (id={user.id}, name={name}, role={role})")
 
         user_response = UserResponse(id=user.id, email=user.email, role=user.role, name=user.name, created_at=user.created_at)
         return UserCreateResponse(user=user_response, initial_password=initial_password)

@@ -25,8 +25,20 @@ describe('UserCreateForm', () => {
 
       expect(screen.getByPlaceholderText('user@example.com')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('山田太郎')).toBeInTheDocument()
+      expect(screen.getByRole('combobox')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'キャンセル' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '作成' })).toBeInTheDocument()
+    })
+
+    it('should render role selector with default value of user', () => {
+      render(
+        <UserCreateForm onCreate={mockOnCreate} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />
+      )
+
+      const roleSelect = screen.getByRole('combobox') as HTMLSelectElement
+      expect(roleSelect.value).toBe('user')
+      expect(screen.getByRole('option', { name: '一般ユーザー' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: '管理者' })).toBeInTheDocument()
     })
 
     it('should have correct placeholders', () => {
@@ -158,6 +170,40 @@ describe('UserCreateForm', () => {
         expect(mockOnCreate).toHaveBeenCalledWith({
           email: 'test@example.com',
           name: 'Test User',
+          role: 'user',
+        })
+      })
+    })
+
+    it('should call createUser API with admin role when selected', async () => {
+      const user = userEvent.setup()
+      mockOnCreate.mockResolvedValue({
+        user: {
+          id: 1,
+          email: 'admin@example.com',
+          name: 'New Admin',
+          role: 'admin',
+          created_at: '2025-11-07T00:00:00Z',
+        },
+        initial_password: 'test123456',
+      })
+
+      render(
+        <UserCreateForm onCreate={mockOnCreate} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />
+      )
+
+      await user.type(screen.getByPlaceholderText('user@example.com'), 'admin@example.com')
+      await user.type(screen.getByPlaceholderText('山田太郎'), 'New Admin')
+      await user.selectOptions(screen.getByRole('combobox'), 'admin')
+
+      const submitButton = screen.getByRole('button', { name: '作成' })
+      fireEvent.click(submitButton)
+
+      await waitFor(() => {
+        expect(mockOnCreate).toHaveBeenCalledWith({
+          email: 'admin@example.com',
+          name: 'New Admin',
+          role: 'admin',
         })
       })
     })
