@@ -1,4 +1,12 @@
-export type NavIconType = 'chat' | 'users' | 'settings' | 'logout' | 'close' | 'menu' | 'chevron'
+export type NavIconType =
+  | 'chat'
+  | 'users'
+  | 'settings'
+  | 'logout'
+  | 'close'
+  | 'menu'
+  | 'chevron'
+  | 'dashboard'
 
 interface NavIconProps {
   icon: NavIconType
@@ -69,6 +77,15 @@ export function NavIcon({ icon, size = 16, className }: NavIconProps) {
       return (
         <svg {...svgProps}>
           <polyline points="6 9 12 15 18 9" />
+        </svg>
+      )
+    case 'dashboard':
+      return (
+        <svg {...svgProps}>
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
         </svg>
       )
     default:

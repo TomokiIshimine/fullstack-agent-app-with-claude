@@ -38,6 +38,7 @@ from app.schemas.password import PasswordValidationError
 from app.schemas.user import UserValidationError
 from app.schemas.validators import InvalidUUIDError, validate_uuid
 from app.services.admin_conversation_service import AdminConversationService
+from app.services.admin_dashboard_service import AdminDashboardService
 from app.services.agent_service import AgentService
 from app.services.auth_service import AuthService
 from app.services.conversation_service import ConversationService
@@ -126,6 +127,9 @@ def _create_service_decorator(
             except tuple(error_mapping.keys()) as exc:
                 http_exc_class = error_mapping[type(exc)]
                 raise http_exc_class(description=str(exc)) from exc
+            except HTTPException:
+                # Let HTTP exceptions (BadRequest, NotFound, etc.) pass through
+                raise
             except SQLAlchemyError as exc:
                 _handle_sqlalchemy_error(exc)
             except Exception as exc:
@@ -251,6 +255,17 @@ def get_admin_conversation_service() -> AdminConversationService:
     return service
 
 
+def get_admin_dashboard_service() -> AdminDashboardService:
+    """Return request-scoped AdminDashboardService instance."""
+    if service := g.get("admin_dashboard_service"):
+        return service
+
+    session = get_session()
+    service = AdminDashboardService(session)
+    g.admin_dashboard_service = service
+    return service
+
+
 # === Service Injection Decorators ===
 
 # Error mappings for each service (domain exception -> HTTP exception)
@@ -323,6 +338,18 @@ with_admin_conversation_service: Callable[[RouteCallable], RouteCallable] = _cre
     service_name="admin_conversation",
 )
 with_admin_conversation_service.__doc__ = "Inject AdminConversationService and translate domain errors into HTTP responses."
+
+# Admin Dashboard has no specific domain errors, just use empty mapping
+_ADMIN_DASHBOARD_ERROR_MAPPING: ErrorMapping = {}
+
+with_admin_dashboard_service: Callable[[RouteCallable], RouteCallable] = _create_service_decorator(
+    service_getter=get_admin_dashboard_service,
+    service_kwarg="admin_dashboard_service",
+    error_mapping=_ADMIN_DASHBOARD_ERROR_MAPPING,
+    fallback_error_class=Exception,
+    service_name="admin_dashboard",
+)
+with_admin_dashboard_service.__doc__ = "Inject AdminDashboardService and translate domain errors into HTTP responses."
 
 
 # === Request Validation Decorator ===
@@ -407,6 +434,7 @@ def validate_uuid_param(param_name: str = "uuid") -> Callable[[RouteCallable], R
 
 __all__ = [
     "get_admin_conversation_service",
+    "get_admin_dashboard_service",
     "get_agent_service",
     "get_auth_service",
     "get_conversation_service",
@@ -414,6 +442,7 @@ __all__ = [
     "get_password_service",
     "get_user_service",
     "with_admin_conversation_service",
+    "with_admin_dashboard_service",
     "with_auth_service",
     "with_conversation_service",
     "with_password_service",

@@ -28,6 +28,7 @@ export function Navbar() {
   // Role-based navigation links
   const navLinks: NavLinkItem[] = isAdmin
     ? [
+        { path: '/admin/dashboard', label: 'ダッシュボード', icon: 'dashboard' },
         { path: '/admin/users', label: 'ユーザー管理', icon: 'users' },
         { path: '/admin/conversations', label: '会話履歴', icon: 'chat' },
         { path: '/settings', label: '設定', icon: 'settings' },
