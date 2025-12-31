@@ -136,9 +136,7 @@ def test_create_admin_user_success(app):
     admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
     admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
 
-    response = admin_client.post(
-        "/api/users", json={"email": "newadmin@example.com", "name": "New Admin", "role": "admin"}
-    )
+    response = admin_client.post("/api/users", json={"email": "newadmin@example.com", "name": "New Admin", "role": "admin"})
 
     data = assert_response_success(response, 201)
     assert "user" in data
@@ -161,9 +159,7 @@ def test_create_user_with_explicit_user_role(app):
     admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
     admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
 
-    response = admin_client.post(
-        "/api/users", json={"email": "newuser@example.com", "name": "New User", "role": "user"}
-    )
+    response = admin_client.post("/api/users", json={"email": "newuser@example.com", "name": "New User", "role": "user"})
 
     data = assert_response_success(response, 201)
     user = data["user"]
@@ -175,9 +171,7 @@ def test_create_user_invalid_role(app):
     admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
     admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
 
-    response = admin_client.post(
-        "/api/users", json={"email": "newuser@example.com", "name": "New User", "role": "superadmin"}
-    )
+    response = admin_client.post("/api/users", json={"email": "newuser@example.com", "name": "New User", "role": "superadmin"})
 
     assert_response_error(response, 400)
 
