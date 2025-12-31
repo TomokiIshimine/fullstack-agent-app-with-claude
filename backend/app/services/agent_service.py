@@ -80,6 +80,27 @@ class RetryEvent:
 AgentEvent = ToolCallEvent | ToolResultEvent | TextDeltaEvent | MessageCompleteEvent | MessageMetadataEvent | RetryEvent
 
 
+@dataclass
+class _StreamState:
+    """Internal state for response streaming.
+
+    Tracks accumulated content, emitted tool calls, and usage metadata
+    during the streaming process.
+    """
+
+    full_content: str = ""
+    emitted_tool_calls: set[str] | None = None
+    needs_newline_before_text: bool = False
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    start_time: float = 0.0
+
+    def __post_init__(self) -> None:
+        """Initialize mutable default values."""
+        if self.emitted_tool_calls is None:
+            self.emitted_tool_calls = set()
+
+
 class AgentService:
     """Service for AI agent functionality using LangGraph ReAct pattern.
 
@@ -204,6 +225,65 @@ class AgentService:
             return text_content if text_content else None
         return None
 
+    def _process_message_chunk(
+        self,
+        data: tuple[Any, Any],
+        state: _StreamState,
+    ) -> TextDeltaEvent | None:
+        """Process a message stream chunk and update state.
+
+        Extracts text content from the chunk, handles newline insertion after
+        tool results, and updates the accumulated content.
+
+        Args:
+            data: Tuple of (message_chunk, metadata) from messages stream
+            state: Current stream state (modified in place)
+
+        Returns:
+            TextDeltaEvent if text content was extracted, None otherwise
+        """
+        text_content = self._handle_messages_stream(data)
+        if not text_content:
+            return None
+
+        # Add newline before text that follows tool result
+        if state.needs_newline_before_text:
+            text_content = "\n" + text_content
+            state.needs_newline_before_text = False
+
+        state.full_content += text_content
+        return TextDeltaEvent(delta=text_content)
+
+    def _accumulate_usage_metadata(
+        self,
+        data: tuple[Any, Any],
+        state: _StreamState,
+    ) -> None:
+        """Accumulate usage metadata from message chunk.
+
+        Extracts input and output token counts from AIMessageChunk usage
+        metadata and adds them to the running totals in state.
+
+        Args:
+            data: Tuple of (message_chunk, metadata) from messages stream
+            state: Current stream state (modified in place)
+        """
+        if not isinstance(data, tuple) or len(data) != 2:
+            return
+
+        message_chunk, _ = data
+        if not isinstance(message_chunk, AIMessageChunk):
+            return
+
+        usage_metadata = getattr(message_chunk, "usage_metadata", None)
+        if not usage_metadata:
+            return
+
+        if "input_tokens" in usage_metadata:
+            state.total_input_tokens += usage_metadata["input_tokens"]
+        if "output_tokens" in usage_metadata:
+            state.total_output_tokens += usage_metadata["output_tokens"]
+
     def _handle_updates_stream(
         self,
         data: dict[str, Any],
@@ -279,6 +359,55 @@ class AgentService:
                     error=error,
                 )
 
+    def _process_updates_chunk(
+        self,
+        data: dict[str, Any],
+        state: _StreamState,
+    ) -> Generator[ToolCallEvent | ToolResultEvent, None, None]:
+        """Process an updates stream chunk and update state.
+
+        Delegates to _handle_updates_stream and tracks when tool results
+        are emitted to handle newline insertion.
+
+        Args:
+            data: Dict containing node outputs
+            state: Current stream state (modified in place)
+
+        Yields:
+            ToolCallEvent or ToolResultEvent instances
+        """
+        # emitted_tool_calls is guaranteed to be non-None after __post_init__
+        assert state.emitted_tool_calls is not None
+        for event in self._handle_updates_stream(data, state.emitted_tool_calls):
+            yield event
+            # Set flag after tool result to add newline before next text
+            if isinstance(event, ToolResultEvent):
+                state.needs_newline_before_text = True
+
+    def _emit_completion_events(
+        self,
+        state: _StreamState,
+    ) -> Generator[MessageCompleteEvent | MessageMetadataEvent, None, None]:
+        """Emit completion and metadata events.
+
+        Calculates response time and yields the final completion events.
+
+        Args:
+            state: Final stream state with accumulated content and metadata
+
+        Yields:
+            MessageCompleteEvent followed by MessageMetadataEvent
+        """
+        response_time_ms = int((time.time() - state.start_time) * 1000)
+
+        yield MessageCompleteEvent(content=state.full_content)
+        yield MessageMetadataEvent(
+            input_tokens=state.total_input_tokens,
+            output_tokens=state.total_output_tokens,
+            model=self.model_name,
+            response_time_ms=response_time_ms,
+        )
+
     def _generate_response_attempt(
         self,
         messages: list[dict[str, str]],
@@ -293,17 +422,7 @@ class AgentService:
         """
         langchain_messages = self._convert_messages(messages)
         inputs = {"messages": langchain_messages}
-
-        full_content = ""
-        emitted_tool_calls: set[str] = set()
-        needs_newline_before_text = False
-
-        # Track token usage from streaming chunks
-        total_input_tokens = 0
-        total_output_tokens = 0
-
-        # Track response time
-        start_time = time.time()
+        state = _StreamState(start_time=time.time())
 
         # Stream with both modes:
         # - "messages": token-by-token streaming from LLM
@@ -315,46 +434,15 @@ class AgentService:
             stream_mode, data = chunk
 
             if stream_mode == "messages":
-                text_content = self._handle_messages_stream(data)
-                if text_content:
-                    # Add newline before text that follows tool result
-                    if needs_newline_before_text:
-                        text_content = "\n" + text_content
-                        needs_newline_before_text = False
-                    full_content += text_content
-                    yield TextDeltaEvent(delta=text_content)
-
-                # Extract usage metadata from AIMessageChunk
-                if isinstance(data, tuple) and len(data) == 2:
-                    message_chunk, _ = data
-                    if isinstance(message_chunk, AIMessageChunk):
-                        usage_metadata = getattr(message_chunk, "usage_metadata", None)
-                        if usage_metadata:
-                            # Accumulate token counts
-                            if "input_tokens" in usage_metadata:
-                                total_input_tokens += usage_metadata["input_tokens"]
-                            if "output_tokens" in usage_metadata:
-                                total_output_tokens += usage_metadata["output_tokens"]
+                text_event = self._process_message_chunk(data, state)
+                if text_event:
+                    yield text_event
+                self._accumulate_usage_metadata(data, state)
 
             elif stream_mode == "updates" and isinstance(data, dict):
-                for event in self._handle_updates_stream(data, emitted_tool_calls):
-                    yield event
-                    # Set flag after tool result to add newline before next text
-                    if isinstance(event, ToolResultEvent):
-                        needs_newline_before_text = True
+                yield from self._process_updates_chunk(data, state)
 
-        # Calculate response time
-        response_time_ms = int((time.time() - start_time) * 1000)
-
-        yield MessageCompleteEvent(content=full_content)
-
-        # Emit metadata event with token usage and timing
-        yield MessageMetadataEvent(
-            input_tokens=total_input_tokens,
-            output_tokens=total_output_tokens,
-            model=self.model_name,
-            response_time_ms=response_time_ms,
-        )
+        yield from self._emit_completion_events(state)
 
     def generate_response(
         self,
