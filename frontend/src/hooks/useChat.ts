@@ -3,7 +3,7 @@ import { fetchConversation, sendMessageStreaming } from '@/lib/api/conversations
 import { useErrorHandler } from './useErrorHandler'
 import { createOnRetryHandler } from './useStreamingCallbacks'
 import { useStreamingToolCalls } from './useStreamingToolCalls'
-import type { Conversation, Message, SendMessageRequest } from '@/types/chat'
+import type { Conversation, Message, MessageMetadata, SendMessageRequest } from '@/types/chat'
 import { toConversation, toMessage } from '@/types/chat'
 import type { RetryStatus } from '@/types/errors'
 import { fromStreamError } from '@/types/errors'
@@ -98,6 +98,7 @@ export function useChat(options: UseChatOptions) {
       try {
         let finalContent = ''
         let assistantMessageId = 0
+        let messageMetadata: MessageMetadata | undefined
 
         await sendMessageStreaming(targetUuid, request, {
           onStart: userMessageId => {
@@ -121,9 +122,10 @@ export function useChat(options: UseChatOptions) {
             finalContent += delta
             setStreamingContent(finalContent)
           },
-          onEnd: (msgId, content) => {
+          onEnd: (msgId, content, metadata) => {
             assistantMessageId = msgId
             finalContent = content
+            messageMetadata = metadata
             setRetryStatus(null)
             logger.debug('Streaming ended', { assistantMessageId })
           },
@@ -152,6 +154,7 @@ export function useChat(options: UseChatOptions) {
           content: finalContent,
           toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
           createdAt: new Date(),
+          metadata: messageMetadata,
         }
         setMessages(prev => [...prev, assistantMessage])
         setStreamingContent('')

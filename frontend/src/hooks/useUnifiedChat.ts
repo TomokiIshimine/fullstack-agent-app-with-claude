@@ -10,6 +10,7 @@ import { useStreamingToolCalls } from './useStreamingToolCalls'
 import type {
   Conversation,
   Message,
+  MessageMetadata,
   SendMessageRequest,
   CreateConversationRequest,
 } from '@/types/chat'
@@ -195,6 +196,7 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
       try {
         let finalContent = ''
         let assistantMessageId = 0
+        let messageMetadata: MessageMetadata | undefined
 
         if (isNew) {
           // Create new conversation
@@ -222,9 +224,10 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
               finalContent += delta
               setStreamingContent(finalContent)
             },
-            onEnd: (msgId, responseContent) => {
+            onEnd: (msgId, responseContent, metadata) => {
               assistantMessageId = msgId
               finalContent = responseContent
+              messageMetadata = metadata
               setRetryStatus(null) // Clear retry status on success
             },
             onRetry: createOnRetryHandler(setRetryStatus, {
@@ -264,9 +267,10 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
               finalContent += delta
               setStreamingContent(finalContent)
             },
-            onEnd: (msgId, responseContent) => {
+            onEnd: (msgId, responseContent, metadata) => {
               assistantMessageId = msgId
               finalContent = responseContent
+              messageMetadata = metadata
               setRetryStatus(null) // Clear retry status on success
             },
             onRetry: createOnRetryHandler(setRetryStatus, {
@@ -295,6 +299,7 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
             content: finalContent,
             toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
             createdAt: new Date(),
+            metadata: messageMetadata,
           }
           setMessages(prev => [...prev, assistantMessage])
         }
