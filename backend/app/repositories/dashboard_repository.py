@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
-from sqlalchemy import func
+from sqlalchemy import ColumnElement, func
 
 from app.models.conversation import Conversation
 from app.models.message import Message
@@ -100,7 +100,11 @@ class DashboardRepository(BaseRepository):
         )
 
         # Convert to dict for easy lookup
-        result_dict = {row.date: row.count for row in results}
+        # Note: func.date() returns string on SQLite, date on MySQL - normalize to date
+        result_dict = {}
+        for row in results:
+            row_date = row.date if isinstance(row.date, date) else date.fromisoformat(str(row.date))
+            result_dict[row_date] = row.count
 
         # Fill in missing dates with 0
         all_dates = []
@@ -148,7 +152,11 @@ class DashboardRepository(BaseRepository):
             .all()
         )
 
-        result_dict = {row.date: row.count for row in results}
+        # Note: func.date() returns string on SQLite, date on MySQL - normalize to date
+        result_dict = {}
+        for row in results:
+            row_date = row.date if isinstance(row.date, date) else date.fromisoformat(str(row.date))
+            result_dict[row_date] = row.count
 
         all_dates = []
         current = start_date
@@ -195,7 +203,11 @@ class DashboardRepository(BaseRepository):
             .all()
         )
 
-        result_dict = {row.date: int(row.total_tokens) for row in results}
+        # Note: func.date() returns string on SQLite, date on MySQL - normalize to date
+        result_dict = {}
+        for row in results:
+            row_date = row.date if isinstance(row.date, date) else date.fromisoformat(str(row.date))
+            result_dict[row_date] = int(row.total_tokens)
 
         all_dates = []
         current = start_date
@@ -225,24 +237,27 @@ class DashboardRepository(BaseRepository):
         cutoff = datetime.utcnow() - timedelta(days=days) if days else None
 
         query: Any
+        value_expr: ColumnElement[Any]
         if metric == "conversations":
+            value_expr = func.count(Conversation.id)
             query = self.session.query(
                 User.id,
                 User.email,
                 User.name,
-                func.count(Conversation.id).label("value"),
+                value_expr.label("value"),
             ).outerjoin(Conversation, User.id == Conversation.user_id)
             if cutoff:
                 query = query.filter(Conversation.created_at >= cutoff)
             query = query.group_by(User.id, User.email, User.name)
 
         elif metric == "messages":
+            value_expr = func.count(Message.id)
             query = (
                 self.session.query(
                     User.id,
                     User.email,
                     User.name,
-                    func.count(Message.id).label("value"),
+                    value_expr.label("value"),
                 )
                 .outerjoin(Conversation, User.id == Conversation.user_id)
                 .outerjoin(Message, Conversation.id == Message.conversation_id)
@@ -252,12 +267,13 @@ class DashboardRepository(BaseRepository):
             query = query.group_by(User.id, User.email, User.name)
 
         else:  # tokens
+            value_expr = func.coalesce(func.sum(Message.input_tokens), 0) + func.coalesce(func.sum(Message.output_tokens), 0)
             query = (
                 self.session.query(
                     User.id,
                     User.email,
                     User.name,
-                    (func.coalesce(func.sum(Message.input_tokens), 0) + func.coalesce(func.sum(Message.output_tokens), 0)).label("value"),
+                    value_expr.label("value"),
                 )
                 .outerjoin(Conversation, User.id == Conversation.user_id)
                 .outerjoin(Message, Conversation.id == Message.conversation_id)
@@ -266,7 +282,7 @@ class DashboardRepository(BaseRepository):
                 query = query.filter(Message.created_at >= cutoff)
             query = query.group_by(User.id, User.email, User.name)
 
-        results = query.order_by(func.count(User.id).desc()).limit(limit).all()
+        results = query.order_by(value_expr.desc()).limit(limit).all()
         return [(row[0], row[1], row[2], int(row[3])) for row in results]
 
 
