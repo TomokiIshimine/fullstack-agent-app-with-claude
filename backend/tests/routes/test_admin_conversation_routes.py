@@ -299,3 +299,44 @@ def test_get_conversation_detail_unauthorized_without_auth(client):
     response = client.get("/api/admin/conversations/some-uuid")
 
     assert_response_error(response, 401)
+
+
+# Date validation tests
+
+
+def test_list_conversations_invalid_start_date_format(app):
+    """Test that invalid start_date format returns 400."""
+    admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
+    admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
+
+    response = admin_client.get("/api/admin/conversations?start_date=invalid-date")
+
+    assert_response_error(response, 400)
+    data = response.get_json()
+    assert "開始日" in data["error"]
+
+
+def test_list_conversations_invalid_end_date_format(app):
+    """Test that invalid end_date format returns 400."""
+    admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
+    admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
+
+    response = admin_client.get("/api/admin/conversations?end_date=not-a-date")
+
+    assert_response_error(response, 400)
+    data = response.get_json()
+    assert "終了日" in data["error"]
+
+
+def test_list_conversations_valid_date_formats(app):
+    """Test that various valid date formats are accepted."""
+    admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
+    admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
+
+    # ISO date format
+    response = admin_client.get("/api/admin/conversations?start_date=2025-01-01&end_date=2025-12-31")
+    assert_response_success(response, 200)
+
+    # ISO datetime format with timezone
+    response = admin_client.get("/api/admin/conversations?start_date=2025-01-01T00:00:00Z")
+    assert_response_success(response, 200)
