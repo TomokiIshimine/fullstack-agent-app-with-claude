@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import ColumnElement, func
@@ -30,7 +30,7 @@ class DashboardRepository(BaseRepository):
 
     def count_active_users(self, days: int = 7) -> int:
         """Count users who have had conversations in the last N days."""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         return self.session.query(func.count(func.distinct(Conversation.user_id))).filter(Conversation.created_at >= cutoff).scalar() or 0
 
     def count_total_conversations(self) -> int:
@@ -39,7 +39,7 @@ class DashboardRepository(BaseRepository):
 
     def count_today_conversations(self) -> int:
         """Count conversations created today."""
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         return self.session.query(func.count(Conversation.id)).filter(Conversation.created_at >= today_start).scalar() or 0
 
     def count_total_messages(self) -> int:
@@ -208,7 +208,7 @@ class DashboardRepository(BaseRepository):
         Returns:
             List of (user_id, email, name, value) tuples
         """
-        cutoff = datetime.utcnow() - timedelta(days=days) if days else None
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days) if days else None
 
         # Define metric configurations
         metric_configs: dict[str, dict[str, Any]] = {

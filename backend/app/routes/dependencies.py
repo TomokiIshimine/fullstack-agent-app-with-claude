@@ -127,6 +127,9 @@ def _create_service_decorator(
             except tuple(error_mapping.keys()) as exc:
                 http_exc_class = error_mapping[type(exc)]
                 raise http_exc_class(description=str(exc)) from exc
+            except HTTPException:
+                # Let HTTP exceptions (BadRequest, NotFound, etc.) pass through
+                raise
             except SQLAlchemyError as exc:
                 _handle_sqlalchemy_error(exc)
             except Exception as exc:
