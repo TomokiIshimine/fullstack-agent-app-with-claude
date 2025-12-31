@@ -36,6 +36,7 @@ from app.database import get_session
 from app.providers import BaseLLMProvider, create_provider
 from app.schemas.password import PasswordValidationError
 from app.schemas.user import UserValidationError
+from app.schemas.validators import InvalidUUIDError, validate_uuid
 from app.services.admin_conversation_service import AdminConversationService
 from app.services.agent_service import AgentService
 from app.services.auth_service import AuthService
@@ -355,6 +356,55 @@ def validate_request_body(schema: type[SchemaType]) -> Callable[[RouteCallable],
     return decorator
 
 
+def validate_uuid_param(param_name: str = "uuid") -> Callable[[RouteCallable], RouteCallable]:
+    """Validate UUID path parameter format before processing.
+
+    This decorator validates that a UUID path parameter is properly formatted
+    (UUID v4 format) before the route handler processes it. This prevents
+    malformed UUIDs from reaching the database layer.
+
+    Args:
+        param_name: Name of the path parameter to validate (default: "uuid").
+
+    Returns:
+        A decorator that validates the UUID parameter.
+
+    Example:
+        @conversation_bp.get("/<uuid>")
+        @require_auth
+        @validate_uuid_param("uuid")
+        def get_conversation(uuid: str):
+            ...
+    """
+
+    def decorator(func: RouteCallable) -> RouteCallable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any):
+            uuid_value = kwargs.get(param_name)
+            if uuid_value is None:
+                logger.warning(
+                    f"UUID validation failed: {param_name} not found",
+                    extra={"path": request.path},
+                )
+                raise BadRequest(description=f"Path parameter '{param_name}' is required")
+
+            try:
+                validated_uuid = validate_uuid(uuid_value, field_name="Conversation ID")
+                kwargs[param_name] = validated_uuid
+            except InvalidUUIDError as exc:
+                logger.warning(
+                    f"UUID validation failed: {uuid_value}",
+                    extra={"path": request.path, "param": param_name},
+                )
+                raise BadRequest(description=str(exc)) from exc
+
+            return func(*args, **kwargs)
+
+        return wrapper  # type: ignore[return-value]
+
+    return decorator
+
+
 __all__ = [
     "get_admin_conversation_service",
     "get_agent_service",
@@ -369,4 +419,5 @@ __all__ = [
     "with_password_service",
     "with_user_service",
     "validate_request_body",
+    "validate_uuid_param",
 ]

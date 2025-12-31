@@ -4,7 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from app.schemas.validators import MAX_MESSAGE_LENGTH, MIN_PASSWORD_LENGTH, PasswordValidationError, validate_message_content, validate_password
+from app.schemas.validators import (
+    MAX_MESSAGE_LENGTH,
+    MIN_PASSWORD_LENGTH,
+    InvalidUUIDError,
+    PasswordValidationError,
+    validate_message_content,
+    validate_password,
+    validate_uuid,
+)
 
 
 class TestPasswordValidator:
@@ -133,3 +141,95 @@ class TestPasswordValidationError:
         """Test that PasswordValidationError can be caught as ValueError."""
         with pytest.raises(ValueError):
             raise PasswordValidationError("Test error")
+
+
+class TestUUIDValidator:
+    """Tests for validate_uuid function."""
+
+    def test_valid_uuid_v4(self):
+        """Test that a valid UUID v4 passes validation."""
+        valid_uuid = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+        result = validate_uuid(valid_uuid)
+        assert result == valid_uuid
+
+    def test_valid_uuid_uppercase(self):
+        """Test that an uppercase UUID v4 is normalized to lowercase."""
+        uppercase_uuid = "A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D"
+        result = validate_uuid(uppercase_uuid)
+        assert result == uppercase_uuid.lower()
+
+    def test_uuid_empty(self):
+        """Test that an empty UUID fails."""
+        with pytest.raises(InvalidUUIDError) as exc_info:
+            validate_uuid("")
+        assert "UUID is required" in str(exc_info.value)
+
+    def test_uuid_wrong_length(self):
+        """Test that a UUID with wrong length fails."""
+        with pytest.raises(InvalidUUIDError) as exc_info:
+            validate_uuid("too-short")
+        assert "Invalid UUID format" in str(exc_info.value)
+
+    def test_uuid_wrong_version(self):
+        """Test that a UUID with wrong version fails (not v4)."""
+        # UUID v1 (version digit is 1, not 4)
+        uuid_v1 = "a1b2c3d4-e5f6-1a7b-8c9d-0e1f2a3b4c5d"
+        with pytest.raises(InvalidUUIDError) as exc_info:
+            validate_uuid(uuid_v1)
+        assert "Invalid UUID format" in str(exc_info.value)
+
+    def test_uuid_wrong_variant(self):
+        """Test that a UUID with wrong variant fails."""
+        # Variant digit should be 8, 9, a, or b
+        wrong_variant = "a1b2c3d4-e5f6-4a7b-0c9d-0e1f2a3b4c5d"
+        with pytest.raises(InvalidUUIDError) as exc_info:
+            validate_uuid(wrong_variant)
+        assert "Invalid UUID format" in str(exc_info.value)
+
+    def test_uuid_invalid_characters(self):
+        """Test that a UUID with invalid characters fails."""
+        invalid_uuid = "g1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+        with pytest.raises(InvalidUUIDError) as exc_info:
+            validate_uuid(invalid_uuid)
+        assert "Invalid UUID format" in str(exc_info.value)
+
+    def test_uuid_missing_dashes(self):
+        """Test that a UUID without dashes fails."""
+        no_dashes = "a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d"
+        with pytest.raises(InvalidUUIDError) as exc_info:
+            validate_uuid(no_dashes)
+        assert "Invalid UUID format" in str(exc_info.value)
+
+    def test_uuid_sql_injection_attempt(self):
+        """Test that SQL injection attempts are rejected."""
+        with pytest.raises(InvalidUUIDError):
+            validate_uuid("'; DROP TABLE users; --")
+
+    def test_uuid_path_traversal_attempt(self):
+        """Test that path traversal attempts are rejected."""
+        with pytest.raises(InvalidUUIDError):
+            validate_uuid("../../../etc/passwd")
+
+    def test_custom_field_name(self):
+        """Test that custom field name is used in error messages."""
+        with pytest.raises(InvalidUUIDError) as exc_info:
+            validate_uuid("", field_name="Conversation ID")
+        assert "Conversation ID is required" in str(exc_info.value)
+
+
+class TestInvalidUUIDError:
+    """Tests for InvalidUUIDError class."""
+
+    def test_is_value_error_subclass(self):
+        """Test that InvalidUUIDError is a subclass of ValueError."""
+        assert issubclass(InvalidUUIDError, ValueError)
+
+    def test_can_be_raised(self):
+        """Test that InvalidUUIDError can be raised and caught."""
+        with pytest.raises(InvalidUUIDError):
+            raise InvalidUUIDError("Test error")
+
+    def test_can_be_caught_as_value_error(self):
+        """Test that InvalidUUIDError can be caught as ValueError."""
+        with pytest.raises(ValueError):
+            raise InvalidUUIDError("Test error")

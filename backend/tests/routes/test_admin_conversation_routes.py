@@ -6,6 +6,9 @@ from datetime import datetime
 
 from tests.helpers import assert_response_error, assert_response_success, create_auth_client, create_user
 
+# Valid UUID v4 format that doesn't exist in database
+NONEXISTENT_UUID = "00000000-0000-4000-8000-000000000000"
+
 
 def create_conversation(app, user_id: int, title: str = "Test Conversation") -> str:
     """Create a conversation directly in the database.
@@ -264,9 +267,19 @@ def test_get_conversation_detail_not_found(app):
     admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
     admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
 
-    response = admin_client.get("/api/admin/conversations/non-existent-uuid")
+    response = admin_client.get(f"/api/admin/conversations/{NONEXISTENT_UUID}")
 
     assert_response_error(response, 404)
+
+
+def test_get_conversation_detail_invalid_uuid_format(app):
+    """Test that invalid UUID format returns 400 Bad Request."""
+    admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
+    admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
+
+    response = admin_client.get("/api/admin/conversations/invalid-uuid")
+
+    assert_response_error(response, 400)
 
 
 def test_get_conversation_detail_forbidden_as_regular_user(app):

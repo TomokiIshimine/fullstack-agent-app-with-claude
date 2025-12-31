@@ -7,7 +7,7 @@ import logging
 from flask import Blueprint, jsonify, request
 
 from app.constants.http import HTTP_OK
-from app.routes.dependencies import with_admin_conversation_service
+from app.routes.dependencies import validate_uuid_param, with_admin_conversation_service
 from app.services.admin_conversation_service import AdminConversationService
 from app.utils.auth_decorator import require_auth, require_role
 
@@ -91,6 +91,7 @@ def list_all_conversations(*, admin_conversation_service: AdminConversationServi
 @admin_conversation_bp.get("/<uuid>")
 @require_auth
 @require_role("admin")
+@validate_uuid_param("uuid")
 @with_admin_conversation_service
 def get_conversation_detail(uuid: str, *, admin_conversation_service: AdminConversationService):
     """

@@ -23,7 +23,7 @@ from app.core.exceptions import (
     LLMStreamError,
 )
 from app.limiter import limiter
-from app.routes.dependencies import validate_request_body, with_conversation_service
+from app.routes.dependencies import validate_request_body, validate_uuid_param, with_conversation_service
 from app.schemas.conversation import CreateConversationRequest, SendMessageRequest
 from app.services.conversation_service import ConversationService
 from app.utils.auth_decorator import require_auth
@@ -213,6 +213,7 @@ def create_conversation(*, data: CreateConversationRequest, conversation_service
 
 @conversation_bp.get("/<uuid>")
 @require_auth
+@validate_uuid_param("uuid")
 @with_conversation_service
 def get_conversation(uuid: str, *, conversation_service: ConversationService):
     """
@@ -241,6 +242,7 @@ def get_conversation(uuid: str, *, conversation_service: ConversationService):
 
 @conversation_bp.delete("/<uuid>")
 @require_auth
+@validate_uuid_param("uuid")
 @with_conversation_service
 def delete_conversation(uuid: str, *, conversation_service: ConversationService):
     """
@@ -266,6 +268,7 @@ def delete_conversation(uuid: str, *, conversation_service: ConversationService)
 
 @conversation_bp.post("/<uuid>/messages")
 @require_auth
+@validate_uuid_param("uuid")
 @limiter.limit(SEND_MESSAGE_RATE_LIMIT)
 @with_conversation_service
 @validate_request_body(SendMessageRequest)
