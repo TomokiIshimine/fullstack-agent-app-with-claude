@@ -749,6 +749,24 @@ The AI chat feature demonstrates integration with external AI APIs and streaming
 - `DELETE /api/conversations/{uuid}` - Delete conversation
 - `POST /api/conversations/{uuid}/messages` - Send message and get AI response
 
+## Feature Implementation Example: Admin Dashboard
+
+The admin dashboard feature demonstrates statistics aggregation and trend analysis:
+
+### Files
+
+- **Schemas**: `app/schemas/admin_dashboard.py` - Pydantic request/response schemas
+- **Routes**: `app/routes/admin_dashboard_routes.py` - Flask Blueprint with endpoints
+- **Service**: `app/services/admin_dashboard_service.py` - Statistics aggregation logic
+- **Repository**: `app/repositories/dashboard_repository.py` - Database queries for metrics
+- **Tests**: `backend/tests/routes/test_admin_dashboard_routes.py`, `backend/tests/services/test_admin_dashboard_service.py`
+
+### API Endpoints
+
+- `GET /api/admin/dashboard/summary` - Get dashboard summary (users, conversations, tokens, cost)
+- `GET /api/admin/dashboard/trends` - Get trend data for charts (by period and metric)
+- `GET /api/admin/dashboard/rankings` - Get user rankings by metric
+
 ### Implementation Pattern
 
 1. **Define Models** (`app/models/`)

@@ -1,8 +1,8 @@
 # API設計ガイド
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-12-27
-**バージョン:** 1.2
+**最終更新:** 2025-12-31
+**バージョン:** 1.3
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -93,6 +93,11 @@ https://{domain}/api/{version}/{resource}/{id}/{sub-resource}
 | **会話** | `GET /api/conversations/{uuid}` | 会話取得（認証ユーザー） |
 | **会話** | `DELETE /api/conversations/{uuid}` | 会話削除（認証ユーザー） |
 | **会話** | `POST /api/conversations/{uuid}/messages` | メッセージ送信（ストリーミング対応） |
+| **管理者** | `GET /api/admin/conversations` | 全ユーザーの会話一覧（管理者のみ） |
+| **管理者** | `GET /api/admin/conversations/{uuid}` | 会話詳細取得（管理者のみ） |
+| **管理者** | `GET /api/admin/dashboard/summary` | ダッシュボードサマリー（管理者のみ） |
+| **管理者** | `GET /api/admin/dashboard/trends` | トレンドデータ（管理者のみ） |
+| **管理者** | `GET /api/admin/dashboard/rankings` | ユーザーランキング（管理者のみ） |
 | **監視** | `GET /api/health` | ヘルスチェック（認証不要） |
 
 ---
@@ -555,6 +560,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 | `GET /api/conversations/{uuid}` | 必要 | 全ユーザー |
 | `DELETE /api/conversations/{uuid}` | 必要 | 全ユーザー |
 | `POST /api/conversations/{uuid}/messages` | 必要 | 全ユーザー |
+| `GET /api/admin/conversations` | 必要 | 管理者のみ |
+| `GET /api/admin/conversations/{uuid}` | 必要 | 管理者のみ |
+| `GET /api/admin/dashboard/summary` | 必要 | 管理者のみ |
+| `GET /api/admin/dashboard/trends` | 必要 | 管理者のみ |
+| `GET /api/admin/dashboard/rankings` | 必要 | 管理者のみ |
 | `GET /api/health` | 不要 | - |
 
 **実装方法:**

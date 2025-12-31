@@ -1,8 +1,8 @@
 # 機能一覧
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-12-30
-**バージョン:** 1.4
+**最終更新:** 2025-12-31
+**バージョン:** 1.5
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -47,6 +47,9 @@ graph TB
 
     AdminMgmt --> AdminConversationList["会話履歴一覧"]
     AdminMgmt --> AdminConversationDetail["会話詳細表示"]
+    AdminMgmt --> AdminDashboard["ダッシュボード"]
+    AdminMgmt --> AdminDashboardTrends["トレンド分析"]
+    AdminMgmt --> AdminDashboardRankings["ユーザーランキング"]
 
     Common --> Logging["ロギング"]
     Common --> ErrorHandle["エラーハンドリング"]
@@ -105,6 +108,9 @@ graph TB
 |------|--------------|---------|---------|
 | **会話履歴一覧** | `GET /api/admin/conversations` | FE: `ConversationHistoryPage.tsx`<br/>BE: `admin_conversation_routes.py` | - 管理者のみアクセス可能<br/>- 全ユーザーの会話一覧取得<br/>- ページネーション対応<br/>- ユーザーID/日付範囲でフィルタリング |
 | **会話詳細表示** | `GET /api/admin/conversations/{uuid}` | FE: `ConversationDetailModal.tsx`<br/>BE: `admin_conversation_routes.py` | - 管理者のみアクセス可能<br/>- 会話の全メッセージ表示<br/>- ユーザー情報を含む |
+| **ダッシュボードサマリー** | `GET /api/admin/dashboard/summary` | FE: `DashboardPage.tsx`<br/>BE: `admin_dashboard_routes.py` | - 管理者のみアクセス可能<br/>- 総ユーザー数、アクティブユーザー数<br/>- 会話数、メッセージ数<br/>- トークン使用量、コスト表示 |
+| **トレンド分析** | `GET /api/admin/dashboard/trends` | FE: `DashboardPage.tsx`<br/>BE: `admin_dashboard_routes.py` | - 管理者のみアクセス可能<br/>- 期間指定（7d/30d/90d/カスタム）<br/>- メトリクス選択（会話/メッセージ/トークン）<br/>- グラフ表示用データ |
+| **ユーザーランキング** | `GET /api/admin/dashboard/rankings` | FE: `DashboardPage.tsx`<br/>BE: `admin_dashboard_routes.py` | - 管理者のみアクセス可能<br/>- メトリクス別ランキング<br/>- 期間フィルタリング対応<br/>- 上位ユーザー表示 |
 
 ---
 
@@ -141,6 +147,9 @@ graph TB
 | AIチャット | 会話削除 | ✓ | ✓ | BE: ✓ |
 | 管理者機能 | 会話履歴一覧 | ✓ | ✓ | BE: ✓ |
 | 管理者機能 | 会話詳細表示 | ✓ | ✓ | BE: ✓ |
+| 管理者機能 | ダッシュボードサマリー | ✓ | ✓ | BE: ✓ |
+| 管理者機能 | トレンド分析 | ✓ | ✓ | BE: ✓ |
+| 管理者機能 | ユーザーランキング | ✓ | ✓ | BE: ✓ |
 | 共通 | UIコンポーネントライブラリ | - | ✓ | FE: ✓ |
 | 共通 | ロギング | ✓ | ✓ | - |
 | 共通 | エラーハンドリング | ✓ | ✓ | BE: ✓, FE: ✓ |
@@ -209,6 +218,9 @@ graph TB
 |---------|--------------|------|------|------|
 | GET | `/api/admin/conversations` | 必要 | 管理者のみ | 全ユーザーの会話一覧取得（フィルタリング対応） |
 | GET | `/api/admin/conversations/{uuid}` | 必要 | 管理者のみ | 会話詳細取得（ユーザー情報含む） |
+| GET | `/api/admin/dashboard/summary` | 必要 | 管理者のみ | ダッシュボードサマリー取得 |
+| GET | `/api/admin/dashboard/trends` | 必要 | 管理者のみ | トレンドデータ取得（グラフ用） |
+| GET | `/api/admin/dashboard/rankings` | 必要 | 管理者のみ | ユーザーランキング取得 |
 
 **クエリパラメータ（会話一覧）:**
 - `page`: ページ番号（デフォルト: 1）
@@ -216,6 +228,17 @@ graph TB
 - `user_id`: ユーザーIDでフィルタリング
 - `start_date`: 開始日（ISO形式）
 - `end_date`: 終了日（ISO形式）
+
+**クエリパラメータ（トレンド）:**
+- `period`: 期間（`7d` | `30d` | `90d` | `custom`、デフォルト: 30d）
+- `metric`: メトリクス（`conversations` | `messages` | `tokens`、デフォルト: conversations）
+- `start_date`: 開始日（YYYY-MM-DD、period=custom時必須）
+- `end_date`: 終了日（YYYY-MM-DD、period=custom時必須）
+
+**クエリパラメータ（ランキング）:**
+- `metric`: メトリクス（`conversations` | `messages` | `tokens`、デフォルト: conversations）
+- `limit`: 取得件数（デフォルト: 10、最大: 50）
+- `period`: 期間（`7d` | `30d` | `90d` | `all`、デフォルト: all）
 
 **ストリーミング応答:**
 - デフォルトでSSE（Server-Sent Events）ストリーミングが有効
@@ -239,6 +262,7 @@ graph TB
 | 設定画面 | `/settings` | 必要 | 全ユーザー | プロフィール編集、パスワード変更 | `SettingsPage.tsx` |
 | ユーザー管理画面 | `/admin/users` | 必要 | 管理者のみ | ユーザー一覧表示、作成、削除 | `UserManagementPage.tsx` |
 | 会話履歴管理画面 | `/admin/conversations` | 必要 | 管理者のみ | 全ユーザーの会話履歴閲覧 | `ConversationHistoryPage.tsx` |
+| ダッシュボード画面 | `/admin/dashboard` | 必要 | 管理者のみ | 統計サマリー、トレンド、ランキング | `DashboardPage.tsx` |
 
 ### 6.2 画面遷移図
 
@@ -252,20 +276,29 @@ stateDiagram-v2
     Chat --> Settings: 設定画面へ
     Chat --> UserManagement: ユーザー管理へ（管理者のみ）
     Chat --> ConversationHistory: 会話履歴へ（管理者のみ）
+    Chat --> Dashboard: ダッシュボードへ（管理者のみ）
     Settings --> Chat: チャット画面へ
     UserManagement --> Chat: チャット画面へ
     ConversationHistory --> Chat: チャット画面へ
+    Dashboard --> Chat: チャット画面へ
 
     UserManagement --> Settings: 設定画面へ
     UserManagement --> ConversationHistory: 会話履歴へ
+    UserManagement --> Dashboard: ダッシュボードへ
     Settings --> UserManagement: ユーザー管理へ（管理者のみ）
     Settings --> ConversationHistory: 会話履歴へ（管理者のみ）
+    Settings --> Dashboard: ダッシュボードへ（管理者のみ）
     ConversationHistory --> UserManagement: ユーザー管理へ
     ConversationHistory --> Settings: 設定画面へ
+    ConversationHistory --> Dashboard: ダッシュボードへ
+    Dashboard --> UserManagement: ユーザー管理へ
+    Dashboard --> Settings: 設定画面へ
+    Dashboard --> ConversationHistory: 会話履歴へ
 
     Chat --> Login: ログアウト
     UserManagement --> Login: ログアウト
     ConversationHistory --> Login: ログアウト
+    Dashboard --> Login: ログアウト
     Settings --> Login: ログアウト
 ```
 

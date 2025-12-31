@@ -40,9 +40,12 @@ const response = await fetch('/api/auth/login', {
 ```
 src/
 ├── pages/           # Page-level components (e.g., LoginPage.tsx)
+│   ├── admin/       # Admin pages (UserManagementPage, DashboardPage, etc.)
+│   └── ...
 ├── components/
 │   ├── ui/          # Shared UI component library (Button, Input, Alert, Modal)
 │   ├── admin/       # Admin-specific components
+│   │   └── dashboard/  # Dashboard charts and tables
 │   ├── settings/    # Settings-specific components
 │   └── ...          # Other reusable components (e.g., ProtectedRoute.tsx)
 ├── contexts/        # React Context (e.g., AuthContext.tsx)
@@ -956,3 +959,25 @@ const ChatPage: React.FC = () => {
 - **Responsive Design**: Mobile-friendly sidebar with overlay
 - **Loading States**: Animated dots while waiting, cursor while streaming
 - **Keyboard Support**: Enter to send, Shift+Enter for newline
+
+## Feature Implementation Example: Admin Dashboard
+
+The admin dashboard feature demonstrates data visualization and statistics display:
+
+### Files
+
+- **Page**: `src/pages/admin/DashboardPage.tsx` - Main dashboard page
+- **Components**:
+  - `src/components/admin/dashboard/SummaryCards.tsx` - Key metrics display
+  - `src/components/admin/dashboard/TrendChart.tsx` - Trend line chart
+  - `src/components/admin/dashboard/RankingTable.tsx` - User rankings
+- **Hooks**: `src/hooks/useAdminDashboard.ts` - Dashboard data fetching
+- **API Client**: `src/lib/api/adminDashboard.ts` - API calls for dashboard data
+- **Types**: Dashboard-related TypeScript interfaces
+
+### Key Features
+
+- **Summary Cards**: Display total users, active users, conversations, messages, tokens, and cost
+- **Trend Charts**: Visualize metrics over time (7d/30d/90d/custom period)
+- **User Rankings**: Show top users by conversations, messages, or token usage
+- **Admin-only Access**: Protected by admin role check
