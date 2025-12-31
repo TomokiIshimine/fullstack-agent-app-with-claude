@@ -190,3 +190,45 @@ def test_delete_user_cascades_related_data(app, user_service):
         session = get_session()
         token = session.query(RefreshToken).filter(RefreshToken.id == token_id).first()
         assert token is None
+
+
+# reset_password tests
+
+
+def test_reset_password_success(app, user_service, client):
+    """Test successful password reset generates new password."""
+    user_id = create_user(app, email="user@example.com", password="oldpassword123", role="user")
+
+    new_password = user_service.reset_password(user_id)
+    user_service.session.commit()
+
+    # Verify new password format (12 chars, alphanumeric)
+    assert len(new_password) == 12
+    assert any(c.isupper() for c in new_password)
+    assert any(c.islower() for c in new_password)
+    assert any(c.isdigit() for c in new_password)
+
+    # Try to login with new password
+    login_response = client.post("/api/auth/login", json={"email": "user@example.com", "password": new_password})
+    assert login_response.status_code == 200
+
+
+def test_reset_password_old_password_invalid(app, user_service, client):
+    """Test that old password no longer works after reset."""
+    old_password = "oldpassword123"
+    user_id = create_user(app, email="user@example.com", password=old_password, role="user")
+
+    user_service.reset_password(user_id)
+    user_service.session.commit()
+
+    # Old password should no longer work
+    login_response = client.post("/api/auth/login", json={"email": "user@example.com", "password": old_password})
+    assert login_response.status_code == 401
+
+
+def test_reset_password_user_not_found(app, user_service):
+    """Test that resetting password for non-existent user raises error."""
+    with pytest.raises(UserNotFoundError) as exc_info:
+        user_service.reset_password(99999)
+
+    assert exc_info.value.user_id == 99999

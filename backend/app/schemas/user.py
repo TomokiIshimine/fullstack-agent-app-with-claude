@@ -87,6 +87,13 @@ class UserListResponse(BaseModel):
     users: list[UserResponse]
 
 
+class PasswordResetResponse(BaseModel):
+    """Schema for admin password reset response."""
+
+    message: str
+    new_password: str
+
+
 __all__ = [
     "UserCreateRequest",
     "UserCreateResponse",
@@ -95,4 +102,5 @@ __all__ = [
     "UserListResponse",
     "UserValidationError",
     "UserResponse",
+    "PasswordResetResponse",
 ]

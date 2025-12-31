@@ -1,18 +1,32 @@
 import { useState } from 'react'
 import type { UserResponse } from '@/types/user'
 import { ApiError } from '@/lib/api/client'
-import { deleteUser as deleteUserApi } from '@/lib/api/users'
+import {
+  deleteUser as deleteUserApi,
+  resetUserPassword as resetUserPasswordApi,
+} from '@/lib/api/users'
 import { Modal, Button, Alert } from '@/components/ui'
+import { InitialPasswordModal } from './InitialPasswordModal'
 
 interface UserListProps {
   users: UserResponse[]
   onDeleteUser?: (user: UserResponse) => Promise<void>
+  onResetPassword?: (user: UserResponse) => Promise<string>
 }
 
-export function UserList({ users, onDeleteUser }: UserListProps) {
+interface ResetPasswordResult {
+  email: string
+  password: string
+}
+
+export function UserList({ users, onDeleteUser, onResetPassword }: UserListProps) {
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<UserResponse | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [resettingUserId, setResettingUserId] = useState<number | null>(null)
+  const [resetTarget, setResetTarget] = useState<UserResponse | null>(null)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [resetPasswordResult, setResetPasswordResult] = useState<ResetPasswordResult | null>(null)
 
   const handleDeleteClick = (user: UserResponse) => {
     setDeleteTarget(user)
@@ -43,6 +57,46 @@ export function UserList({ users, onDeleteUser }: UserListProps) {
   const handleDeleteCancel = () => {
     setDeleteTarget(null)
     setDeleteError(null)
+  }
+
+  const handleResetClick = (user: UserResponse) => {
+    setResetTarget(user)
+    setResetError(null)
+  }
+
+  const handleResetConfirm = async () => {
+    if (!resetTarget) return
+
+    setResettingUserId(resetTarget.id)
+    setResetError(null)
+
+    try {
+      if (onResetPassword) {
+        // Use provided handler - it handles displaying the password
+        await onResetPassword(resetTarget)
+      } else {
+        // Use default handler - we need to display the password ourselves
+        const response = await resetUserPasswordApi(resetTarget.id)
+        setResetPasswordResult({
+          email: resetTarget.email,
+          password: response.new_password,
+        })
+      }
+      setResetTarget(null)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setResetError(err.message)
+      } else {
+        setResetError('パスワードのリセットに失敗しました')
+      }
+    } finally {
+      setResettingUserId(null)
+    }
+  }
+
+  const handleResetCancel = () => {
+    setResetTarget(null)
+    setResetError(null)
   }
 
   if (users.length === 0) {
@@ -104,14 +158,24 @@ export function UserList({ users, onDeleteUser }: UserListProps) {
                     {user.role === 'admin' ? (
                       <span className="text-slate-400">-</span>
                     ) : (
-                      <Button
-                        onClick={() => handleDeleteClick(user)}
-                        disabled={deletingUserId === user.id}
-                        variant="danger"
-                        size="sm"
-                      >
-                        {deletingUserId === user.id ? '削除中...' : '削除'}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleResetClick(user)}
+                          disabled={resettingUserId === user.id}
+                          variant="secondary"
+                          size="sm"
+                        >
+                          {resettingUserId === user.id ? 'リセット中...' : 'パスワードリセット'}
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteClick(user)}
+                          disabled={deletingUserId === user.id}
+                          variant="danger"
+                          size="sm"
+                        >
+                          {deletingUserId === user.id ? '削除中...' : '削除'}
+                        </Button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -156,6 +220,51 @@ export function UserList({ users, onDeleteUser }: UserListProps) {
           </Button>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={resetTarget !== null}
+        onClose={handleResetCancel}
+        title="パスワードリセットの確認"
+        size="sm"
+      >
+        {resetError && (
+          <div className="mb-4">
+            <Alert variant="error" onDismiss={() => setResetError(null)}>
+              {resetError}
+            </Alert>
+          </div>
+        )}
+        <p className="text-slate-700 mb-4">
+          <span className="font-semibold">{resetTarget?.email}</span>{' '}
+          のパスワードをリセットしますか？
+        </p>
+        <p className="text-sm text-slate-600">新しいパスワードが生成され、表示されます。</p>
+        <div className="flex gap-3 justify-end mt-6">
+          <Button
+            variant="secondary"
+            onClick={handleResetCancel}
+            disabled={resettingUserId !== null}
+          >
+            キャンセル
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleResetConfirm}
+            loading={resettingUserId !== null}
+            disabled={resettingUserId !== null}
+          >
+            リセット
+          </Button>
+        </div>
+      </Modal>
+
+      {resetPasswordResult && (
+        <InitialPasswordModal
+          email={resetPasswordResult.email}
+          password={resetPasswordResult.password}
+          onClose={() => setResetPasswordResult(null)}
+        />
+      )}
     </>
   )
 }

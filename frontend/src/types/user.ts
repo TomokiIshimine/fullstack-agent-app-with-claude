@@ -57,3 +57,11 @@ export interface UserUpdateResponse {
   message: string
   user: UserResponse
 }
+
+/**
+ * Password reset response (Admin only)
+ */
+export interface PasswordResetResponse {
+  message: string
+  new_password: string
+}

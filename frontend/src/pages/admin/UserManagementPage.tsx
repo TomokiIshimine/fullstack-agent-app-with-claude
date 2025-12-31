@@ -15,6 +15,7 @@ export function UserManagementPage() {
     clearError,
     createUser,
     deleteUser,
+    resetPassword,
     loadUsers,
     resetInitialPassword,
   } = useUserManagement()
@@ -61,7 +62,7 @@ export function UserManagementPage() {
               />
             )}
 
-            <UserList users={users} onDeleteUser={deleteUser} />
+            <UserList users={users} onDeleteUser={deleteUser} onResetPassword={resetPassword} />
           </div>
         )}
 

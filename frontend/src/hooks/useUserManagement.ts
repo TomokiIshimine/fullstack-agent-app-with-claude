@@ -3,6 +3,7 @@ import {
   createUser as createUserApi,
   deleteUser as deleteUserApi,
   fetchUsers,
+  resetUserPassword as resetUserPasswordApi,
 } from '@/lib/api/users'
 import { useErrorHandler } from './useErrorHandler'
 import type { UserCreateRequest, UserCreateResponse, UserResponse } from '@/types/user'
@@ -66,6 +67,24 @@ export function useUserManagement() {
     [handleError, loadUsers]
   )
 
+  const resetPassword = useCallback(
+    async (user: UserResponse): Promise<string> => {
+      try {
+        const response = await resetUserPasswordApi(user.id)
+        logger.info('Password reset successfully', { userId: user.id, email: user.email })
+        setInitialPassword({
+          email: user.email,
+          password: response.new_password,
+        })
+        return response.new_password
+      } catch (err) {
+        handleError(err, 'Failed to reset password')
+        throw err
+      }
+    },
+    [handleError]
+  )
+
   const resetInitialPassword = useCallback(() => {
     setInitialPassword(null)
   }, [])
@@ -83,6 +102,7 @@ export function useUserManagement() {
     loadUsers,
     createUser,
     deleteUser,
+    resetPassword,
     resetInitialPassword,
   }
 }
