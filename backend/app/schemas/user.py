@@ -16,8 +16,8 @@ class UserValidationError(ValueError):
     pass
 
 
-class UserCreateRequest(BaseModel):
-    """Schema for creating a new user."""
+class _UserRequestBase(BaseModel):
+    """Base schema with common user validation logic."""
 
     email: str
     name: str
@@ -46,6 +46,12 @@ class UserCreateRequest(BaseModel):
         return trimmed
 
 
+class UserCreateRequest(_UserRequestBase):
+    """Schema for creating a new user."""
+
+    pass
+
+
 class UserCreateResponse(BaseModel):
     """Schema for user creation response."""
 
@@ -53,33 +59,10 @@ class UserCreateResponse(BaseModel):
     initial_password: str
 
 
-class UserUpdateRequest(BaseModel):
+class UserUpdateRequest(_UserRequestBase):
     """Schema for updating an existing user."""
 
-    email: str
-    name: str
-
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, v: str) -> str:
-        """Validate email format."""
-        if not v or not v.strip():
-            raise UserValidationError("Email is required")
-        email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-        if not re.match(email_pattern, v.strip()):
-            raise UserValidationError("Invalid email format")
-        return v.strip()
-
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, v: str) -> str:
-        """Validate name."""
-        if not v or not v.strip():
-            raise UserValidationError("Name is required")
-        trimmed = v.strip()
-        if len(trimmed) > MAX_USER_NAME_LENGTH:
-            raise UserValidationError(f"Name must be at most {MAX_USER_NAME_LENGTH} characters")
-        return trimmed
+    pass
 
 
 class UserUpdateResponse(BaseModel):
