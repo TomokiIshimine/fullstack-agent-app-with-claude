@@ -497,14 +497,24 @@ class ConversationService:
         tool_calls = self.tool_call_repo.find_by_message_id(assistant_message.id)
         tool_calls_data = [ToolCallResponse.model_validate(tc).model_dump(mode="json") for tc in tool_calls]
 
-        # Build response with metadata
-        response = {
+        # Get metadata as nullable dict
+        metadata_dict = self.metadata_service.to_response_dict(result)
+
+        # Build response with explicit field ordering:
+        # 1. Message identification
+        # 2. Message content
+        # 3. Tool calls
+        # 4. Metadata (tokens, model, timing, cost)
+        return {
             "assistant_message_id": assistant_message.id,
             "content": result.content,
             "tool_calls": tool_calls_data,
+            "input_tokens": metadata_dict["input_tokens"],
+            "output_tokens": metadata_dict["output_tokens"],
+            "model": metadata_dict["model"],
+            "response_time_ms": metadata_dict["response_time_ms"],
+            "cost_usd": metadata_dict["cost_usd"],
         }
-        response.update(self.metadata_service.to_response_dict(result))
-        return response
 
     def _build_message_history(
         self,

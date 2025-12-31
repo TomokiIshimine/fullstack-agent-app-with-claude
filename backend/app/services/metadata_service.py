@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 from app.services.agent_service import MessageMetadataEvent
 from app.utils.cost_calculator import calculate_cost
@@ -13,6 +13,24 @@ if TYPE_CHECKING:
     from app.models.message import Message
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T", int, float, str)
+
+# Metadata field names that can be applied to Message model
+METADATA_FIELDS = ("input_tokens", "output_tokens", "model", "response_time_ms", "cost_usd")
+
+
+def _to_nullable(value: T, is_empty: bool) -> T | None:
+    """Convert value to None if it represents an empty/zero value.
+
+    Args:
+        value: The value to convert
+        is_empty: Whether the value should be treated as empty
+
+    Returns:
+        None if is_empty is True, otherwise the original value
+    """
+    return None if is_empty else value
 
 
 @dataclass
@@ -95,11 +113,11 @@ class MetadataService:
             Dict with metadata fields, using None for zero/empty values
         """
         return {
-            "input_tokens": metadata.input_tokens if metadata.input_tokens > 0 else None,
-            "output_tokens": metadata.output_tokens if metadata.output_tokens > 0 else None,
-            "model": metadata.model if metadata.model else None,
-            "response_time_ms": metadata.response_time_ms if metadata.response_time_ms > 0 else None,
-            "cost_usd": metadata.cost_usd if metadata.cost_usd > 0 else None,
+            "input_tokens": _to_nullable(metadata.input_tokens, metadata.input_tokens <= 0),
+            "output_tokens": _to_nullable(metadata.output_tokens, metadata.output_tokens <= 0),
+            "model": _to_nullable(metadata.model, not metadata.model),
+            "response_time_ms": _to_nullable(metadata.response_time_ms, metadata.response_time_ms <= 0),
+            "cost_usd": _to_nullable(metadata.cost_usd, metadata.cost_usd <= 0),
         }
 
     def build_from_event(self, event: MessageMetadataEvent | None) -> MessageMetadata:
@@ -110,9 +128,20 @@ class MetadataService:
 
         Returns:
             MessageMetadata with calculated cost
+
+        Raises:
+            ValueError: If token counts or response time are negative
         """
         if event is None:
             return MessageMetadata.empty()
+
+        # Validate non-negative values
+        if event.input_tokens < 0:
+            raise ValueError(f"input_tokens cannot be negative: {event.input_tokens}")
+        if event.output_tokens < 0:
+            raise ValueError(f"output_tokens cannot be negative: {event.output_tokens}")
+        if event.response_time_ms < 0:
+            raise ValueError(f"response_time_ms cannot be negative: {event.response_time_ms}")
 
         cost_usd = 0.0
         if event.input_tokens > 0:
@@ -165,11 +194,8 @@ class MetadataService:
             metadata: Metadata to apply
         """
         nullable = self.to_nullable_dict(metadata)
-        message.input_tokens = nullable["input_tokens"]
-        message.output_tokens = nullable["output_tokens"]
-        message.model = nullable["model"]
-        message.response_time_ms = nullable["response_time_ms"]
-        message.cost_usd = nullable["cost_usd"]
+        for field in METADATA_FIELDS:
+            setattr(message, field, nullable[field])
 
     def apply_streaming_result_to_message(
         self,
