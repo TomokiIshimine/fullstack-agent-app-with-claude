@@ -1,8 +1,8 @@
 # システム構成設計書
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-12-27
-**バージョン:** 1.3
+**最終更新:** 2025-12-31
+**バージョン:** 1.4
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -72,7 +72,9 @@ src/
 │   ├── ChatPage.tsx    # AIチャットページ
 │   ├── SettingsPage.tsx
 │   ├── admin/          # Admin関連ページ
-│   │   └── UserManagementPage.tsx
+│   │   ├── UserManagementPage.tsx
+│   │   ├── ConversationHistoryPage.tsx
+│   │   └── DashboardPage.tsx  # 管理者ダッシュボード
 │   └── ...
 ├── components/         # 再利用可能なUIコンポーネント
 │   ├── ui/             # 共有UIコンポーネントライブラリ
@@ -89,7 +91,11 @@ src/
 │   │   └── StreamingMessage.tsx # ストリーミング表示
 │   ├── admin/          # Admin固有コンポーネント
 │   │   ├── UserCreateForm.tsx
-│   │   └── UserList.tsx
+│   │   ├── UserList.tsx
+│   │   └── dashboard/  # ダッシュボードコンポーネント
+│   │       ├── SummaryCards.tsx
+│   │       ├── TrendChart.tsx
+│   │       └── RankingTable.tsx
 │   ├── settings/       # Settings固有コンポーネント
 │   │   ├── PasswordChangeForm.tsx
 │   │   └── ProfileUpdateForm.tsx
@@ -114,17 +120,21 @@ app/
 │   ├── __init__.py     # Blueprintの統合
 │   ├── auth_routes.py  # 認証関連エンドポイント
 │   ├── conversation_routes.py  # AIチャット関連エンドポイント
+│   ├── admin_conversation_routes.py  # 管理者用会話履歴
+│   ├── admin_dashboard_routes.py     # 管理者ダッシュボード
 │   └── health.py       # ヘルスチェックエンドポイント
 ├── services/           # ビジネスロジック
 │   ├── auth_service.py
 │   ├── agent_service.py        # LangGraph ReAct エージェントサービス
-│   └── conversation_service.py # 会話管理サービス
+│   ├── conversation_service.py # 会話管理サービス
+│   └── admin_dashboard_service.py  # ダッシュボード統計サービス
 ├── repositories/       # データアクセス層
 │   ├── user_repository.py
 │   ├── refresh_token_repository.py
 │   ├── conversation_repository.py  # 会話リポジトリ
 │   ├── message_repository.py       # メッセージリポジトリ
-│   └── tool_call_repository.py     # ツール呼び出しリポジトリ
+│   ├── tool_call_repository.py     # ツール呼び出しリポジトリ
+│   └── dashboard_repository.py     # ダッシュボード統計リポジトリ
 ├── models/             # SQLAlchemy ORM モデル
 │   ├── user.py
 │   ├── refresh_token.py
@@ -133,7 +143,8 @@ app/
 │   └── tool_call.py        # ツール呼び出しモデル
 ├── schemas/            # Pydantic スキーマ (バリデーション)
 │   ├── auth.py
-│   └── conversation.py     # 会話関連スキーマ
+│   ├── conversation.py     # 会話関連スキーマ
+│   └── admin_dashboard.py  # ダッシュボード用スキーマ
 ├── utils/              # ユーティリティ
 │   ├── auth_decorator.py  # 認証デコレータ
 │   └── password.py        # パスワードハッシュ化
