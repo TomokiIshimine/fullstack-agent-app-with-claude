@@ -7,6 +7,7 @@ vi.mock('@/lib/api/users', () => ({
   fetchUsers: vi.fn(),
   createUser: vi.fn(),
   deleteUser: vi.fn(),
+  resetUserPassword: vi.fn(),
 }))
 
 // Mock logger
@@ -19,8 +20,8 @@ vi.mock('@/lib/logger', () => ({
   },
 }))
 
-import { fetchUsers, createUser, deleteUser } from '@/lib/api/users'
-import type { UserResponse, UserCreateResponse } from '@/types/user'
+import { fetchUsers, createUser, deleteUser, resetUserPassword } from '@/lib/api/users'
+import type { UserResponse, UserCreateResponse, PasswordResetResponse } from '@/types/user'
 
 const mockUsers: UserResponse[] = [
   {
@@ -50,12 +51,18 @@ const mockCreateResponse: UserCreateResponse = {
   initial_password: 'test123456ab',
 }
 
+const mockResetResponse: PasswordResetResponse = {
+  message: 'パスワードをリセットしました',
+  new_password: 'newPass12345',
+}
+
 describe('useUserManagement', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.mocked(fetchUsers).mockResolvedValue(mockUsers)
     vi.mocked(createUser).mockResolvedValue(mockCreateResponse)
     vi.mocked(deleteUser).mockResolvedValue()
+    vi.mocked(resetUserPassword).mockResolvedValue(mockResetResponse)
   })
 
   afterEach(() => {
@@ -305,6 +312,69 @@ describe('useUserManagement', () => {
       })
 
       expect(result.current.error).toBeNull()
+    })
+  })
+
+  describe('resetPassword', () => {
+    it('should reset password successfully and set initial password', async () => {
+      const { result } = renderHook(() => useUserManagement())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      const userToReset = mockUsers[1]
+
+      let newPassword: string | undefined
+      await act(async () => {
+        newPassword = await result.current.resetPassword(userToReset)
+      })
+
+      expect(resetUserPassword).toHaveBeenCalledWith(userToReset.id)
+      expect(newPassword).toBe('newPass12345')
+      expect(result.current.initialPassword).toEqual({
+        email: 'user@example.com',
+        password: 'newPass12345',
+      })
+    })
+
+    it('should handle error when resetting password', async () => {
+      vi.mocked(resetUserPassword).mockRejectedValue(new Error('Reset failed'))
+
+      const { result } = renderHook(() => useUserManagement())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      let caughtError: Error | undefined
+      await act(async () => {
+        try {
+          await result.current.resetPassword(mockUsers[1])
+        } catch (err) {
+          caughtError = err as Error
+        }
+      })
+
+      expect(caughtError?.message).toBe('Reset failed')
+      expect(result.current.error).toBe('Reset failed')
+    })
+
+    it('should not reload users after resetting password', async () => {
+      const { result } = renderHook(() => useUserManagement())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      vi.mocked(fetchUsers).mockClear()
+
+      await act(async () => {
+        await result.current.resetPassword(mockUsers[1])
+      })
+
+      // resetPassword should not trigger a reload of users
+      expect(fetchUsers).not.toHaveBeenCalled()
     })
   })
 })

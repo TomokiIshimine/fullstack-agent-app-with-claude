@@ -3,6 +3,7 @@ import type {
   UserListResponse,
   UserCreateRequest,
   UserCreateResponse,
+  PasswordResetResponse,
 } from '@/types/user'
 import { fetchWithLogging, buildJsonHeaders, parseJson, buildApiError } from './client'
 
@@ -50,4 +51,18 @@ export async function deleteUser(userId: number): Promise<void> {
     const json = await parseJson(response)
     throw buildApiError(response, json)
   }
+}
+
+/**
+ * Reset a user's password (Admin only)
+ */
+export async function resetUserPassword(userId: number): Promise<PasswordResetResponse> {
+  const response = await fetchWithLogging(`${API_BASE_URL}/${userId}/reset-password`, {
+    method: 'POST',
+  })
+  const json = await parseJson(response)
+  if (!response.ok) {
+    throw buildApiError(response, json)
+  }
+  return json as PasswordResetResponse
 }

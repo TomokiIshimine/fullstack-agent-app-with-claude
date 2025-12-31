@@ -239,3 +239,77 @@ def test_update_current_user_invalid_email(app):
     )
 
     assert_response_error(response, 400)
+
+
+# POST /api/users/{id}/reset-password tests
+
+
+def test_reset_password_success_as_admin(app):
+    """Test that admin can reset a user's password."""
+    admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
+    user_id = create_user(app, email="user@example.com", password="oldpassword123", role="user")
+
+    admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
+
+    response = admin_client.post(f"/api/users/{user_id}/reset-password")
+
+    data = assert_response_success(response, 200)
+    assert "new_password" in data
+    assert "message" in data
+    assert data["message"] == "パスワードをリセットしました"
+
+    # Verify password format (12 chars, alphanumeric)
+    password = data["new_password"]
+    assert len(password) == 12
+    assert any(c.isalpha() for c in password)
+    assert any(c.isdigit() for c in password)
+
+
+def test_reset_password_new_password_works(app, client):
+    """Test that new password can be used for login."""
+    admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
+    create_user(app, email="user@example.com", password="oldpassword123", role="user")
+
+    admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
+
+    # Reset password
+    response = admin_client.post("/api/users/2/reset-password")
+    data = response.get_json()
+    new_password = data["new_password"]
+
+    # Try logging in with new password
+    login_response = client.post(
+        "/api/auth/login",
+        json={"email": "user@example.com", "password": new_password},
+    )
+
+    assert login_response.status_code == 200
+
+
+def test_reset_password_forbidden_as_regular_user(app):
+    """Test that regular users cannot reset passwords."""
+    user_id = create_user(app, email="user@example.com", password="password123", role="user")
+    other_user_id = create_user(app, email="other@example.com", password="password123", role="user")
+
+    user_client = create_auth_client(app, user_id, email="user@example.com", role="user")
+
+    response = user_client.post(f"/api/users/{other_user_id}/reset-password")
+
+    assert_response_error(response, 403)
+
+
+def test_reset_password_not_found(app):
+    """Test that resetting password for non-existent user returns 404."""
+    admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
+    admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
+
+    response = admin_client.post("/api/users/99999/reset-password")
+
+    assert_response_error(response, 404)
+
+
+def test_reset_password_unauthorized_without_auth(client):
+    """Test that unauthenticated requests are rejected."""
+    response = client.post("/api/users/1/reset-password")
+
+    assert_response_error(response, 401)

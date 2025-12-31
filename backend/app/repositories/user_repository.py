@@ -81,20 +81,32 @@ class UserRepository(BaseRepository):
         self.session.add(user)
         return user
 
-    def update(self, user: User, *, email: str, name: str) -> User:
+    def update(
+        self,
+        user: User,
+        *,
+        email: str | None = None,
+        name: str | None = None,
+        password_hash: str | None = None,
+    ) -> User:
         """
         Update user attributes.
 
         Args:
             user: User instance to update
-            email: New email address
-            name: New display name
+            email: New email address (optional)
+            name: New display name (optional)
+            password_hash: New password hash (optional)
 
         Returns:
             Updated User instance
         """
-        user.email = email
-        user.name = name
+        if email is not None:
+            user.email = email
+        if name is not None:
+            user.name = name
+        if password_hash is not None:
+            user.password_hash = password_hash
         return user
 
     def delete(self, user: User) -> None:

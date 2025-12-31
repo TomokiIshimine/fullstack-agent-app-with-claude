@@ -8,7 +8,7 @@ from flask import Blueprint, g, jsonify
 
 from app.constants.http import HTTP_CREATED, HTTP_NO_CONTENT, HTTP_OK
 from app.routes.dependencies import validate_request_body, with_user_service
-from app.schemas.user import UserCreateRequest, UserListResponse, UserUpdateRequest, UserUpdateResponse
+from app.schemas.user import PasswordResetResponse, UserCreateRequest, UserListResponse, UserUpdateRequest, UserUpdateResponse
 from app.services.user_service import UserService
 from app.utils.auth_decorator import require_auth, require_role
 
@@ -141,6 +141,38 @@ def delete_user(user_id: int, *, user_service: UserService):
 
     logger.info(f"DELETE /api/users/{user_id} - User deleted successfully")
     return "", HTTP_NO_CONTENT
+
+
+@user_bp.post("/<int:user_id>/reset-password")
+@require_auth
+@require_role("admin")
+@with_user_service
+def reset_user_password(user_id: int, *, user_service: UserService):
+    """
+    Reset a user's password (Admin only).
+
+    Generates a new random password for the specified user.
+
+    Args:
+        user_id: ID of user whose password should be reset
+
+    Returns:
+        {
+            "message": "パスワードをリセットしました",
+            "new_password": "aB3xY9mK2pL5"
+        }
+    """
+    logger.info(f"POST /api/users/{user_id}/reset-password - Resetting password")
+
+    new_password = user_service.reset_password(user_id)
+
+    response = PasswordResetResponse(
+        message="パスワードをリセットしました",
+        new_password=new_password,
+    )
+
+    logger.info(f"POST /api/users/{user_id}/reset-password - Password reset successfully")
+    return jsonify(response.model_dump()), HTTP_OK
 
 
 __all__ = ["user_bp"]

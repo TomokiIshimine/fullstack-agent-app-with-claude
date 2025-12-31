@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api/client'
 
 describe('UserList', () => {
   const mockOnDeleteUser = vi.fn<(user: UserResponse) => Promise<void>>()
+  const mockOnResetPassword = vi.fn<(user: UserResponse) => Promise<string>>()
 
   const mockUsers: UserResponse[] = [
     {
@@ -35,6 +36,8 @@ describe('UserList', () => {
   beforeEach(() => {
     mockOnDeleteUser.mockReset()
     mockOnDeleteUser.mockResolvedValue()
+    mockOnResetPassword.mockReset()
+    mockOnResetPassword.mockResolvedValue('newPassword123')
   })
 
   afterEach(() => {
@@ -332,6 +335,219 @@ describe('UserList', () => {
       // User role badges should have blue background
       const userBadges = container.querySelectorAll('.bg-blue-100.text-blue-800')
       expect(userBadges).toHaveLength(2)
+    })
+  })
+
+  describe('Password Reset Button Visibility', () => {
+    it('should not show reset button for admin user', () => {
+      render(
+        <UserList
+          users={mockUsers}
+          onDeleteUser={mockOnDeleteUser}
+          onResetPassword={mockOnResetPassword}
+        />
+      )
+
+      const resetButtons = screen.queryAllByRole('button', { name: /パスワードリセット/ })
+
+      // Only 2 reset buttons for 2 regular users
+      expect(resetButtons).toHaveLength(2)
+    })
+
+    it('should show reset button for regular users', () => {
+      render(
+        <UserList
+          users={mockUsers}
+          onDeleteUser={mockOnDeleteUser}
+          onResetPassword={mockOnResetPassword}
+        />
+      )
+
+      const resetButtons = screen.getAllByRole('button', { name: /パスワードリセット/ })
+
+      expect(resetButtons).toHaveLength(2)
+    })
+  })
+
+  describe('Password Reset Functionality', () => {
+    it('should show confirmation dialog when reset button is clicked', async () => {
+      render(
+        <UserList
+          users={mockUsers}
+          onDeleteUser={mockOnDeleteUser}
+          onResetPassword={mockOnResetPassword}
+        />
+      )
+
+      const resetButtons = screen.getAllByRole('button', { name: 'パスワードリセット' })
+      fireEvent.click(resetButtons[0])
+
+      await waitFor(() => {
+        expect(screen.getByText('パスワードリセットの確認')).toBeInTheDocument()
+      })
+
+      expect(screen.getByText('新しいパスワードが生成され、表示されます。')).toBeInTheDocument()
+
+      const dialog = screen.getByRole('dialog')
+      expect(dialog).toHaveTextContent('user1@example.com')
+    })
+
+    it('should not reset password if confirmation is cancelled', async () => {
+      render(
+        <UserList
+          users={mockUsers}
+          onDeleteUser={mockOnDeleteUser}
+          onResetPassword={mockOnResetPassword}
+        />
+      )
+
+      const resetButtons = screen.getAllByRole('button', { name: 'パスワードリセット' })
+      fireEvent.click(resetButtons[0])
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      const cancelButton = screen.getByRole('button', { name: 'キャンセル' })
+      fireEvent.click(cancelButton)
+
+      await waitFor(() => {
+        expect(screen.queryByText('パスワードリセットの確認')).not.toBeInTheDocument()
+      })
+
+      expect(mockOnResetPassword).not.toHaveBeenCalled()
+    })
+
+    it('should reset password successfully when confirmed', async () => {
+      render(
+        <UserList
+          users={mockUsers}
+          onDeleteUser={mockOnDeleteUser}
+          onResetPassword={mockOnResetPassword}
+        />
+      )
+
+      const resetButtons = screen.getAllByRole('button', { name: 'パスワードリセット' })
+      fireEvent.click(resetButtons[0])
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      const confirmButton = screen.getByRole('button', { name: 'リセット' })
+      fireEvent.click(confirmButton)
+
+      await waitFor(() => {
+        expect(mockOnResetPassword).toHaveBeenCalledWith(mockUsers[1])
+      })
+    })
+
+    it('should show resetting state during reset', async () => {
+      let resolveReset: (value: string) => void
+      const resetPromise = new Promise<string>(resolve => {
+        resolveReset = resolve
+      })
+      mockOnResetPassword.mockReturnValue(resetPromise)
+
+      render(
+        <UserList
+          users={mockUsers}
+          onDeleteUser={mockOnDeleteUser}
+          onResetPassword={mockOnResetPassword}
+        />
+      )
+
+      const resetButtons = screen.getAllByRole('button', { name: 'パスワードリセット' })
+      fireEvent.click(resetButtons[0])
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      const confirmButton = screen.getByRole('button', { name: 'リセット' })
+      fireEvent.click(confirmButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('リセット中...')).toBeInTheDocument()
+      })
+
+      resolveReset!('newPassword123')
+    })
+
+    it('should show error alert on reset failure', async () => {
+      const error = new Error('Network error')
+      mockOnResetPassword.mockRejectedValue(error)
+
+      render(
+        <UserList
+          users={mockUsers}
+          onDeleteUser={mockOnDeleteUser}
+          onResetPassword={mockOnResetPassword}
+        />
+      )
+
+      const resetButtons = screen.getAllByRole('button', { name: 'パスワードリセット' })
+      fireEvent.click(resetButtons[0])
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      const confirmButton = screen.getByRole('button', { name: 'リセット' })
+      fireEvent.click(confirmButton)
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('パスワードのリセットに失敗しました')
+      })
+    })
+
+    it('should show API error message on reset failure with ApiError', async () => {
+      const apiError = new ApiError(404, 'User not found', {})
+      mockOnResetPassword.mockRejectedValue(apiError)
+
+      render(
+        <UserList
+          users={mockUsers}
+          onDeleteUser={mockOnDeleteUser}
+          onResetPassword={mockOnResetPassword}
+        />
+      )
+
+      const resetButtons = screen.getAllByRole('button', { name: 'パスワードリセット' })
+      fireEvent.click(resetButtons[0])
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      const confirmButton = screen.getByRole('button', { name: 'リセット' })
+      fireEvent.click(confirmButton)
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('User not found')
+      })
+    })
+
+    it('should call resetUserPasswordApi when onResetPassword is not provided', async () => {
+      const resetUserPasswordSpy = vi
+        .spyOn(usersApi, 'resetUserPassword')
+        .mockResolvedValue({ message: 'パスワードをリセットしました', new_password: 'newPass123' })
+
+      render(<UserList users={mockUsers} />)
+
+      const resetButtons = screen.getAllByRole('button', { name: 'パスワードリセット' })
+      fireEvent.click(resetButtons[0])
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      const confirmButton = screen.getByRole('button', { name: 'リセット' })
+      fireEvent.click(confirmButton)
+
+      await waitFor(() => {
+        expect(resetUserPasswordSpy).toHaveBeenCalledWith(2)
+      })
     })
   })
 })

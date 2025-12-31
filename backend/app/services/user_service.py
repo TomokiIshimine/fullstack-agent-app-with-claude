@@ -107,5 +107,31 @@ class UserService:
         self.user_repo.delete(user)
         logger.info(f"User deleted successfully: id={user_id}, email={email}")
 
+    def reset_password(self, user_id: int) -> str:
+        """Reset a user's password to a new random password (Admin only).
+
+        Args:
+            user_id: ID of the user whose password should be reset
+
+        Returns:
+            The new randomly generated password
+
+        Raises:
+            UserNotFoundError: If user with given ID doesn't exist
+        """
+        user = self.user_repo.find_by_id(user_id)
+        if not user:
+            logger.warning(f"Password reset failed: user not found - id={user_id}")
+            raise UserNotFoundError(user_id)
+
+        new_password = generate_initial_password()
+        new_password_hash = hash_password(new_password)
+
+        self.user_repo.update(user, password_hash=new_password_hash)
+
+        logger.info(f"Password reset successfully: id={user_id}, email={user.email}")
+
+        return new_password
+
 
 __all__ = ["UserService"]

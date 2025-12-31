@@ -1,8 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { fetchUsers, createUser, deleteUser } from './users'
+import { fetchUsers, createUser, deleteUser, resetUserPassword } from './users'
 import { ApiError } from './client'
 import { createMockResponse, restoreFetch, createMockEmptyResponse } from '@/test/helpers/mockApi'
-import type { UserResponse, UserCreateResponse, UserListResponse } from '@/types/user'
+import type {
+  UserResponse,
+  UserCreateResponse,
+  UserListResponse,
+  PasswordResetResponse,
+} from '@/types/user'
 
 describe('API Client - users', () => {
   let originalFetch: typeof global.fetch
@@ -317,6 +322,84 @@ describe('API Client - users', () => {
       mockFetch.mockResolvedValueOnce(createMockEmptyResponse({ status: 204 }))
 
       await deleteUser(3)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          credentials: 'include',
+        })
+      )
+    })
+  })
+
+  describe('resetUserPassword', () => {
+    it('resets user password successfully and returns new password', async () => {
+      const mockResponse: PasswordResetResponse = {
+        message: 'パスワードをリセットしました',
+        new_password: 'aB3xY9mK2pL5',
+      }
+
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockResponse))
+
+      const result = await resetUserPassword(2)
+
+      expect(mockFetch).toHaveBeenCalledWith('/api/users/2/reset-password', {
+        method: 'POST',
+        credentials: 'include',
+      })
+
+      expect(result).toEqual(mockResponse)
+      expect(result.new_password).toBe('aB3xY9mK2pL5')
+      expect(result.message).toBe('パスワードをリセットしました')
+    })
+
+    it('throws ApiError on user not found', async () => {
+      const errorResponse = {
+        error: 'User not found',
+      }
+
+      mockFetch
+        .mockResolvedValueOnce(
+          createMockResponse(errorResponse, {
+            status: 404,
+            ok: false,
+          })
+        )
+        .mockResolvedValueOnce(
+          createMockResponse(errorResponse, {
+            status: 404,
+            ok: false,
+          })
+        )
+
+      await expect(resetUserPassword(999)).rejects.toThrow(ApiError)
+      await expect(resetUserPassword(999)).rejects.toThrow('User not found')
+    })
+
+    it('throws ApiError on unauthorized access', async () => {
+      const errorResponse = {
+        error: 'Forbidden',
+      }
+
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(errorResponse, {
+          status: 403,
+          ok: false,
+        })
+      )
+
+      await expect(resetUserPassword(2)).rejects.toThrow('Forbidden')
+    })
+
+    it('includes credentials in request', async () => {
+      const mockResponse: PasswordResetResponse = {
+        message: 'パスワードをリセットしました',
+        new_password: 'test12345678',
+      }
+
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockResponse))
+
+      await resetUserPassword(2)
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
