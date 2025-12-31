@@ -1,5 +1,8 @@
 """Tests for conversation routes."""
 
+# Valid UUID v4 format that doesn't exist in database
+NONEXISTENT_UUID = "00000000-0000-4000-8000-000000000000"
+
 
 class TestConversationRoutes:
     """Test conversation API routes."""
@@ -67,7 +70,7 @@ class TestConversationRoutes:
 
     def test_get_conversation_not_found(self, auth_client):
         """Non-existent conversation should return 404."""
-        response = auth_client.get("/api/conversations/nonexistent-uuid")
+        response = auth_client.get(f"/api/conversations/{NONEXISTENT_UUID}")
         assert response.status_code == 404
 
     def test_delete_conversation_unauthenticated(self, client):
@@ -77,8 +80,18 @@ class TestConversationRoutes:
 
     def test_delete_conversation_not_found(self, auth_client):
         """Non-existent conversation should return 404."""
-        response = auth_client.delete("/api/conversations/nonexistent-uuid")
+        response = auth_client.delete(f"/api/conversations/{NONEXISTENT_UUID}")
         assert response.status_code == 404
+
+    def test_get_conversation_invalid_uuid_format(self, auth_client):
+        """Invalid UUID format should return 400 Bad Request."""
+        response = auth_client.get("/api/conversations/invalid-uuid-format")
+        assert response.status_code == 400
+
+    def test_delete_conversation_invalid_uuid_format(self, auth_client):
+        """Invalid UUID format should return 400 Bad Request."""
+        response = auth_client.delete("/api/conversations/sql-injection-attempt")
+        assert response.status_code == 400
 
 
 class TestConversationMessagesRoute:
@@ -105,12 +118,22 @@ class TestConversationMessagesRoute:
     def test_send_message_conversation_not_found(self, auth_client):
         """Non-existent conversation should return 404 (non-streaming mode)."""
         response = auth_client.post(
-            "/api/conversations/nonexistent-uuid/messages",
+            f"/api/conversations/{NONEXISTENT_UUID}/messages",
             json={"content": "Hello"},
             content_type="application/json",
             headers={"X-Stream": "false"},
         )
         assert response.status_code == 404
+
+    def test_send_message_invalid_uuid_format(self, auth_client):
+        """Invalid UUID format should return 400 Bad Request."""
+        response = auth_client.post(
+            "/api/conversations/invalid-uuid/messages",
+            json={"content": "Hello"},
+            content_type="application/json",
+            headers={"X-Stream": "false"},
+        )
+        assert response.status_code == 400
 
 
 class TestConversationModels:
