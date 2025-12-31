@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
+from dataclasses import dataclass, field
 from typing import Generator, Literal
 
 from sqlalchemy.orm import Session
@@ -14,7 +15,7 @@ from app.models.conversation import Conversation
 from app.models.message import Message
 from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.message_repository import MessageRepository
-from app.repositories.tool_call_repository import ToolCallRepository
+from app.repositories.tool_call_repository import ToolCallData, ToolCallRepository
 from app.schemas.conversation import (
     ConversationDetailResponse,
     ConversationListResponse,
@@ -37,6 +38,19 @@ from app.services.agent_service import (
     ToolResultEvent,
 )
 from app.services.metadata_service import MetadataService, StreamingResult
+
+
+@dataclass
+class AgentStreamingResult:
+    """Result from streaming agent response with metadata and buffered tool calls.
+
+    This class extends StreamingResult to include buffered tool call data
+    for batch database operations after streaming completes.
+    """
+
+    streaming_result: StreamingResult
+    tool_calls: list[ToolCallData] = field(default_factory=list)
+
 
 logger = logging.getLogger(__name__)
 
@@ -256,8 +270,8 @@ class ConversationService:
         self.session.flush()
 
         # Generate and stream AI response using common method
-        response_generator = self._stream_agent_response(messages, assistant_message.id)
-        result: StreamingResult | None = None
+        response_generator = self._stream_agent_response(messages)
+        result: AgentStreamingResult | None = None
         try:
             while True:
                 streaming_event = next(response_generator)
@@ -267,7 +281,10 @@ class ConversationService:
 
         # Finalize and yield end event
         if result is None:
-            result = self.metadata_service.build_streaming_result(content="", event=None)
+            empty_streaming_result = self.metadata_service.build_streaming_result(
+                content="", event=None
+            )
+            result = AgentStreamingResult(streaming_result=empty_streaming_result)
         end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
         yield ("end", end_event_data)
 
@@ -372,8 +389,8 @@ class ConversationService:
 
         # Generate AI response using agent with common event processing
         # Consume streaming generator to get result with metadata (don't yield events)
-        response_generator = self._stream_agent_response(messages, assistant_message.id)
-        result: StreamingResult | None = None
+        response_generator = self._stream_agent_response(messages)
+        result: AgentStreamingResult | None = None
         try:
             while True:
                 next(response_generator)  # Consume events without yielding
@@ -381,14 +398,25 @@ class ConversationService:
             result = e.value
 
         if result is None:
-            result = self.metadata_service.build_streaming_result(content="", event=None)
+            empty_streaming_result = self.metadata_service.build_streaming_result(
+                content="", event=None
+            )
+            result = AgentStreamingResult(streaming_result=empty_streaming_result)
 
-        # Update assistant message with final content and metadata
-        self.metadata_service.apply_streaming_result_to_message(assistant_message, result)
-        self.session.flush()
+        # Batch insert tool calls and update assistant message
+        self.tool_call_repo.create_batch(
+            message_id=assistant_message.id,
+            tool_calls=result.tool_calls,
+        )
+        self.metadata_service.apply_streaming_result_to_message(
+            assistant_message, result.streaming_result
+        )
 
         # Update conversation timestamp
         self.conversation_repo.touch(conversation)
+
+        # Single flush for all database operations
+        self.session.flush()
 
         logger.info(f"Message exchange in conversation {uuid}")
 
@@ -449,8 +477,8 @@ class ConversationService:
         self.session.flush()
 
         # Generate and stream AI response using common method
-        response_generator = self._stream_agent_response(messages, assistant_message.id)
-        result: StreamingResult | None = None
+        response_generator = self._stream_agent_response(messages)
+        result: AgentStreamingResult | None = None
         try:
             while True:
                 streaming_event = next(response_generator)
@@ -460,7 +488,10 @@ class ConversationService:
 
         # Finalize and yield end event
         if result is None:
-            result = self.metadata_service.build_streaming_result(content="", event=None)
+            empty_streaming_result = self.metadata_service.build_streaming_result(
+                content="", event=None
+            )
+            result = AgentStreamingResult(streaming_result=empty_streaming_result)
         end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
         yield ("end", end_event_data)
 
@@ -470,35 +501,51 @@ class ConversationService:
         self,
         assistant_message: Message,
         conversation: Conversation,
-        result: StreamingResult,
+        result: AgentStreamingResult,
     ) -> dict:
         """
         Finalize streaming response and prepare end event data.
 
-        Updates the assistant message with final content and metadata, touches the
-        conversation timestamp, retrieves tool calls, and returns the end event data.
+        Performs batch database operations for tool calls, updates the assistant
+        message with final content and metadata, touches the conversation timestamp,
+        and returns the end event data.
+
+        This method consolidates all database writes into a single flush operation,
+        reducing the number of database round-trips during streaming.
 
         Args:
             assistant_message: The assistant message to update
             conversation: The conversation to touch
-            result: The streaming result with content and metadata
+            result: The AgentStreamingResult with content, metadata, and tool calls
 
         Returns:
             Dict containing end event data with metadata
         """
+        # Batch insert all tool calls in a single operation
+        created_tool_calls = self.tool_call_repo.create_batch(
+            message_id=assistant_message.id,
+            tool_calls=result.tool_calls,
+        )
+
         # Update assistant message with final content and metadata
-        self.metadata_service.apply_streaming_result_to_message(assistant_message, result)
-        self.session.flush()
+        self.metadata_service.apply_streaming_result_to_message(
+            assistant_message, result.streaming_result
+        )
 
         # Update conversation timestamp
         self.conversation_repo.touch(conversation)
 
-        # Get tool calls for response
-        tool_calls = self.tool_call_repo.find_by_message_id(assistant_message.id)
-        tool_calls_data = [ToolCallResponse.model_validate(tc).model_dump(mode="json") for tc in tool_calls]
+        # Single flush for all database operations
+        self.session.flush()
+
+        # Convert created tool calls to response format
+        tool_calls_data = [
+            ToolCallResponse.model_validate(tc).model_dump(mode="json")
+            for tc in created_tool_calls
+        ]
 
         # Get metadata as nullable dict
-        metadata_dict = self.metadata_service.to_response_dict(result)
+        metadata_dict = self.metadata_service.to_response_dict(result.streaming_result)
 
         # Build response with explicit field ordering:
         # 1. Message identification
@@ -507,7 +554,7 @@ class ConversationService:
         # 4. Metadata (tokens, model, timing, cost)
         return {
             "assistant_message_id": assistant_message.id,
-            "content": result.content,
+            "content": result.streaming_result.content,
             "tool_calls": tool_calls_data,
             "input_tokens": metadata_dict["input_tokens"],
             "output_tokens": metadata_dict["output_tokens"],
@@ -555,14 +602,19 @@ class ConversationService:
     def _process_agent_event(
         self,
         event: AgentEvent,
-        assistant_message_id: int,
+        tool_call_buffer: dict[str, ToolCallData],
     ) -> tuple[StreamingEvent | None, str | None]:
         """
-        Process a single agent event and persist to database.
+        Process a single agent event and buffer tool calls for batch insert.
+
+        Instead of writing to the database immediately, tool call data is buffered
+        in memory and written in a single batch operation after streaming completes.
+        This reduces database round-trips and improves performance.
 
         Args:
             event: Agent event to process
-            assistant_message_id: ID of the assistant message for tool call association
+            tool_call_buffer: Dictionary mapping tool_call_id to ToolCallData
+                             (modified in place)
 
         Returns:
             Tuple of (streaming_event, text_delta):
@@ -570,8 +622,8 @@ class ConversationService:
             - text_delta: Text content from the event, or None
         """
         if isinstance(event, ToolCallEvent):
-            self.tool_call_repo.create(
-                message_id=assistant_message_id,
+            # Buffer tool call data instead of writing to DB
+            tool_call_buffer[event.tool_call_id] = ToolCallData(
                 tool_call_id=event.tool_call_id,
                 tool_name=event.tool_name,
                 input_data=event.input,
@@ -588,13 +640,12 @@ class ConversationService:
                 None,
             )
         elif isinstance(event, ToolResultEvent):
-            status: Literal["success", "error"] = "error" if event.error else "success"
-            self.tool_call_repo.update_completed(
-                tool_call_id=event.tool_call_id,
-                output=event.output,
-                error=event.error,
-                status=status,
-            )
+            # Update buffered tool call with result
+            if event.tool_call_id in tool_call_buffer:
+                tool_call_buffer[event.tool_call_id].complete(
+                    output=event.output,
+                    error=event.error,
+                )
             return (
                 (
                     "tool_call_end",
@@ -628,26 +679,29 @@ class ConversationService:
     def _stream_agent_response(
         self,
         messages: list[dict],
-        assistant_message_id: int,
-    ) -> Generator[StreamingEvent, None, StreamingResult]:
+    ) -> Generator[StreamingEvent, None, AgentStreamingResult]:
         """
         Stream agent response, yielding events and returning result with metadata.
 
+        Tool calls are buffered in memory during streaming and returned as part
+        of the AgentStreamingResult for batch database operations after streaming
+        completes. This reduces database round-trips and improves performance.
+
         Args:
             messages: Message history for the agent
-            assistant_message_id: ID of the assistant message for tool call association
 
         Yields:
             StreamingEvent tuples for tool calls and text deltas
 
         Returns:
-            StreamingResult with content and metadata
+            AgentStreamingResult with content, metadata, and buffered tool calls
         """
         full_response = ""
         metadata_event: MessageMetadataEvent | None = None
+        tool_call_buffer: dict[str, ToolCallData] = {}
 
         for event in self.agent_service.generate_response(messages, stream=True):
-            streaming_event, text_content = self._process_agent_event(event, assistant_message_id)
+            streaming_event, text_content = self._process_agent_event(event, tool_call_buffer)
             if streaming_event is not None:
                 yield streaming_event
             if text_content is not None:
@@ -661,9 +715,15 @@ class ConversationService:
                 metadata_event = event
 
         # Build streaming result with metadata using MetadataService
-        return self.metadata_service.build_streaming_result(
+        streaming_result = self.metadata_service.build_streaming_result(
             content=full_response,
             event=metadata_event,
+        )
+
+        # Return result with buffered tool calls
+        return AgentStreamingResult(
+            streaming_result=streaming_result,
+            tool_calls=list(tool_call_buffer.values()),
         )
 
 
