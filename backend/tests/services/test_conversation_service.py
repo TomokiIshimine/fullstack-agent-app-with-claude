@@ -465,9 +465,7 @@ class TestFinalizeStreamingResponse:
         assert msg.output_tokens is None
         assert msg.model is None
 
-    def test_finalize_response_batch_inserts_tool_calls(
-        self, app, conversation_service, conversation_with_messages
-    ):
+    def test_finalize_response_batch_inserts_tool_calls(self, app, conversation_service, conversation_with_messages):
         """Test that finalize batch inserts buffered tool calls."""
         service, session = conversation_service
 

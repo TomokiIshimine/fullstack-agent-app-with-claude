@@ -281,9 +281,7 @@ class ConversationService:
 
         # Finalize and yield end event
         if result is None:
-            empty_streaming_result = self.metadata_service.build_streaming_result(
-                content="", event=None
-            )
+            empty_streaming_result = self.metadata_service.build_streaming_result(content="", event=None)
             result = AgentStreamingResult(streaming_result=empty_streaming_result)
         end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
         yield ("end", end_event_data)
@@ -398,9 +396,7 @@ class ConversationService:
             result = e.value
 
         if result is None:
-            empty_streaming_result = self.metadata_service.build_streaming_result(
-                content="", event=None
-            )
+            empty_streaming_result = self.metadata_service.build_streaming_result(content="", event=None)
             result = AgentStreamingResult(streaming_result=empty_streaming_result)
 
         # Batch insert tool calls and update assistant message
@@ -408,9 +404,7 @@ class ConversationService:
             message_id=assistant_message.id,
             tool_calls=result.tool_calls,
         )
-        self.metadata_service.apply_streaming_result_to_message(
-            assistant_message, result.streaming_result
-        )
+        self.metadata_service.apply_streaming_result_to_message(assistant_message, result.streaming_result)
 
         # Update conversation timestamp
         self.conversation_repo.touch(conversation)
@@ -488,9 +482,7 @@ class ConversationService:
 
         # Finalize and yield end event
         if result is None:
-            empty_streaming_result = self.metadata_service.build_streaming_result(
-                content="", event=None
-            )
+            empty_streaming_result = self.metadata_service.build_streaming_result(content="", event=None)
             result = AgentStreamingResult(streaming_result=empty_streaming_result)
         end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
         yield ("end", end_event_data)
@@ -528,9 +520,7 @@ class ConversationService:
         )
 
         # Update assistant message with final content and metadata
-        self.metadata_service.apply_streaming_result_to_message(
-            assistant_message, result.streaming_result
-        )
+        self.metadata_service.apply_streaming_result_to_message(assistant_message, result.streaming_result)
 
         # Update conversation timestamp
         self.conversation_repo.touch(conversation)
@@ -539,10 +529,7 @@ class ConversationService:
         self.session.flush()
 
         # Convert created tool calls to response format
-        tool_calls_data = [
-            ToolCallResponse.model_validate(tc).model_dump(mode="json")
-            for tc in created_tool_calls
-        ]
+        tool_calls_data = [ToolCallResponse.model_validate(tc).model_dump(mode="json") for tc in created_tool_calls]
 
         # Get metadata as nullable dict
         metadata_dict = self.metadata_service.to_response_dict(result.streaming_result)
