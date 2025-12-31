@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import math
-from dataclasses import dataclass
 from typing import Generator, Literal
 
 from sqlalchemy.orm import Session
@@ -37,7 +36,7 @@ from app.services.agent_service import (
     ToolCallEvent,
     ToolResultEvent,
 )
-from app.utils.cost_calculator import calculate_cost
+from app.services.metadata_service import MetadataService, StreamingResult
 
 logger = logging.getLogger(__name__)
 
@@ -48,18 +47,6 @@ StreamingEvent = tuple[
 ]
 
 
-@dataclass
-class StreamingResult:
-    """Result from streaming agent response."""
-
-    content: str
-    input_tokens: int
-    output_tokens: int
-    model: str
-    response_time_ms: int
-    cost_usd: float
-
-
 class ConversationService:
     """Service for conversation operations."""
 
@@ -67,18 +54,21 @@ class ConversationService:
         self,
         session: Session,
         agent_service: AgentService | None = None,
+        metadata_service: MetadataService | None = None,
     ):
         """Initialize service with database session.
 
         Args:
             session: SQLAlchemy database session.
             agent_service: Agent service instance. If None, creates lazily on first use.
+            metadata_service: Metadata service instance. If None, creates default instance.
         """
         self.session = session
         self.conversation_repo = ConversationRepository(session)
         self.message_repo = MessageRepository(session)
         self.tool_call_repo = ToolCallRepository(session)
         self._agent_service: AgentService | None = agent_service
+        self.metadata_service = metadata_service or MetadataService()
 
     @property
     def agent_service(self) -> AgentService:
@@ -277,7 +267,7 @@ class ConversationService:
 
         # Finalize and yield end event
         if result is None:
-            result = StreamingResult(content="", input_tokens=0, output_tokens=0, model="", response_time_ms=0, cost_usd=0.0)
+            result = self.metadata_service.build_streaming_result(content="", event=None)
         end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
         yield ("end", end_event_data)
 
@@ -391,22 +381,10 @@ class ConversationService:
             result = e.value
 
         if result is None:
-            result = StreamingResult(
-                content="",
-                input_tokens=0,
-                output_tokens=0,
-                model="",
-                response_time_ms=0,
-                cost_usd=0.0,
-            )
+            result = self.metadata_service.build_streaming_result(content="", event=None)
 
         # Update assistant message with final content and metadata
-        assistant_message.content = result.content
-        assistant_message.input_tokens = result.input_tokens if result.input_tokens > 0 else None
-        assistant_message.output_tokens = result.output_tokens if result.output_tokens > 0 else None
-        assistant_message.model = result.model if result.model else None
-        assistant_message.response_time_ms = result.response_time_ms if result.response_time_ms > 0 else None
-        assistant_message.cost_usd = result.cost_usd if result.cost_usd > 0 else None
+        self.metadata_service.apply_streaming_result_to_message(assistant_message, result)
         self.session.flush()
 
         # Update conversation timestamp
@@ -482,7 +460,7 @@ class ConversationService:
 
         # Finalize and yield end event
         if result is None:
-            result = StreamingResult(content="", input_tokens=0, output_tokens=0, model="", response_time_ms=0, cost_usd=0.0)
+            result = self.metadata_service.build_streaming_result(content="", event=None)
         end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
         yield ("end", end_event_data)
 
@@ -509,12 +487,7 @@ class ConversationService:
             Dict containing end event data with metadata
         """
         # Update assistant message with final content and metadata
-        assistant_message.content = result.content
-        assistant_message.input_tokens = result.input_tokens if result.input_tokens > 0 else None
-        assistant_message.output_tokens = result.output_tokens if result.output_tokens > 0 else None
-        assistant_message.model = result.model if result.model else None
-        assistant_message.response_time_ms = result.response_time_ms if result.response_time_ms > 0 else None
-        assistant_message.cost_usd = result.cost_usd if result.cost_usd > 0 else None
+        self.metadata_service.apply_streaming_result_to_message(assistant_message, result)
         self.session.flush()
 
         # Update conversation timestamp
@@ -524,17 +497,14 @@ class ConversationService:
         tool_calls = self.tool_call_repo.find_by_message_id(assistant_message.id)
         tool_calls_data = [ToolCallResponse.model_validate(tc).model_dump(mode="json") for tc in tool_calls]
 
-        return {
+        # Build response with metadata
+        response = {
             "assistant_message_id": assistant_message.id,
             "content": result.content,
             "tool_calls": tool_calls_data,
-            # Include metadata in end event
-            "input_tokens": result.input_tokens if result.input_tokens > 0 else None,
-            "output_tokens": result.output_tokens if result.output_tokens > 0 else None,
-            "model": result.model if result.model else None,
-            "response_time_ms": result.response_time_ms if result.response_time_ms > 0 else None,
-            "cost_usd": result.cost_usd if result.cost_usd > 0 else None,
         }
+        response.update(self.metadata_service.to_response_dict(result))
+        return response
 
     def _build_message_history(
         self,
@@ -664,7 +634,7 @@ class ConversationService:
             StreamingResult with content and metadata
         """
         full_response = ""
-        metadata: MessageMetadataEvent | None = None
+        metadata_event: MessageMetadataEvent | None = None
 
         for event in self.agent_service.generate_response(messages, stream=True):
             streaming_event, text_content = self._process_agent_event(event, assistant_message_id)
@@ -678,24 +648,12 @@ class ConversationService:
 
             # Capture metadata event
             if isinstance(event, MessageMetadataEvent):
-                metadata = event
+                metadata_event = event
 
-        # Calculate cost if we have metadata
-        cost_usd = 0.0
-        if metadata and metadata.input_tokens > 0:
-            cost_usd = calculate_cost(
-                model=metadata.model,
-                input_tokens=metadata.input_tokens,
-                output_tokens=metadata.output_tokens,
-            )
-
-        return StreamingResult(
+        # Build streaming result with metadata using MetadataService
+        return self.metadata_service.build_streaming_result(
             content=full_response,
-            input_tokens=metadata.input_tokens if metadata else 0,
-            output_tokens=metadata.output_tokens if metadata else 0,
-            model=metadata.model if metadata else "",
-            response_time_ms=metadata.response_time_ms if metadata else 0,
-            cost_usd=cost_usd,
+            event=metadata_event,
         )
 
 
