@@ -1,5 +1,6 @@
 import type { ToolCall, ToolCallDto, StreamingToolCall } from './tool'
 import { toToolCall } from './tool'
+import { buildMetadata } from '@/lib/utils/metadataFormat'
 
 /**
  * Message role type
@@ -210,31 +211,13 @@ export interface StreamErrorEvent {
  * Helper function to convert MessageDto to Message
  */
 export function toMessage(dto: MessageDto): Message {
-  // Build metadata object if any metadata fields are present
-  const hasMetadata =
-    dto.input_tokens != null ||
-    dto.output_tokens != null ||
-    dto.model != null ||
-    dto.response_time_ms != null ||
-    dto.cost_usd != null
-
-  const metadata: MessageMetadata | undefined = hasMetadata
-    ? {
-        inputTokens: dto.input_tokens ?? undefined,
-        outputTokens: dto.output_tokens ?? undefined,
-        model: dto.model ?? undefined,
-        responseTimeMs: dto.response_time_ms ?? undefined,
-        costUsd: dto.cost_usd ?? undefined,
-      }
-    : undefined
-
   return {
     id: dto.id,
     role: dto.role,
     content: dto.content,
     toolCalls: dto.tool_calls?.map(toToolCall),
     createdAt: new Date(dto.created_at),
-    metadata,
+    metadata: buildMetadata(dto),
   }
 }
 

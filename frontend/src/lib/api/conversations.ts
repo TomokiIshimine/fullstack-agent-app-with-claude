@@ -4,11 +4,11 @@ import type {
   ConversationListResponse,
   CreateConversationRequest,
   CreateConversationResponse,
-  MessageMetadata,
   SendMessageRequest,
   SendMessageResponse,
 } from '@/types/chat'
 import type { RetryEvent, StreamError } from '@/types/errors'
+import { buildMetadata } from '@/lib/utils/metadataFormat'
 import { buildApiError, buildJsonHeaders, fetchSSE, fetchWithLogging, parseJson } from './client'
 
 const API_BASE = '/api/conversations'
@@ -126,25 +126,14 @@ export async function createConversationStreaming(
 /**
  * Extract metadata from SSE event data
  */
-function extractMetadataFromEvent(data: Record<string, unknown>): MessageMetadata | undefined {
-  const hasMetadata =
-    data.input_tokens != null ||
-    data.output_tokens != null ||
-    data.model != null ||
-    data.response_time_ms != null ||
-    data.cost_usd != null
-
-  if (!hasMetadata) {
-    return undefined
-  }
-
-  return {
-    inputTokens: (data.input_tokens as number | null) ?? undefined,
-    outputTokens: (data.output_tokens as number | null) ?? undefined,
-    model: (data.model as string | null) ?? undefined,
-    responseTimeMs: (data.response_time_ms as number | null) ?? undefined,
-    costUsd: (data.cost_usd as number | null) ?? undefined,
-  }
+function extractMetadataFromEvent(data: Record<string, unknown>) {
+  return buildMetadata({
+    input_tokens: data.input_tokens as number | null | undefined,
+    output_tokens: data.output_tokens as number | null | undefined,
+    model: data.model as string | null | undefined,
+    response_time_ms: data.response_time_ms as number | null | undefined,
+    cost_usd: data.cost_usd as number | null | undefined,
+  })
 }
 
 /**
