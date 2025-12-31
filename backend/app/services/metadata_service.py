@@ -39,7 +39,7 @@ class StreamingResult:
 
 @dataclass
 class MessageMetadata:
-    """Message metadata container."""
+    """Message metadata container (data-only, no business logic)."""
 
     input_tokens: int
     output_tokens: int
@@ -58,47 +58,49 @@ class MessageMetadata:
             cost_usd=0.0,
         )
 
-    def has_data(self) -> bool:
-        """Check if metadata has meaningful data."""
-        return self.input_tokens > 0 or self.output_tokens > 0 or self.response_time_ms > 0 or self.cost_usd > 0
-
-    def to_nullable_dict(self) -> dict:
-        """Convert to dict with None for zero/empty values.
-
-        This is used for both API responses and database storage,
-        where we want to avoid storing meaningless zero values.
-        """
-        return {
-            "input_tokens": self.input_tokens if self.input_tokens > 0 else None,
-            "output_tokens": self.output_tokens if self.output_tokens > 0 else None,
-            "model": self.model if self.model else None,
-            "response_time_ms": self.response_time_ms if self.response_time_ms > 0 else None,
-            "cost_usd": self.cost_usd if self.cost_usd > 0 else None,
-        }
-
-    def apply_to(self, message: Message) -> None:
-        """Apply nullable metadata values to a message model.
-
-        Args:
-            message: Message model to update
-        """
-        nullable = self.to_nullable_dict()
-        message.input_tokens = nullable["input_tokens"]
-        message.output_tokens = nullable["output_tokens"]
-        message.model = nullable["model"]
-        message.response_time_ms = nullable["response_time_ms"]
-        message.cost_usd = nullable["cost_usd"]
-
 
 class MetadataService:
     """Service for message metadata processing.
 
-    Centralizes metadata-related operations:
+    Centralizes all metadata-related operations:
     - Building metadata from agent events
     - Calculating costs
+    - Validating metadata (has_valid_data)
+    - Converting to nullable dict (to_nullable_dict)
     - Applying metadata to message models
     - Generating response dictionaries
     """
+
+    def has_valid_data(self, metadata: MessageMetadata) -> bool:
+        """Check if metadata has meaningful data.
+
+        Args:
+            metadata: MessageMetadata to check
+
+        Returns:
+            True if metadata contains at least one non-zero/non-empty value
+        """
+        return metadata.input_tokens > 0 or metadata.output_tokens > 0 or metadata.response_time_ms > 0 or metadata.cost_usd > 0
+
+    def to_nullable_dict(self, metadata: MessageMetadata) -> dict:
+        """Convert metadata to dict with None for zero/empty values.
+
+        This is used for both API responses and database storage,
+        where we want to avoid storing meaningless zero values.
+
+        Args:
+            metadata: MessageMetadata to convert
+
+        Returns:
+            Dict with metadata fields, using None for zero/empty values
+        """
+        return {
+            "input_tokens": metadata.input_tokens if metadata.input_tokens > 0 else None,
+            "output_tokens": metadata.output_tokens if metadata.output_tokens > 0 else None,
+            "model": metadata.model if metadata.model else None,
+            "response_time_ms": metadata.response_time_ms if metadata.response_time_ms > 0 else None,
+            "cost_usd": metadata.cost_usd if metadata.cost_usd > 0 else None,
+        }
 
     def build_from_event(self, event: MessageMetadataEvent | None) -> MessageMetadata:
         """Build metadata from an agent event.
@@ -162,7 +164,12 @@ class MetadataService:
             message: Message model to update
             metadata: Metadata to apply
         """
-        metadata.apply_to(message)
+        nullable = self.to_nullable_dict(metadata)
+        message.input_tokens = nullable["input_tokens"]
+        message.output_tokens = nullable["output_tokens"]
+        message.model = nullable["model"]
+        message.response_time_ms = nullable["response_time_ms"]
+        message.cost_usd = nullable["cost_usd"]
 
     def apply_streaming_result_to_message(
         self,
@@ -176,7 +183,7 @@ class MetadataService:
             result: StreamingResult containing metadata
         """
         message.content = result.content
-        result.to_metadata().apply_to(message)
+        self.apply_to_message(message, result.to_metadata())
 
     def to_response_dict(self, result: StreamingResult) -> dict:
         """Convert streaming result metadata to response dictionary.
@@ -189,7 +196,7 @@ class MetadataService:
         Returns:
             Dict with metadata fields for API response
         """
-        return result.to_metadata().to_nullable_dict()
+        return self.to_nullable_dict(result.to_metadata())
 
 
 __all__ = ["MetadataService", "StreamingResult", "MessageMetadata"]
