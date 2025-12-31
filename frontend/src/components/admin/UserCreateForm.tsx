@@ -1,4 +1,4 @@
-import type { UserCreateRequest, UserCreateResponse } from '@/types/user'
+import type { UserCreateRequest, UserCreateResponse, UserRole } from '@/types/user'
 import { createUser as createUserApi } from '@/lib/api/users'
 import { logger } from '@/lib/logger'
 import { Input, Button, Alert } from '@/components/ui'
@@ -14,6 +14,7 @@ interface UserCreateFormProps {
 interface UserCreateFormValues {
   email: string
   name: string
+  role: UserRole
 }
 
 export function UserCreateForm({ onCreate, onSuccess, onCancel }: UserCreateFormProps) {
@@ -33,14 +34,17 @@ export function UserCreateForm({ onCreate, onSuccess, onCancel }: UserCreateForm
           validators.maxLength(100, '名前は100文字以内で入力してください')
         ),
       },
+      role: {
+        initialValue: 'user' as UserRole,
+      },
     },
     defaultErrorMessage: 'ユーザーの作成に失敗しました',
   })
 
   const handleSubmit = form.handleSubmit(async values => {
     const createUser = onCreate ?? createUserApi
-    const response = await createUser({ email: values.email, name: values.name })
-    logger.info('User created successfully', { email: values.email })
+    const response = await createUser({ email: values.email, name: values.name, role: values.role })
+    logger.info('User created successfully', { email: values.email, role: values.role })
     form.reset()
     onSuccess?.(response)
   })
@@ -79,6 +83,22 @@ export function UserCreateForm({ onCreate, onSuccess, onCancel }: UserCreateForm
           disabled={form.isSubmitting}
           fullWidth
         />
+        <div className="w-full">
+          <label htmlFor="role" className="block text-sm font-medium text-slate-700 mb-1">
+            権限
+            <span className="text-red-500 ml-1">*</span>
+          </label>
+          <select
+            id="role"
+            value={form.fields.role.value}
+            onChange={e => form.fields.role.setValue(e.target.value as UserRole)}
+            disabled={form.isSubmitting}
+            className="block w-full px-3 py-2 border rounded-lg text-slate-900 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500 min-h-[2.75rem] border-slate-300 focus:border-blue-500 focus:ring-blue-200"
+          >
+            <option value="user">一般ユーザー</option>
+            <option value="admin">管理者</option>
+          </select>
+        </div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" onClick={onCancel} disabled={form.isSubmitting} variant="secondary">
             キャンセル

@@ -60,7 +60,8 @@ def create_user(*, data: UserCreateRequest, user_service: UserService):
     Request body:
         {
             "email": "newuser@example.com",
-            "name": "New User"
+            "name": "New User",
+            "role": "user"  // optional, defaults to "user"
         }
 
     Returns:
@@ -75,9 +76,9 @@ def create_user(*, data: UserCreateRequest, user_service: UserService):
             "initial_password": "aB3xY9mK2pL5"
         }
     """
-    logger.info("POST /api/users - Creating new user")
+    logger.info(f"POST /api/users - Creating new user with role={data.role}")
 
-    result = user_service.create_user(email=data.email, name=data.name)
+    result = user_service.create_user(email=data.email, name=data.name, role=data.role)
 
     logger.info(f"POST /api/users - User created successfully: {data.email} (id={result.user.id})")
     return jsonify(result.model_dump()), HTTP_CREATED

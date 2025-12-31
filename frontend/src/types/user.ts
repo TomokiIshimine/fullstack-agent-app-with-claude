@@ -14,11 +14,17 @@ export interface UserResponse {
 }
 
 /**
+ * User role type
+ */
+export type UserRole = 'admin' | 'user'
+
+/**
  * User create request payload
  */
 export interface UserCreateRequest {
   email: string
   name: string
+  role?: UserRole
 }
 
 /**

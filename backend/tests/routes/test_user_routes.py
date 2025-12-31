@@ -131,6 +131,51 @@ def test_create_user_empty_name(app):
     assert_response_error(response, 400)
 
 
+def test_create_admin_user_success(app):
+    """Test that admin can create a new admin user."""
+    admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
+    admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
+
+    response = admin_client.post("/api/users", json={"email": "newadmin@example.com", "name": "New Admin", "role": "admin"})
+
+    data = assert_response_success(response, 201)
+    assert "user" in data
+    assert "initial_password" in data
+
+    # Check user data
+    user = data["user"]
+    assert user["email"] == "newadmin@example.com"
+    assert user["name"] == "New Admin"
+    assert user["role"] == "admin"
+    assert "id" in user
+
+    # Check initial password format (12 chars, alphanumeric)
+    password = data["initial_password"]
+    assert len(password) == 12
+
+
+def test_create_user_with_explicit_user_role(app):
+    """Test that admin can create user with explicit 'user' role."""
+    admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
+    admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
+
+    response = admin_client.post("/api/users", json={"email": "newuser@example.com", "name": "New User", "role": "user"})
+
+    data = assert_response_success(response, 201)
+    user = data["user"]
+    assert user["role"] == "user"
+
+
+def test_create_user_invalid_role(app):
+    """Test that invalid role is rejected."""
+    admin_id = create_user(app, email="admin@example.com", password="admin123", role="admin")
+    admin_client = create_auth_client(app, admin_id, email="admin@example.com", role="admin")
+
+    response = admin_client.post("/api/users", json={"email": "newuser@example.com", "name": "New User", "role": "superadmin"})
+
+    assert_response_error(response, 400)
+
+
 # DELETE /api/users/{id} tests
 
 

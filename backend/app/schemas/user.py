@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
@@ -49,7 +50,15 @@ class _UserRequestBase(BaseModel):
 class UserCreateRequest(_UserRequestBase):
     """Schema for creating a new user."""
 
-    pass
+    role: Literal["admin", "user"] = "user"
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        """Validate role value."""
+        if v not in ("admin", "user"):
+            raise UserValidationError("Role must be 'admin' or 'user'")
+        return v
 
 
 class UserCreateResponse(BaseModel):
