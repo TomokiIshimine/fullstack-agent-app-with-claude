@@ -87,6 +87,7 @@ https://{domain}/api/{version}/{resource}/{id}/{sub-resource}
 | **ユーザー管理** | `POST /api/users` | ユーザー作成（管理者のみ） |
 | **ユーザー管理** | `PATCH /api/users/me` | プロフィール更新（認証ユーザー） |
 | **ユーザー管理** | `DELETE /api/users/{id}` | ユーザー削除（管理者のみ） |
+| **ユーザー管理** | `POST /api/users/{id}/reset-password` | パスワードリセット（管理者のみ） |
 | **パスワード管理** | `POST /api/password/change` | パスワード変更（認証ユーザー） |
 | **会話** | `GET /api/conversations` | 会話一覧取得（認証ユーザー） |
 | **会話** | `POST /api/conversations` | 新規会話作成（ストリーミング対応） |
@@ -223,13 +224,15 @@ GET /api/users?role=admin&sort_by=created_at&order=desc
 ```json
 {
   "email": "newuser@example.com",
-  "name": "New User"
+  "name": "New User",
+  "role": "user"
 }
 ```
 
 **バリデーション:**
 - `email`: 必須、有効なメールアドレス形式
 - `name`: 必須、1文字以上100文字以下
+- `role`: 任意、`user` または `admin`（デフォルト: `user`）
 
 **レスポンス (201 Created):**
 ```json
@@ -248,7 +251,8 @@ GET /api/users?role=admin&sort_by=created_at&order=desc
 **注記:**
 - 初期パスワードはランダムに生成されます（12文字、英数字）
 - 初期パスワードは一度だけ表示されるため、ユーザーに確実に伝える必要があります
-- 新規ユーザーのロールは自動的に `user` に設定されます
+- `role` パラメータを省略した場合、デフォルトで `user` が設定されます
+- 管理者ユーザーを作成する場合は `role: "admin"` を指定します
 
 #### プロフィール更新 (`PATCH /api/users/me`)
 
@@ -334,6 +338,30 @@ GET /api/users?role=admin&sort_by=created_at&order=desc
     "error": "Current password is incorrect"
   }
   ```
+
+#### パスワードリセット (`POST /api/users/{id}/reset-password`)
+
+**リクエスト:**
+- 認証: 必要（管理者のみ）
+- パスパラメータ: `{id}` - 対象ユーザーのID
+- ボディ: なし
+
+**レスポンス (200 OK):**
+```json
+{
+  "message": "パスワードをリセットしました",
+  "new_password": "aB3xY9mK2pL5"
+}
+```
+
+**注記:**
+- 新しいパスワードはランダムに生成されます（12文字、英数字）
+- 新しいパスワードは一度だけ表示されるため、ユーザーに確実に伝える必要があります
+- 管理者が任意のユーザーのパスワードをリセットできます
+
+**エラーケース:**
+- `404 Not Found`: 指定されたIDのユーザーが存在しない
+- `403 Forbidden`: 管理者権限がない
 
 ---
 
@@ -554,6 +582,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 | `POST /api/users` | 必要 | 管理者のみ |
 | `PATCH /api/users/me` | 必要 | 全ユーザー |
 | `DELETE /api/users/{id}` | 必要 | 管理者のみ |
+| `POST /api/users/{id}/reset-password` | 必要 | 管理者のみ |
 | `POST /api/password/change` | 必要 | 全ユーザー |
 | `GET /api/conversations` | 必要 | 全ユーザー |
 | `POST /api/conversations` | 必要 | 全ユーザー |

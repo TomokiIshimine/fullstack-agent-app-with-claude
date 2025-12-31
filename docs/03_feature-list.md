@@ -38,6 +38,7 @@ graph TB
     UserMgmt --> ProfileUpdate["プロフィール更新"]
     UserMgmt --> UserDelete["ユーザー削除"]
     UserMgmt --> PasswordChange["パスワード変更"]
+    UserMgmt --> PasswordReset["パスワードリセット（管理者）"]
 
     AIChat --> ConversationList["会話一覧表示"]
     AIChat --> NewConversation["新規会話作成"]
@@ -83,10 +84,11 @@ graph TB
 | 機能 | エンドポイント | 実装箇所 | 主な仕様 |
 |------|--------------|---------|---------|
 | **ユーザー一覧取得** | `GET /api/users` | FE: `UserManagementPage.tsx`<br/>BE: `user_routes.py` | - 管理者のみアクセス可能<br/>- 全ユーザーの情報を取得 |
-| **ユーザー作成** | `POST /api/users` | FE: `UserCreateForm.tsx`<br/>BE: `user_routes.py` | - 管理者のみアクセス可能<br/>- ランダムな初期パスワードを生成<br/>- 作成後に初期パスワードを表示 |
+| **ユーザー作成** | `POST /api/users` | FE: `UserCreateForm.tsx`<br/>BE: `user_routes.py` | - 管理者のみアクセス可能<br/>- ランダムな初期パスワードを生成<br/>- 作成後に初期パスワードを表示<br/>- ロール指定可能（user/admin） |
 | **プロフィール更新** | `PATCH /api/users/me` | FE: `SettingsPage.tsx`<br/>BE: `user_routes.py` | - 認証済みユーザーが自身のプロフィールを更新<br/>- メールアドレスと名前の変更 |
 | **ユーザー削除** | `DELETE /api/users/{id}` | FE: `UserList.tsx`<br/>BE: `user_routes.py` | - 管理者のみアクセス可能<br/>- 指定したユーザーを削除 |
 | **パスワード変更** | `POST /api/password/change` | FE: `SettingsPage.tsx`<br/>BE: `password_routes.py` | - 認証済みユーザーが自身のパスワードを変更<br/>- 現在のパスワード確認が必要<br/>- 新パスワードのバリデーション（8文字以上、英数字） |
+| **パスワードリセット（管理者用）** | `POST /api/users/{id}/reset-password` | FE: `UserList.tsx`<br/>BE: `user_routes.py` | - 管理者のみアクセス可能<br/>- ランダムな新パスワードを生成<br/>- 新パスワードを画面に表示 |
 
 ---
 
@@ -140,6 +142,7 @@ graph TB
 | ユーザー管理 | プロフィール更新 | ✓ | ✓ | BE: ✓, FE: ✓ |
 | ユーザー管理 | ユーザー削除 | ✓ | ✓ | BE: ✓, FE: ✓ |
 | ユーザー管理 | パスワード変更 | ✓ | ✓ | BE: ✓, FE: ✓ |
+| ユーザー管理 | パスワードリセット（管理者用） | ✓ | ✓ | BE: ✓, FE: ✓ |
 | AIチャット | 会話一覧取得 | ✓ | ✓ | BE: ✓ |
 | AIチャット | 新規会話作成 | ✓ | ✓ | BE: ✓ |
 | AIチャット | 会話詳細取得 | ✓ | ✓ | BE: ✓ |
@@ -195,6 +198,7 @@ graph TB
 | POST | `/api/users` | 必要 | 管理者のみ | ユーザー作成 |
 | PATCH | `/api/users/me` | 必要 | 全ユーザー | プロフィール更新 |
 | DELETE | `/api/users/{id}` | 必要 | 管理者のみ | ユーザー削除 |
+| POST | `/api/users/{id}/reset-password` | 必要 | 管理者のみ | パスワードリセット |
 
 ### 5.4 パスワード管理 API
 
