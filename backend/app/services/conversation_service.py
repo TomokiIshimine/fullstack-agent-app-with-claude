@@ -270,23 +270,42 @@ class ConversationService:
         self.session.flush()
 
         # Generate and stream AI response using common method
-        response_generator = self._stream_agent_response(messages)
+        # Tool call buffer is passed to allow persistence on abort
+        tool_call_buffer: dict[str, ToolCallData] = {}
+        response_generator = self._stream_agent_response(messages, tool_call_buffer)
         result: AgentStreamingResult | None = None
+        streaming_completed = False
         try:
-            while True:
-                streaming_event = next(response_generator)
-                yield streaming_event
-        except StopIteration as e:
-            result = e.value
+            try:
+                while True:
+                    streaming_event = next(response_generator)
+                    yield streaming_event
+            except StopIteration as e:
+                result = e.value
+                streaming_completed = True
 
-        # Finalize and yield end event
-        if result is None:
-            empty_streaming_result = self.metadata_service.build_streaming_result(content="", event=None)
-            result = AgentStreamingResult(streaming_result=empty_streaming_result)
-        end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
-        yield ("end", end_event_data)
+            # Finalize and yield end event (only on successful completion)
+            if result is None:
+                empty_streaming_result = self.metadata_service.build_streaming_result(content="", event=None)
+                result = AgentStreamingResult(streaming_result=empty_streaming_result)
+            end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
+            yield ("end", end_event_data)
 
-        logger.info(f"Streaming conversation created: {conversation.uuid}")
+            logger.info(f"Streaming conversation created: {conversation.uuid}")
+        finally:
+            # Persist buffered tool calls if streaming was interrupted
+            if not streaming_completed and tool_call_buffer:
+                try:
+                    self.tool_call_repo.create_batch(
+                        message_id=assistant_message.id,
+                        tool_calls=list(tool_call_buffer.values()),
+                    )
+                    self.session.flush()
+                    logger.warning(
+                        f"Persisted {len(tool_call_buffer)} tool calls after streaming interruption " f"in conversation {conversation.uuid}"
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to persist tool calls after streaming interruption: {e}")
 
     def delete_conversation(
         self,
@@ -387,7 +406,8 @@ class ConversationService:
 
         # Generate AI response using agent with common event processing
         # Consume streaming generator to get result with metadata (don't yield events)
-        response_generator = self._stream_agent_response(messages)
+        tool_call_buffer: dict[str, ToolCallData] = {}
+        response_generator = self._stream_agent_response(messages, tool_call_buffer)
         result: AgentStreamingResult | None = None
         try:
             while True:
@@ -471,23 +491,40 @@ class ConversationService:
         self.session.flush()
 
         # Generate and stream AI response using common method
-        response_generator = self._stream_agent_response(messages)
+        # Tool call buffer is passed to allow persistence on abort
+        tool_call_buffer: dict[str, ToolCallData] = {}
+        response_generator = self._stream_agent_response(messages, tool_call_buffer)
         result: AgentStreamingResult | None = None
+        streaming_completed = False
         try:
-            while True:
-                streaming_event = next(response_generator)
-                yield streaming_event
-        except StopIteration as e:
-            result = e.value
+            try:
+                while True:
+                    streaming_event = next(response_generator)
+                    yield streaming_event
+            except StopIteration as e:
+                result = e.value
+                streaming_completed = True
 
-        # Finalize and yield end event
-        if result is None:
-            empty_streaming_result = self.metadata_service.build_streaming_result(content="", event=None)
-            result = AgentStreamingResult(streaming_result=empty_streaming_result)
-        end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
-        yield ("end", end_event_data)
+            # Finalize and yield end event (only on successful completion)
+            if result is None:
+                empty_streaming_result = self.metadata_service.build_streaming_result(content="", event=None)
+                result = AgentStreamingResult(streaming_result=empty_streaming_result)
+            end_event_data = self._finalize_streaming_response(assistant_message, conversation, result)
+            yield ("end", end_event_data)
 
-        logger.info(f"Streaming message exchange in conversation {uuid}")
+            logger.info(f"Streaming message exchange in conversation {uuid}")
+        finally:
+            # Persist buffered tool calls if streaming was interrupted
+            if not streaming_completed and tool_call_buffer:
+                try:
+                    self.tool_call_repo.create_batch(
+                        message_id=assistant_message.id,
+                        tool_calls=list(tool_call_buffer.values()),
+                    )
+                    self.session.flush()
+                    logger.warning(f"Persisted {len(tool_call_buffer)} tool calls after streaming interruption " f"in conversation {uuid}")
+                except Exception as e:
+                    logger.error(f"Failed to persist tool calls after streaming interruption: {e}")
 
     def _finalize_streaming_response(
         self,
@@ -666,16 +703,21 @@ class ConversationService:
     def _stream_agent_response(
         self,
         messages: list[dict],
+        tool_call_buffer: dict[str, ToolCallData],
     ) -> Generator[StreamingEvent, None, AgentStreamingResult]:
         """
         Stream agent response, yielding events and returning result with metadata.
 
-        Tool calls are buffered in memory during streaming and returned as part
-        of the AgentStreamingResult for batch database operations after streaming
-        completes. This reduces database round-trips and improves performance.
+        Tool calls are buffered in the provided tool_call_buffer during streaming
+        and returned as part of the AgentStreamingResult for batch database
+        operations after streaming completes. The buffer is modified in place,
+        allowing callers to access partial results if streaming is interrupted.
 
         Args:
             messages: Message history for the agent
+            tool_call_buffer: Dictionary to store tool calls (modified in place).
+                             Callers should provide an empty dict and can use it
+                             in a finally block to persist partial results on abort.
 
         Yields:
             StreamingEvent tuples for tool calls and text deltas
@@ -685,7 +727,6 @@ class ConversationService:
         """
         full_response = ""
         metadata_event: MessageMetadataEvent | None = None
-        tool_call_buffer: dict[str, ToolCallData] = {}
 
         for event in self.agent_service.generate_response(messages, stream=True):
             streaming_event, text_content = self._process_agent_event(event, tool_call_buffer)

@@ -640,7 +640,8 @@ class TestStreamAgentResponse:
             ]
         )
 
-        gen = service._stream_agent_response([{"role": "user", "content": "Hi"}])
+        tool_call_buffer: dict[str, ToolCallData] = {}
+        gen = service._stream_agent_response([{"role": "user", "content": "Hi"}], tool_call_buffer)
 
         # Consume generator to get result
         result = None
@@ -669,7 +670,8 @@ class TestStreamAgentResponse:
             ]
         )
 
-        gen = service._stream_agent_response([{"role": "user", "content": "Hi"}])
+        tool_call_buffer: dict[str, ToolCallData] = {}
+        gen = service._stream_agent_response([{"role": "user", "content": "Hi"}], tool_call_buffer)
 
         events = []
         try:
@@ -696,7 +698,8 @@ class TestStreamAgentResponse:
             ]
         )
 
-        gen = service._stream_agent_response([{"role": "user", "content": "Add 1+2"}])
+        tool_call_buffer: dict[str, ToolCallData] = {}
+        gen = service._stream_agent_response([{"role": "user", "content": "Add 1+2"}], tool_call_buffer)
 
         # Consume generator to get result
         events = []
@@ -719,6 +722,83 @@ class TestStreamAgentResponse:
         assert result.tool_calls[0].tool_call_id == "tc_1"
         assert result.tool_calls[0].output == "3"
         assert result.tool_calls[0].status == "success"
+
+    def test_stream_agent_response_populates_buffer(self, app, conversation_service):
+        """Test that _stream_agent_response populates the provided buffer."""
+        service, session = conversation_service
+
+        service._agent_service.generate_response.return_value = iter(
+            [
+                ToolCallEvent(tool_call_id="tc_1", tool_name="add", input={"a": 1, "b": 2}),
+                ToolResultEvent(tool_call_id="tc_1", output="3", error=None),
+                MessageCompleteEvent(content="Done"),
+                MessageMetadataEvent(input_tokens=10, output_tokens=5, model="claude-3", response_time_ms=100),
+            ]
+        )
+
+        tool_call_buffer: dict[str, ToolCallData] = {}
+        gen = service._stream_agent_response([{"role": "user", "content": "Hi"}], tool_call_buffer)
+
+        # Partially consume generator (simulate interruption)
+        next(gen)  # tool_call_start
+        next(gen)  # tool_call_end
+
+        # Verify buffer was populated even without completing the generator
+        assert "tc_1" in tool_call_buffer
+        assert tool_call_buffer["tc_1"].tool_name == "add"
+        assert tool_call_buffer["tc_1"].status == "success"
+
+
+class TestStreamingAbortHandling:
+    """Tests for streaming abort handling - tool calls should persist on interruption."""
+
+    def test_send_message_streaming_persists_tool_calls_on_abort(self, app, conversation_service, conversation_with_messages):
+        """Test that tool calls are persisted when streaming is interrupted."""
+        service, session = conversation_service
+
+        # Mock agent to raise exception after yielding tool call events
+        def generate_response_with_error(*args, **kwargs):
+            yield ToolCallEvent(tool_call_id="tc_abort_1", tool_name="add", input={"a": 1, "b": 2})
+            yield ToolResultEvent(tool_call_id="tc_abort_1", output="3", error=None)
+            raise RuntimeError("Simulated API error")
+
+        service._agent_service.generate_response = generate_response_with_error
+
+        # Start streaming
+        gen = service.send_message_streaming(
+            uuid=conversation_with_messages["uuid"],
+            user_id=conversation_with_messages["user_id"],
+            content="Test",
+        )
+
+        # Consume events until error
+        events = []
+        try:
+            for event in gen:
+                events.append(event)
+        except RuntimeError:
+            pass  # Expected
+
+        # Verify tool calls were persisted despite the error
+        # Find the assistant message that was created
+        from app.models.message import Message
+
+        assistant_messages = (
+            session.query(Message)
+            .filter(
+                Message.conversation_id == conversation_with_messages["id"],
+                Message.role == "assistant",
+            )
+            .all()
+        )
+        assert len(assistant_messages) >= 1
+        latest_assistant = assistant_messages[-1]
+
+        # Verify tool call was persisted
+        tool_calls = service.tool_call_repo.find_by_message_id(latest_assistant.id)
+        assert len(tool_calls) == 1
+        assert tool_calls[0].tool_call_id == "tc_abort_1"
+        assert tool_calls[0].status == "success"
 
 
 class TestStreamingResultDataclass:
