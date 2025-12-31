@@ -1,8 +1,8 @@
 # 機能一覧
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-12-30
-**バージョン:** 1.4
+**最終更新:** 2025-12-31
+**バージョン:** 1.6
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -45,8 +45,14 @@ graph TB
     AIChat --> StreamingResponse["ストリーミング応答"]
     AIChat --> DeleteConversation["会話削除"]
 
+    AdminMgmt --> AdminDashboard["ダッシュボード"]
     AdminMgmt --> AdminConversationList["会話履歴一覧"]
     AdminMgmt --> AdminConversationDetail["会話詳細表示"]
+    AdminMgmt --> AdminPasswordReset["パスワードリセット"]
+
+    AdminDashboard --> DashboardSummary["サマリー統計"]
+    AdminDashboard --> DashboardTrends["トレンド分析"]
+    AdminDashboard --> DashboardRankings["ユーザーランキング"]
 
     Common --> Logging["ロギング"]
     Common --> ErrorHandle["エラーハンドリング"]
@@ -101,10 +107,26 @@ graph TB
 
 ### 3.4 管理者機能
 
+#### 3.4.1 ダッシュボード
+
+| 機能 | エンドポイント | 実装箇所 | 主な仕様 |
+|------|--------------|---------|---------|
+| **サマリー統計** | `GET /api/admin/dashboard/summary` | FE: `DashboardPage.tsx`<br/>BE: `admin_dashboard_routes.py` | - 管理者のみアクセス可能<br/>- ユーザー数（総数・アクティブ）<br/>- 会話数（総数・本日）<br/>- メッセージ数・トークン数<br/>- 推定コスト（USD） |
+| **トレンド分析** | `GET /api/admin/dashboard/trends` | FE: `TrendChart.tsx`<br/>BE: `admin_dashboard_routes.py` | - 管理者のみアクセス可能<br/>- 期間: 7日/30日/90日/カスタム<br/>- メトリクス: 会話数/メッセージ数/トークン数<br/>- 日別データのグラフ表示 |
+| **ユーザーランキング** | `GET /api/admin/dashboard/rankings` | FE: `RankingTable.tsx`<br/>BE: `admin_dashboard_routes.py` | - 管理者のみアクセス可能<br/>- メトリクス: 会話数/メッセージ数/トークン数<br/>- 期間: 7日/30日/90日/全期間<br/>- 上位10〜50ユーザー表示 |
+
+#### 3.4.2 会話履歴管理
+
 | 機能 | エンドポイント | 実装箇所 | 主な仕様 |
 |------|--------------|---------|---------|
 | **会話履歴一覧** | `GET /api/admin/conversations` | FE: `ConversationHistoryPage.tsx`<br/>BE: `admin_conversation_routes.py` | - 管理者のみアクセス可能<br/>- 全ユーザーの会話一覧取得<br/>- ページネーション対応<br/>- ユーザーID/日付範囲でフィルタリング |
 | **会話詳細表示** | `GET /api/admin/conversations/{uuid}` | FE: `ConversationDetailModal.tsx`<br/>BE: `admin_conversation_routes.py` | - 管理者のみアクセス可能<br/>- 会話の全メッセージ表示<br/>- ユーザー情報を含む |
+
+#### 3.4.3 ユーザー管理
+
+| 機能 | エンドポイント | 実装箇所 | 主な仕様 |
+|------|--------------|---------|---------|
+| **パスワードリセット** | `POST /api/users/{id}/reset-password` | FE: `UserManagementPage.tsx`<br/>BE: `user_routes.py` | - 管理者のみアクセス可能<br/>- ランダムな新パスワードを生成<br/>- 新パスワードを管理者に表示 |
 
 ---
 
@@ -139,8 +161,12 @@ graph TB
 | AIチャット | 会話詳細取得 | ✓ | ✓ | BE: ✓ |
 | AIチャット | メッセージ送信 | ✓ | ✓ | BE: ✓ |
 | AIチャット | 会話削除 | ✓ | ✓ | BE: ✓ |
+| 管理者機能 | サマリー統計 | ✓ | ✓ | BE: ✓ |
+| 管理者機能 | トレンド分析 | ✓ | ✓ | BE: ✓ |
+| 管理者機能 | ユーザーランキング | ✓ | ✓ | BE: ✓ |
 | 管理者機能 | 会話履歴一覧 | ✓ | ✓ | BE: ✓ |
 | 管理者機能 | 会話詳細表示 | ✓ | ✓ | BE: ✓ |
+| 管理者機能 | パスワードリセット | ✓ | ✓ | BE: ✓, FE: ✓ |
 | 共通 | UIコンポーネントライブラリ | - | ✓ | FE: ✓ |
 | 共通 | ロギング | ✓ | ✓ | - |
 | 共通 | エラーハンドリング | ✓ | ✓ | BE: ✓, FE: ✓ |
@@ -186,6 +212,7 @@ graph TB
 | POST | `/api/users` | 必要 | 管理者のみ | ユーザー作成 |
 | PATCH | `/api/users/me` | 必要 | 全ユーザー | プロフィール更新 |
 | DELETE | `/api/users/{id}` | 必要 | 管理者のみ | ユーザー削除 |
+| POST | `/api/users/{id}/reset-password` | 必要 | 管理者のみ | パスワードリセット |
 
 ### 5.4 パスワード管理 API
 
@@ -204,6 +231,36 @@ graph TB
 | POST | `/api/conversations/{uuid}/messages` | 必要 | 所有者のみ | メッセージ送信（SSEストリーミング対応） |
 
 ### 5.6 管理者用 API
+
+#### ダッシュボード
+
+| メソッド | エンドポイント | 認証 | 権限 | 説明 |
+|---------|--------------|------|------|------|
+| GET | `/api/admin/dashboard/summary` | 必要 | 管理者のみ | サマリー統計取得 |
+| GET | `/api/admin/dashboard/trends` | 必要 | 管理者のみ | トレンドデータ取得 |
+| GET | `/api/admin/dashboard/rankings` | 必要 | 管理者のみ | ユーザーランキング取得 |
+
+**サマリー統計レスポンス:**
+- `total_users`: 総ユーザー数
+- `active_users`: アクティブユーザー数（過去30日）
+- `total_conversations`: 総会話数
+- `today_conversations`: 本日の会話数
+- `total_messages`: 総メッセージ数
+- `total_tokens`: 総トークン数（input/output）
+- `total_cost_usd`: 推定コスト（USD）
+
+**トレンドクエリパラメータ:**
+- `period`: 期間（7d | 30d | 90d | custom）
+- `metric`: メトリクス（conversations | messages | tokens）
+- `start_date`: 開始日（YYYY-MM-DD、custom時必須）
+- `end_date`: 終了日（YYYY-MM-DD、custom時必須）
+
+**ランキングクエリパラメータ:**
+- `metric`: メトリクス（conversations | messages | tokens）
+- `limit`: 取得件数（デフォルト: 10、最大: 50）
+- `period`: 期間（7d | 30d | 90d | all）
+
+#### 会話履歴
 
 | メソッド | エンドポイント | 認証 | 権限 | 説明 |
 |---------|--------------|------|------|------|
@@ -237,6 +294,7 @@ graph TB
 | ログイン画面 | `/login` | 不要 | - | ユーザー認証 | `LoginPage.tsx` |
 | チャット画面 | `/chat`, `/chat/:uuid` | 必要 | 全ユーザー | AIチャット、会話管理 | `ChatPage.tsx` |
 | 設定画面 | `/settings` | 必要 | 全ユーザー | プロフィール編集、パスワード変更 | `SettingsPage.tsx` |
+| ダッシュボード画面 | `/admin/dashboard` | 必要 | 管理者のみ | 統計、トレンド、ランキング表示 | `DashboardPage.tsx` |
 | ユーザー管理画面 | `/admin/users` | 必要 | 管理者のみ | ユーザー一覧表示、作成、削除 | `UserManagementPage.tsx` |
 | 会話履歴管理画面 | `/admin/conversations` | 必要 | 管理者のみ | 全ユーザーの会話履歴閲覧 | `ConversationHistoryPage.tsx` |
 
@@ -247,23 +305,34 @@ stateDiagram-v2
     [*] --> Root: アプリ起動 (/)
     Root --> Login: 未認証
     Root --> Chat: 認証済みユーザー
-    Root --> UserManagement: 管理者
+    Root --> Dashboard: 管理者
 
     Chat --> Settings: 設定画面へ
+    Chat --> Dashboard: ダッシュボードへ（管理者のみ）
     Chat --> UserManagement: ユーザー管理へ（管理者のみ）
     Chat --> ConversationHistory: 会話履歴へ（管理者のみ）
+
+    Dashboard --> Chat: チャット画面へ
+    Dashboard --> UserManagement: ユーザー管理へ
+    Dashboard --> ConversationHistory: 会話履歴へ
+    Dashboard --> Settings: 設定画面へ
+
     Settings --> Chat: チャット画面へ
     UserManagement --> Chat: チャット画面へ
     ConversationHistory --> Chat: チャット画面へ
 
+    UserManagement --> Dashboard: ダッシュボードへ
     UserManagement --> Settings: 設定画面へ
     UserManagement --> ConversationHistory: 会話履歴へ
+    Settings --> Dashboard: ダッシュボードへ（管理者のみ）
     Settings --> UserManagement: ユーザー管理へ（管理者のみ）
     Settings --> ConversationHistory: 会話履歴へ（管理者のみ）
+    ConversationHistory --> Dashboard: ダッシュボードへ
     ConversationHistory --> UserManagement: ユーザー管理へ
     ConversationHistory --> Settings: 設定画面へ
 
     Chat --> Login: ログアウト
+    Dashboard --> Login: ログアウト
     UserManagement --> Login: ログアウト
     ConversationHistory --> Login: ログアウト
     Settings --> Login: ログアウト
