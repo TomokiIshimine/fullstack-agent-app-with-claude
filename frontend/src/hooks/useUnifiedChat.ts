@@ -307,7 +307,7 @@ export function useUnifiedChat(options: UseUnifiedChatOptions = {}) {
 
         logger.info('Message sent successfully', { uuid: resultUuid, isNew })
 
-        return { uuid: resultUuid, isNew, userMessagePersisted: true }
+        return { uuid: resultUuid, isNew, userMessagePersisted }
       } catch (err) {
         const error = err as Error
 
