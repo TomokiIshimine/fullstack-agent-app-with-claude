@@ -48,8 +48,8 @@ export function StreamingMessage({ content, toolCalls = [] }: StreamingMessagePr
         )}
         {hasContent && (
           <>
-            <MarkdownRenderer content={content} />
-            <span className="inline-block w-0.5 h-[1em] bg-primary-500 ml-0.5 animate-[blink_1s_infinite]" />
+            <MarkdownRenderer content={content} inline />
+            <span className="inline-block w-0.5 h-[1em] bg-primary-500 ml-0.5 align-middle animate-[blink_1s_infinite]" />
           </>
         )}
         {!hasContent && hasToolCalls && <LoadingDots />}

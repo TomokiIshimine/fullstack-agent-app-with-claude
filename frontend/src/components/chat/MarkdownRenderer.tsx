@@ -9,6 +9,8 @@ interface MarkdownRendererProps {
   content: string
   className?: string
   isUserMessage?: boolean
+  /** When true, renders as inline element (for streaming cursor positioning) */
+  inline?: boolean
 }
 
 function createMarkdownComponents(isUserMessage: boolean): Components {
@@ -109,15 +111,32 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   className = '',
   isUserMessage = false,
+  inline = false,
 }: MarkdownRendererProps) {
   const components = useMemo(() => createMarkdownComponents(isUserMessage), [isUserMessage])
 
   if (!content) return null
 
+  const proseClasses = [
+    'whitespace-normal prose prose-sm max-w-none',
+    // Use prose-invert for user messages to ensure white text on colored background
+    isUserMessage && 'prose-invert',
+    'prose-headings:font-semibold prose-headings:leading-tight',
+    'prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg',
+    'prose-p:my-3 first:prose-p:mt-0 last:prose-p:mb-0',
+    'prose-ul:my-3 prose-ul:pl-6 prose-ol:my-3 prose-ol:pl-6 prose-li:my-1',
+    'prose-strong:font-semibold prose-em:italic',
+    'prose-hr:my-6 prose-hr:border-slate-200',
+    'prose-img:max-w-full prose-img:rounded-lg prose-img:my-3',
+    // Inline display for streaming cursor positioning
+    inline && '[&]:inline [&>*]:inline',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <div
-      className={`whitespace-normal prose prose-sm max-w-none prose-headings:font-semibold prose-headings:leading-tight prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:my-3 first:prose-p:mt-0 last:prose-p:mb-0 prose-ul:my-3 prose-ul:pl-6 prose-ol:my-3 prose-ol:pl-6 prose-li:my-1 prose-strong:font-semibold prose-em:italic prose-hr:my-6 prose-hr:border-slate-200 prose-img:max-w-full prose-img:rounded-lg prose-img:my-3 ${className}`}
-    >
+    <div className={proseClasses}>
       <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={components}>
         {content}
       </ReactMarkdown>
