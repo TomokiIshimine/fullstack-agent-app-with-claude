@@ -155,6 +155,16 @@ class CookieConfig:
     domain: str | None = None
 
 
+def _parse_cookie_samesite(value: str | None) -> Literal["Strict", "Lax", "None"]:
+    if not value:
+        return "Lax"
+
+    normalized = value.strip().capitalize()
+    if normalized not in ("Strict", "Lax", "None"):
+        raise ValueError("COOKIE_SAMESITE must be 'Strict', 'Lax', or 'None'")
+    return normalized  # type: ignore[return-value]
+
+
 def load_cookie_config() -> CookieConfig:
     """Load cookie configuration from environment variables.
 
@@ -168,10 +178,11 @@ def load_cookie_config() -> CookieConfig:
     cookie_secure = os.getenv("COOKIE_SECURE", default_secure).lower() == "true"
 
     cookie_domain = os.getenv("COOKIE_DOMAIN")
+    cookie_samesite = _parse_cookie_samesite(os.getenv("COOKIE_SAMESITE"))
 
     return CookieConfig(
         httponly=True,
-        samesite="Lax",
+        samesite=cookie_samesite,
         path="/api",
         secure=cookie_secure,
         domain=cookie_domain if cookie_domain else None,
