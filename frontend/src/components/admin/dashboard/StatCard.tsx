@@ -1,3 +1,6 @@
+import { Card } from '@/components/ui'
+import { cn } from '@/lib/utils/cn'
+
 interface StatCardProps {
   title: string
   value: string | number
@@ -11,7 +14,7 @@ interface StatCardProps {
 
 export function StatCard({ title, value, subtitle, icon, trend }: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <Card>
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-slate-500">{title}</p>
@@ -21,9 +24,10 @@ export function StatCard({ title, value, subtitle, icon, trend }: StatCardProps)
           {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
           {trend && (
             <p
-              className={`mt-2 text-sm font-medium ${
+              className={cn(
+                'mt-2 text-sm font-medium',
                 trend.isPositive ? 'text-emerald-600' : 'text-red-600'
-              }`}
+              )}
             >
               {trend.isPositive ? '+' : ''}
               {trend.value}%
@@ -34,6 +38,6 @@ export function StatCard({ title, value, subtitle, icon, trend }: StatCardProps)
           <div className="flex-shrink-0 p-3 bg-blue-50 rounded-lg text-blue-600">{icon}</div>
         )}
       </div>
-    </div>
+    </Card>
   )
 }

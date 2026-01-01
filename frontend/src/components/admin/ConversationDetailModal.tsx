@@ -1,4 +1,5 @@
 import { Modal, Button } from '@/components/ui'
+import { cn } from '@/lib/utils/cn'
 import type { MessageDto } from '@/types/chat'
 
 interface ConversationDetail {
@@ -66,17 +67,19 @@ export function ConversationDetailModal({
               {conversation.messages.map(message => (
                 <div
                   key={message.id}
-                  className={`p-3 rounded-lg ${
+                  className={cn(
+                    'p-3 rounded-lg',
                     message.role === 'user' ? 'bg-blue-50 ml-4' : 'bg-slate-100 mr-4'
-                  }`}
+                  )}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span
-                      className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                      className={cn(
+                        'text-xs font-semibold px-2 py-0.5 rounded',
                         message.role === 'user'
                           ? 'bg-blue-200 text-blue-800'
                           : 'bg-slate-300 text-slate-800'
-                      }`}
+                      )}
                     >
                       {message.role === 'user' ? 'ユーザー' : 'アシスタント'}
                     </span>
