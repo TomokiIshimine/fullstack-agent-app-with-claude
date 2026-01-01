@@ -9,3 +9,17 @@ export type { AlertProps, AlertVariant } from './Alert'
 
 export { Modal } from './Modal'
 export type { ModalProps, ModalSize } from './Modal'
+
+export {
+  TokenIcon,
+  ClockIcon,
+  CostIcon,
+  CloseIcon,
+  EyeIcon,
+  EyeOffIcon,
+  WarningIcon,
+  CheckIcon,
+  ErrorCircleIcon,
+  InfoIcon,
+} from './Icons'
+export type { IconProps } from './Icons'
