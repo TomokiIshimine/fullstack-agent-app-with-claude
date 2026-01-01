@@ -48,23 +48,23 @@ export function ToolCallsGroup({ toolCalls }: ToolCallsGroupProps) {
   const statusIcon = getGroupStatusIcon(groupStatus)
 
   return (
-    <div className="tool-calls-group">
+    <div className="my-2 border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
       <button
         type="button"
-        className="tool-calls-group__header"
+        className="flex items-center gap-2 w-full py-2 px-3 bg-transparent border-none cursor-pointer text-sm text-slate-600 text-left transition-colors duration-200 hover:bg-slate-200"
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
       >
-        <span className="tool-calls-group__status">{statusIcon}</span>
-        <span className="tool-calls-group__text">{toolCalls.length}個のツールを使用</span>
+        <span className="text-sm">{statusIcon}</span>
+        <span className="flex-1 font-medium">{toolCalls.length}個のツールを使用</span>
         <span
-          className={`tool-calls-group__chevron ${isExpanded ? 'tool-calls-group__chevron--open' : ''}`}
+          className={`text-[10px] text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
         >
           ▶
         </span>
       </button>
       {isExpanded && (
-        <div className="tool-calls-group__content">
+        <div className="p-2 border-t border-slate-200 bg-white space-y-1">
           {toolCalls.map(tc => (
             <ToolCallItem key={'id' in tc ? tc.id : tc.toolCallId} toolCall={tc} />
           ))}

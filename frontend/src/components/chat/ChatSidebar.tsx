@@ -36,16 +36,29 @@ export function ChatSidebar({
     }
   }
 
-  const sidebarClasses = cn('chat-sidebar', isOpen && 'chat-sidebar--open')
-
   return (
     <>
-      {isOpen && onClose && <div className="chat-sidebar__overlay" onClick={onClose} />}
-      <aside className={sidebarClasses}>
-        <div className="chat-sidebar__header">
+      {/* Mobile overlay */}
+      {isOpen && onClose && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'w-[280px] bg-slate-800 text-white flex flex-col shrink-0',
+          'max-md:fixed max-md:left-0 max-md:top-16 max-md:bottom-0 max-md:z-50 max-md:transition-transform max-md:duration-300',
+          isOpen ? 'max-md:translate-x-0' : 'max-md:-translate-x-full'
+        )}
+      >
+        <div className="p-4 border-b border-slate-700">
           <button
             type="button"
-            className="chat-sidebar__new-chat-btn"
+            className="w-full py-3 px-4 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm font-medium cursor-pointer transition-colors duration-200 flex items-center gap-2 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={onNewChat}
             disabled={isLoading}
           >
@@ -66,18 +79,18 @@ export function ChatSidebar({
           </button>
         </div>
 
-        <div className="chat-sidebar__list">
+        <div className="flex-1 overflow-y-auto p-2">
           {isLoading ? (
-            <div className="chat-sidebar__loading">読み込み中...</div>
+            <div className="p-8 text-center text-slate-400">読み込み中...</div>
           ) : conversations.length === 0 ? (
-            <div className="chat-sidebar__empty">会話履歴がありません</div>
+            <div className="p-8 text-center text-slate-400 text-sm">会話履歴がありません</div>
           ) : (
             conversations.map(conv => (
               <div
                 key={conv.uuid}
                 className={cn(
-                  'chat-sidebar__item',
-                  conv.uuid === currentUuid && 'chat-sidebar__item--active'
+                  'py-3 px-4 rounded-lg cursor-pointer transition-colors duration-200 mb-1',
+                  conv.uuid === currentUuid ? 'bg-slate-600' : 'hover:bg-slate-700'
                 )}
                 onClick={() => onSelectConversation(conv.uuid)}
                 role="button"
@@ -88,8 +101,8 @@ export function ChatSidebar({
                   }
                 }}
               >
-                <div className="chat-sidebar__item-title">{conv.title}</div>
-                <div className="chat-sidebar__item-date">{formatDate(conv.updatedAt)}</div>
+                <div className="text-sm font-medium truncate">{conv.title}</div>
+                <div className="text-xs text-slate-400 mt-1">{formatDate(conv.updatedAt)}</div>
               </div>
             ))
           )}

@@ -51,10 +51,10 @@ describe('MarkdownRenderer', () => {
   })
 
   describe('Code Rendering', () => {
-    it('renders inline code with markdown-inline-code class', () => {
+    it('renders inline code with Tailwind styling classes', () => {
       render(<MarkdownRenderer content="Use `const` for constants" />)
       const codeElement = screen.getByText('const')
-      expect(codeElement).toHaveClass('markdown-inline-code')
+      expect(codeElement).toHaveClass('rounded', 'font-mono')
     })
 
     it('renders code blocks with language', () => {
@@ -83,10 +83,10 @@ plain text code
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })
 
-    it('renders links with markdown-link class', () => {
+    it('renders links with Tailwind styling classes', () => {
       render(<MarkdownRenderer content="[Link](https://example.com)" />)
       const link = screen.getByRole('link')
-      expect(link).toHaveClass('markdown-link')
+      expect(link).toHaveClass('underline', 'underline-offset-2')
     })
   })
 
@@ -133,7 +133,7 @@ plain text code
 
     it('applies custom className', () => {
       const { container } = render(<MarkdownRenderer content="Test" className="custom-class" />)
-      expect(container.firstChild).toHaveClass('markdown-content', 'custom-class')
+      expect(container.firstChild).toHaveClass('custom-class')
     })
 
     it('handles content with multiple paragraphs', () => {

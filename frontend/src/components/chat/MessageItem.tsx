@@ -15,15 +15,27 @@ export function MessageItem({ message, userName }: MessageItemProps) {
   const hasMetadata = !isUser && message.metadata
 
   return (
-    <div className={`message-item message-item--${message.role}`}>
-      <div className="message-item__avatar">{avatarText}</div>
-      <div className="message-item__content">
+    <div className={`flex gap-4 ${isUser ? 'flex-row-reverse' : ''}`}>
+      <div
+        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
+          isUser ? 'bg-primary-500 text-white' : 'bg-success-500 text-white'
+        }`}
+      >
+        {avatarText}
+      </div>
+      <div
+        className={`max-w-[80%] py-3 px-4 rounded-2xl leading-normal whitespace-pre-wrap break-words ${
+          isUser
+            ? 'bg-primary-500 text-white rounded-br-sm'
+            : 'bg-white text-slate-800 rounded-bl-sm shadow-sm'
+        }`}
+      >
         {hasToolCalls && (
-          <div className="message-item__tool-calls">
+          <div className="mt-3">
             <ToolCallsGroup toolCalls={message.toolCalls!} />
           </div>
         )}
-        <MarkdownRenderer content={message.content} />
+        <MarkdownRenderer content={message.content} isUserMessage={isUser} />
         {hasMetadata && <MessageMetadata metadata={message.metadata!} />}
       </div>
     </div>

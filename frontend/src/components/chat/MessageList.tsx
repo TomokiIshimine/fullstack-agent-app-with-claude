@@ -30,7 +30,7 @@ export function MessageList({
   }, [messages, streamingContent, streamingToolCalls, retryStatus])
 
   return (
-    <div className="message-list">
+    <div className="max-w-3xl mx-auto flex flex-col gap-6">
       {messages.map(message => (
         <MessageItem key={message.id} message={message} userName={userName} />
       ))}

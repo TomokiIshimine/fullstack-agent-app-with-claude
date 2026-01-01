@@ -7,7 +7,6 @@ import { ChatSidebar, ChatInput, MessageList, ChatError } from '@/components/cha
 import { Alert } from '@/components/ui'
 import { isConversationError } from '@/types/errors'
 import { logger } from '@/lib/logger'
-import '@/styles/chat.css'
 
 export function ChatPage() {
   const { uuid } = useParams<{ uuid?: string }>()
@@ -68,7 +67,7 @@ export function ChatPage() {
   const hasContent = chat.messages.length > 0 || chat.isStreaming
 
   return (
-    <div className="chat-layout">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-slate-50">
       <ChatSidebar
         conversations={conversations}
         currentUuid={uuid}
@@ -79,11 +78,11 @@ export function ChatPage() {
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      <main className="chat-main">
-        <header className="chat-main__header">
+      <main className="flex-1 flex flex-col min-w-0">
+        <header className="px-4 md:px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between">
           <button
             type="button"
-            className="chat-main__toggle-sidebar"
+            className="mr-3 md:hidden text-slate-600 hover:text-slate-800"
             onClick={() => setIsSidebarOpen(true)}
             aria-label="サイドバーを開く"
           >
@@ -102,7 +101,7 @@ export function ChatPage() {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <h1 className="chat-main__title">{chat.title}</h1>
+          <h1 className="text-base font-semibold text-slate-800">{chat.title}</h1>
         </header>
 
         {error && (
@@ -112,9 +111,11 @@ export function ChatPage() {
         )}
 
         {uuid && chat.isLoading ? (
-          <div className="chat-main__empty">読み込み中...</div>
+          <div className="flex-1 flex items-center justify-center text-slate-500">
+            読み込み中...
+          </div>
         ) : hasContent ? (
-          <div className="chat-main__messages">
+          <div className="flex-1 overflow-y-auto p-6">
             <MessageList
               messages={chat.messages}
               isStreaming={chat.isStreaming}
@@ -125,10 +126,12 @@ export function ChatPage() {
             />
           </div>
         ) : (
-          <div className="chat-main__empty">メッセージを入力して新しい会話を始めましょう</div>
+          <div className="flex-1 flex items-center justify-center text-slate-500">
+            メッセージを入力して新しい会話を始めましょう
+          </div>
         )}
 
-        <div className="chat-main__footer">
+        <div>
           {chat.streamError && (
             <div className="px-4 pb-2">
               <ChatError error={chat.streamError} onDismiss={chat.clearStreamError} />
