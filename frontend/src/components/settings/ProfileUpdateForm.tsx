@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import type { User } from '@/types/auth'
 import { updateProfile } from '@/lib/api/profile'
 import { logger } from '@/lib/logger'
-import { Input, Button, Alert } from '@/components/ui'
+import { Input, Button, Alert, Card } from '@/components/ui'
 import { useForm } from '@/hooks/useForm'
 import { validators } from '@/lib/validation'
 
@@ -62,7 +62,7 @@ export function ProfileUpdateForm({ user, onSuccess }: ProfileUpdateFormProps) {
   })
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <Card>
       <h2 className="text-2xl font-semibold text-slate-900 mb-6">プロフィール</h2>
       <form className="space-y-4" onSubmit={handleSubmit} aria-label="プロフィール更新フォーム">
         {form.error && (
@@ -100,6 +100,6 @@ export function ProfileUpdateForm({ user, onSuccess }: ProfileUpdateFormProps) {
           {form.isSubmitting ? '保存中...' : '変更を保存'}
         </Button>
       </form>
-    </div>
+    </Card>
   )
 }

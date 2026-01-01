@@ -1,9 +1,14 @@
 import type { UserCreateRequest, UserCreateResponse, UserRole } from '@/types/user'
 import { createUser as createUserApi } from '@/lib/api/users'
 import { logger } from '@/lib/logger'
-import { Input, Button, Alert } from '@/components/ui'
+import { Input, Button, Alert, Card, Select } from '@/components/ui'
 import { useForm } from '@/hooks/useForm'
 import { validators } from '@/lib/validation'
+
+const roleOptions = [
+  { value: 'user', label: '一般ユーザー' },
+  { value: 'admin', label: '管理者' },
+]
 
 interface UserCreateFormProps {
   onCreate?: (payload: UserCreateRequest) => Promise<UserCreateResponse>
@@ -50,7 +55,7 @@ export function UserCreateForm({ onCreate, onSuccess, onCancel }: UserCreateForm
   })
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <Card>
       <h3 className="text-2xl font-semibold text-slate-900 mb-6">新規ユーザー追加</h3>
       <form onSubmit={handleSubmit} className="space-y-4">
         {form.error && (
@@ -83,22 +88,16 @@ export function UserCreateForm({ onCreate, onSuccess, onCancel }: UserCreateForm
           disabled={form.isSubmitting}
           fullWidth
         />
-        <div className="w-full">
-          <label htmlFor="role" className="block text-sm font-medium text-slate-700 mb-1">
-            権限
-            <span className="text-red-500 ml-1">*</span>
-          </label>
-          <select
-            id="role"
-            value={form.fields.role.value}
-            onChange={e => form.fields.role.setValue(e.target.value as UserRole)}
-            disabled={form.isSubmitting}
-            className="block w-full px-3 py-2 border rounded-lg text-slate-900 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500 min-h-[2.75rem] border-slate-300 focus:border-blue-500 focus:ring-blue-200"
-          >
-            <option value="user">一般ユーザー</option>
-            <option value="admin">管理者</option>
-          </select>
-        </div>
+        <Select
+          id="role"
+          label="権限"
+          value={form.fields.role.value}
+          onChange={e => form.fields.role.setValue(e.target.value as UserRole)}
+          disabled={form.isSubmitting}
+          options={roleOptions}
+          required
+          fullWidth
+        />
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" onClick={onCancel} disabled={form.isSubmitting} variant="secondary">
             キャンセル
@@ -108,6 +107,6 @@ export function UserCreateForm({ onCreate, onSuccess, onCancel }: UserCreateForm
           </Button>
         </div>
       </form>
-    </div>
+    </Card>
   )
 }

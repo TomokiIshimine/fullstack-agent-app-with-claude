@@ -1,4 +1,5 @@
 import type { UserRankingItem, TrendMetric } from '@/types/adminDashboard'
+import { Card } from '@/components/ui'
 import { cn } from '@/lib/utils/cn'
 
 interface RankingTableProps {
@@ -17,26 +18,26 @@ const metricLabels: Record<TrendMetric, string> = {
 export function RankingTable({ rankings, metric, title, isLoading = false }: RankingTableProps) {
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6">
+      <Card>
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{title}</h3>
         <div className="h-64 flex items-center justify-center">
           <div className="animate-pulse text-slate-400">Loading...</div>
         </div>
-      </div>
+      </Card>
     )
   }
 
   if (rankings.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6">
+      <Card>
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{title}</h3>
         <p className="text-slate-500 text-center py-8">データがありません</p>
-      </div>
+      </Card>
     )
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <Card>
       <h3 className="text-lg font-semibold text-slate-800 mb-4">{title}</h3>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -83,6 +84,6 @@ export function RankingTable({ rankings, metric, title, isLoading = false }: Ran
           </tbody>
         </table>
       </div>
-    </div>
+    </Card>
   )
 }

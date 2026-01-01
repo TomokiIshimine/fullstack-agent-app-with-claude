@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { TrendDataPoint } from '@/types/adminDashboard'
+import { Card } from '@/components/ui'
 
 interface TrendChartProps {
   data: TrendDataPoint[]
@@ -28,42 +29,42 @@ export function TrendChart({ data, title, isLoading = false, color = '#3b82f6' }
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6">
+      <Card>
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{title}</h3>
         <div className="h-64 flex items-center justify-center">
           <div className="animate-pulse text-slate-400">Loading...</div>
         </div>
-      </div>
+      </Card>
     )
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <Card>
       <h3 className="text-lg font-semibold text-slate-800 mb-4">{title}</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={formattedData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200" />
             <XAxis
               dataKey="displayDate"
-              tick={{ fontSize: 12, fill: '#64748b' }}
+              tick={{ fontSize: 12 }}
               tickLine={false}
-              axisLine={{ stroke: '#e2e8f0' }}
-              interval="preserveStartEnd"
+              axisLine={false}
+              className="text-slate-500"
             />
             <YAxis
-              tick={{ fontSize: 12, fill: '#64748b' }}
+              tick={{ fontSize: 12 }}
               tickLine={false}
-              axisLine={{ stroke: '#e2e8f0' }}
+              axisLine={false}
+              className="text-slate-500"
               tickFormatter={value => value.toLocaleString()}
             />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'white',
-                border: '1px solid #e2e8f0',
                 borderRadius: '8px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
               }}
+              wrapperClassName="shadow-md border border-slate-200 rounded-lg"
               formatter={(value: number) => [value.toLocaleString(), '']}
               labelFormatter={(label: string) => label}
             />
@@ -78,6 +79,6 @@ export function TrendChart({ data, title, isLoading = false, color = '#3b82f6' }
           </LineChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </Card>
   )
 }
