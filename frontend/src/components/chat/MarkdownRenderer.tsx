@@ -26,9 +26,7 @@ function createMarkdownComponents(isUserMessage: boolean): Components {
         return (
           <code
             className={`px-1.5 py-0.5 rounded text-[0.875em] font-mono ${
-              isUserMessage
-                ? 'bg-white/20 text-white'
-                : 'bg-slate-200 text-danger-600'
+              isUserMessage ? 'bg-white/20 text-white' : 'bg-slate-200 text-danger-600'
             }`}
             {...rest}
           >
@@ -69,9 +67,7 @@ function createMarkdownComponents(isUserMessage: boolean): Components {
       return (
         <th
           className={`px-3 py-2 border text-left font-semibold ${
-            isUserMessage
-              ? 'border-white/30 bg-white/10'
-              : 'border-slate-200 bg-slate-50'
+            isUserMessage ? 'border-white/30 bg-white/10' : 'border-slate-200 bg-slate-50'
           }`}
         >
           {children}
@@ -82,9 +78,7 @@ function createMarkdownComponents(isUserMessage: boolean): Components {
     td({ children }) {
       return (
         <td
-          className={`px-3 py-2 border ${
-            isUserMessage ? 'border-white/30' : 'border-slate-200'
-          }`}
+          className={`px-3 py-2 border ${isUserMessage ? 'border-white/30' : 'border-slate-200'}`}
         >
           {children}
         </td>
