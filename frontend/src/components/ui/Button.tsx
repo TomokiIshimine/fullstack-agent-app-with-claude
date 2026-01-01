@@ -1,4 +1,5 @@
 import React from 'react'
+import { cn } from '@/lib/utils/cn'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success'
 export type ButtonSize = 'sm' | 'md' | 'lg'
@@ -42,23 +43,19 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const baseStyles =
-      'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60'
-
-    const widthStyles = fullWidth ? 'w-full' : ''
-
-    const combinedClassName = [
-      baseStyles,
-      variantStyles[variant],
-      sizeStyles[size],
-      widthStyles,
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ')
-
     return (
-      <button ref={ref} className={combinedClassName} disabled={disabled || loading} {...props}>
+      <button
+        ref={ref}
+        className={cn(
+          'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+          variantStyles[variant],
+          sizeStyles[size],
+          fullWidth && 'w-full',
+          className
+        )}
+        disabled={disabled || loading}
+        {...props}
+      >
         {loading && (
           <svg
             className="animate-spin h-5 w-5"

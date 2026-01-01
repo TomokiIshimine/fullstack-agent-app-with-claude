@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { useScrollLock } from '@/hooks/useScrollLock'
+import { cn } from '@/lib/utils/cn'
 
 export type ModalSize = 'sm' | 'md' | 'lg'
 
@@ -66,7 +67,10 @@ export const Modal: React.FC<ModalProps> = ({
       aria-labelledby={title ? 'modal-title' : undefined}
     >
       <div
-        className={`bg-white rounded-xl shadow-2xl w-full ${sizeStyles[size]} max-h-[90vh] flex flex-col animate-scale-in`}
+        className={cn(
+          'bg-white rounded-xl shadow-2xl w-full max-h-[90vh] flex flex-col animate-scale-in',
+          sizeStyles[size]
+        )}
       >
         {(title || showCloseButton) && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">

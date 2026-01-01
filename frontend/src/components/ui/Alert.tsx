@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { cn } from '@/lib/utils/cn'
 
 export type AlertVariant = 'success' | 'error' | 'warning' | 'info'
 
@@ -136,21 +137,16 @@ export const Alert: React.FC<AlertProps> = ({
   const styles = variantStyles[variant]
   const icon = icons[variant]
 
-  const containerClassName = [
-    'flex items-start gap-3 p-4 border rounded-lg',
-    styles.container,
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ')
-
   return (
-    <div className={containerClassName} role="alert">
-      <div className={`flex-shrink-0 p-1 rounded-full ${styles.iconBg}`}>
+    <div
+      className={cn('flex items-start gap-3 p-4 border rounded-lg', styles.container, className)}
+      role="alert"
+    >
+      <div className={cn('flex-shrink-0 p-1 rounded-full', styles.iconBg)}>
         <div className={styles.icon}>{icon}</div>
       </div>
 
-      <div className={`flex-1 ${styles.text}`}>
+      <div className={cn('flex-1', styles.text)}>
         <div className="text-sm">{children}</div>
 
         {(onRetry || onDismiss) && (
@@ -159,7 +155,10 @@ export const Alert: React.FC<AlertProps> = ({
               <button
                 type="button"
                 onClick={onRetry}
-                className={`text-sm font-medium hover:underline focus:outline-none focus:underline ${styles.text}`}
+                className={cn(
+                  'text-sm font-medium hover:underline focus:outline-none focus:underline',
+                  styles.text
+                )}
               >
                 再試行
               </button>
@@ -168,7 +167,10 @@ export const Alert: React.FC<AlertProps> = ({
               <button
                 type="button"
                 onClick={handleDismiss}
-                className={`text-sm font-medium hover:underline focus:outline-none focus:underline ${styles.text}`}
+                className={cn(
+                  'text-sm font-medium hover:underline focus:outline-none focus:underline',
+                  styles.text
+                )}
               >
                 閉じる
               </button>
@@ -181,7 +183,10 @@ export const Alert: React.FC<AlertProps> = ({
         <button
           type="button"
           onClick={handleDismiss}
-          className={`flex-shrink-0 p-1 rounded hover:bg-black/5 transition-colors focus:outline-none focus:bg-black/10 ${styles.icon}`}
+          className={cn(
+            'flex-shrink-0 p-1 rounded hover:bg-black/5 transition-colors focus:outline-none focus:bg-black/10',
+            styles.icon
+          )}
           aria-label="閉じる"
         >
           <svg

@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useId } from 'react'
+import { cn } from '@/lib/utils/cn'
 
 export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label?: string
@@ -18,7 +19,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const isPassword = type === 'password'
     const inputType = isPassword && showPassword ? 'text' : type
 
-    const generatedId = id || `input-${Math.random().toString(36).substr(2, 9)}`
+    const reactId = useId()
+    const inputId = id || reactId
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -44,27 +46,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       setShowPassword(prev => !prev)
     }
 
-    const containerClassName = fullWidth ? 'w-full' : ''
-
-    const inputClassName = [
-      'block w-full px-3 py-2 border rounded-lg text-slate-900 placeholder-slate-400',
-      'transition-colors duration-200',
-      'focus:outline-none focus:ring-2 focus:ring-offset-0',
-      'disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500',
-      'min-h-[2.75rem]', // 44px tap target
-      error
-        ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-        : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
-      isPassword ? 'pr-10' : '',
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ')
-
     return (
-      <div className={containerClassName}>
+      <div className={cn(fullWidth && 'w-full')}>
         {label && (
-          <label htmlFor={generatedId} className="block text-sm font-medium text-slate-700 mb-1">
+          <label htmlFor={inputId} className="block text-sm font-medium text-slate-700 mb-1">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -73,14 +58,25 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <div className="relative">
           <input
             ref={ref}
-            id={generatedId}
+            id={inputId}
             type={inputType}
-            className={inputClassName}
+            className={cn(
+              'block w-full px-3 py-2 border rounded-lg text-slate-900 placeholder-slate-400',
+              'transition-colors duration-200',
+              'focus:outline-none focus:ring-2 focus:ring-offset-0',
+              'disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500',
+              'min-h-[2.75rem]', // 44px tap target
+              error
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
+              isPassword && 'pr-10',
+              className
+            )}
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
             aria-invalid={error ? 'true' : 'false'}
             aria-describedby={
-              error ? `${generatedId}-error` : helperText ? `${generatedId}-helper` : undefined
+              error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined
             }
             {...props}
           />
@@ -155,13 +151,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
 
         {error && (
-          <p id={`${generatedId}-error`} className="mt-1 text-sm text-red-600" role="alert">
+          <p id={`${inputId}-error`} className="mt-1 text-sm text-red-600" role="alert">
             {error}
           </p>
         )}
 
         {!error && helperText && (
-          <p id={`${generatedId}-helper`} className="mt-1 text-sm text-slate-500">
+          <p id={`${inputId}-helper`} className="mt-1 text-sm text-slate-500">
             {helperText}
           </p>
         )}
