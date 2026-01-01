@@ -13,6 +13,8 @@ from langgraph.prebuilt import create_react_agent
 
 from app.constants.agent import MAX_CONVERSATION_TITLE_LENGTH, TITLE_TRUNCATION_LENGTH, TITLE_TRUNCATION_SUFFIX
 from app.constants.error_types import LLMErrorType
+from app.constants.http import HTTP_BAD_REQUEST, HTTP_INTERNAL_SERVER_ERROR
+from app.constants.jwt import MS_PER_SECOND
 from app.core.exceptions import LLMConnectionError, LLMContextLengthError, LLMRateLimitError, LLMStreamError
 from app.providers import BaseLLMProvider, create_provider
 from app.tools import ToolRegistry, get_tool_registry
@@ -398,7 +400,7 @@ class AgentService:
         Yields:
             MessageCompleteEvent followed by MessageMetadataEvent
         """
-        response_time_ms = int((time.time() - state.start_time) * 1000)
+        response_time_ms = int((time.time() - state.start_time) * MS_PER_SECOND)
 
         yield MessageCompleteEvent(content=state.full_content)
         yield MessageMetadataEvent(
@@ -505,12 +507,12 @@ class AgentService:
 
             except APIStatusError as e:
                 # Check for context length error (400 with specific message)
-                if e.status_code == 400 and "context_length" in str(e).lower():
+                if e.status_code == HTTP_BAD_REQUEST and "context_length" in str(e).lower():
                     logger.error(f"Context length exceeded: {e}")
                     raise LLMContextLengthError()
 
                 # Retry on server errors (500+)
-                if e.status_code >= 500 and attempt < max_attempts:
+                if e.status_code >= HTTP_INTERNAL_SERVER_ERROR and attempt < max_attempts:
                     delay = base_delay * (2 ** (attempt - 1))
                     logger.warning(f"Server error ({e.status_code}), retrying (attempt {attempt}/{max_attempts})")
                     yield RetryEvent(

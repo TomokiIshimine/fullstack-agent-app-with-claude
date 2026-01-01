@@ -10,6 +10,7 @@ from flask import Blueprint, jsonify, request
 from werkzeug.exceptions import BadRequest
 
 from app.constants.http import HTTP_OK
+from app.constants.pagination import DEFAULT_RANKINGS_LIMIT
 from app.routes.dependencies import with_admin_dashboard_service
 from app.services.admin_dashboard_service import AdminDashboardService
 from app.utils.auth_decorator import require_auth, require_role
@@ -151,7 +152,7 @@ def get_rankings(*, admin_dashboard_service: AdminDashboardService):
         }
     """
     metric = request.args.get("metric", "conversations")
-    limit = request.args.get("limit", 10, type=int)
+    limit = request.args.get("limit", DEFAULT_RANKINGS_LIMIT, type=int)
     period = request.args.get("period", "all")
 
     # Validate metric

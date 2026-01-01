@@ -6,6 +6,8 @@ import logging
 from datetime import date
 from typing import TYPE_CHECKING, Literal
 
+from app.constants.pagination import MAX_RANKINGS_LIMIT
+from app.constants.validation import COST_DECIMAL_PLACES
 from app.repositories.dashboard_repository import DashboardRepository
 from app.schemas.admin_dashboard import (
     DashboardRankingsResponse,
@@ -28,6 +30,9 @@ class AdminDashboardService:
     # Period string to days mapping
     PERIOD_DAYS_MAP: dict[str, int] = {"7d": 7, "30d": 30, "90d": 90}
 
+    # Default period for active users calculation
+    DEFAULT_ACTIVE_USERS_DAYS: int = 7
+
     def __init__(self, session: Session):
         """Initialize service with database session.
 
@@ -44,7 +49,7 @@ class AdminDashboardService:
             DashboardSummaryResponse with all summary metrics.
         """
         total_users = self.dashboard_repo.count_total_users()
-        active_users = self.dashboard_repo.count_active_users(days=7)
+        active_users = self.dashboard_repo.count_active_users(days=self.DEFAULT_ACTIVE_USERS_DAYS)
         total_conversations = self.dashboard_repo.count_total_conversations()
         today_conversations = self.dashboard_repo.count_today_conversations()
         total_messages = self.dashboard_repo.count_total_messages()
@@ -67,7 +72,7 @@ class AdminDashboardService:
             today_conversations=today_conversations,
             total_messages=total_messages,
             total_tokens=TokenStats(input=input_tokens, output=output_tokens),
-            total_cost_usd=round(total_cost, 2),
+            total_cost_usd=round(total_cost, COST_DECIMAL_PLACES),
         )
 
     def get_trends(
@@ -134,7 +139,7 @@ class AdminDashboardService:
             DashboardRankingsResponse with ranked users.
         """
         # Clamp limit
-        limit = max(1, min(limit, 50))
+        limit = max(1, min(limit, MAX_RANKINGS_LIMIT))
 
         # Parse period to days (None for "all")
         days = self.PERIOD_DAYS_MAP.get(period)

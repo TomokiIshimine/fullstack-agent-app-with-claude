@@ -8,6 +8,7 @@ import os
 from flask import Blueprint, jsonify
 from sqlalchemy import text
 
+from app.constants.http import HTTP_OK, HTTP_SERVICE_UNAVAILABLE
 from app.database import get_session
 
 logger = logging.getLogger(__name__)
@@ -40,8 +41,8 @@ def health_check():
         with get_session() as session:
             session.execute(text("SELECT 1"))
 
-        return jsonify({"status": "healthy", "database": "connected", "version": version}), 200
+        return jsonify({"status": "healthy", "database": "connected", "version": version}), HTTP_OK
 
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
-        return jsonify({"status": "unhealthy", "database": "disconnected", "version": version, "error": str(e)}), 503
+        return jsonify({"status": "unhealthy", "database": "disconnected", "version": version, "error": str(e)}), HTTP_SERVICE_UNAVAILABLE
