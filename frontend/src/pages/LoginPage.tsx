@@ -20,9 +20,10 @@ export function LoginPage() {
   useEffect(() => {
     if (searchParams.get('expired') === 'true') {
       setSessionExpiredMessage('セッションが切れました。再度ログインしてください。')
-      // Remove the query parameter from URL
-      searchParams.delete('expired')
-      setSearchParams(searchParams, { replace: true })
+      // Remove the query parameter from URL (create a copy to avoid mutating the original)
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.delete('expired')
+      setSearchParams(nextParams, { replace: true })
     }
   }, [searchParams, setSearchParams])
 
