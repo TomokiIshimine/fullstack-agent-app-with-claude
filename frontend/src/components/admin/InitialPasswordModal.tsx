@@ -38,7 +38,7 @@ export function InitialPasswordModal({ email, password, onClose }: InitialPasswo
 
         <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
           <label className="block text-sm font-medium text-slate-600 mb-2">初期パスワード:</label>
-          <div className="font-mono text-xl font-semibold text-slate-900 p-3 bg-white border-2 border-blue-500 rounded-md text-center tracking-wider mb-3">
+          <div className="font-mono text-xl font-semibold text-slate-900 p-3 bg-white border-2 border-primary-500 rounded-md text-center tracking-wider mb-3">
             {password}
           </div>
           <Button onClick={handleCopy} disabled={copied} variant="success" fullWidth>
@@ -46,7 +46,7 @@ export function InitialPasswordModal({ email, password, onClose }: InitialPasswo
           </Button>
         </div>
 
-        <div className="p-4 bg-amber-50 border border-amber-300 rounded-lg text-amber-800 text-sm">
+        <div className="p-4 bg-warning-50 border border-warning-100 rounded-lg text-warning-600 text-sm">
           <p className="mb-2">
             <span className="font-semibold">重要:</span> このパスワードをユーザーに伝えてください。
           </p>

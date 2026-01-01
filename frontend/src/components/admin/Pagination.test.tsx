@@ -119,7 +119,7 @@ describe('Pagination', () => {
 
       const currentPageButton = screen.getByRole('button', { name: '2' })
       // Check for primary variant styling
-      expect(currentPageButton).toHaveClass('bg-blue-500')
+      expect(currentPageButton).toHaveClass('bg-primary-500')
     })
   })
 

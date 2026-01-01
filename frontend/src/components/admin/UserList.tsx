@@ -147,7 +147,7 @@ export function UserList({ users, onDeleteUser, onResetPassword }: UserListProps
                         'inline-flex px-2 py-1 text-xs font-semibold rounded-full',
                         user.role === 'admin'
                           ? 'bg-purple-100 text-purple-800'
-                          : 'bg-blue-100 text-blue-800'
+                          : 'bg-info-100 text-info-600'
                       )}
                     >
                       {user.role === 'admin' ? '管理者' : 'ユーザー'}
@@ -203,7 +203,7 @@ export function UserList({ users, onDeleteUser, onResetPassword }: UserListProps
         <p className="text-slate-700 mb-4">
           <span className="font-semibold">{deleteTarget?.email}</span> を削除しますか？
         </p>
-        <p className="text-sm text-red-600 font-medium">この操作は取り消せません。</p>
+        <p className="text-sm text-danger-600 font-medium">この操作は取り消せません。</p>
         <div className="flex gap-3 justify-end mt-6">
           <Button
             variant="secondary"

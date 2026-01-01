@@ -257,7 +257,7 @@ describe('ErrorBoundary', () => {
       // Verify error UI is shown (indicating hasError is true)
       expect(screen.getByText('エラーが発生しました')).toBeInTheDocument()
       // Check for Tailwind border class instead of inline style
-      expect(container.querySelector('.border-red-500')).toBeInTheDocument()
+      expect(container.querySelector('.border-danger-500')).toBeInTheDocument()
     })
 
     it('preserves error message in state', () => {
@@ -314,7 +314,7 @@ describe('ErrorBoundary', () => {
       )
 
       // Check for Tailwind border class instead of inline style
-      const errorContainer = container.querySelector('.border-red-500')
+      const errorContainer = container.querySelector('.border-danger-500')
       expect(errorContainer).toBeInTheDocument()
     })
 
@@ -328,7 +328,7 @@ describe('ErrorBoundary', () => {
       const heading = screen.getByText('エラーが発生しました')
       expect(heading.tagName).toBe('H1')
       // Check for Tailwind text color class instead of inline style
-      expect(heading).toHaveClass('text-red-600')
+      expect(heading).toHaveClass('text-danger-600')
     })
   })
 

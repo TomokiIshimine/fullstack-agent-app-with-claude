@@ -52,7 +52,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label htmlFor={inputId} className="block text-sm font-medium text-slate-700 mb-1">
             {label}
-            {props.required && <span className="text-red-500 ml-1">*</span>}
+            {props.required && <span className="text-danger-500 ml-1">*</span>}
           </label>
         )}
 
@@ -68,8 +68,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               'disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500',
               'min-h-[2.75rem]', // 44px tap target
               error
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
+                ? 'border-danger-300 focus:border-danger-500 focus:ring-danger-100'
+                : 'border-slate-300 focus:border-primary-500 focus:ring-primary-200',
               isPassword && 'pr-10',
               className
             )}
@@ -96,14 +96,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         </div>
 
         {capsLockOn && isPassword && (
-          <p className="mt-1 text-sm text-amber-600 flex items-center gap-1" role="alert">
+          <p className="mt-1 text-sm text-warning-600 flex items-center gap-1" role="alert">
             <WarningIcon className="w-4 h-4" />
             Caps Lock がオンになっています
           </p>
         )}
 
         {error && (
-          <p id={`${inputId}-error`} className="mt-1 text-sm text-red-600" role="alert">
+          <p id={`${inputId}-error`} className="mt-1 text-sm text-danger-600" role="alert">
             {error}
           </p>
         )}

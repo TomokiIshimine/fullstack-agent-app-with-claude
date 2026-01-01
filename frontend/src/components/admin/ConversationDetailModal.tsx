@@ -69,7 +69,7 @@ export function ConversationDetailModal({
                   key={message.id}
                   className={cn(
                     'p-3 rounded-lg',
-                    message.role === 'user' ? 'bg-blue-50 ml-4' : 'bg-slate-100 mr-4'
+                    message.role === 'user' ? 'bg-primary-50 ml-4' : 'bg-slate-100 mr-4'
                   )}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -77,7 +77,7 @@ export function ConversationDetailModal({
                       className={cn(
                         'text-xs font-semibold px-2 py-0.5 rounded',
                         message.role === 'user'
-                          ? 'bg-blue-200 text-blue-800'
+                          ? 'bg-primary-200 text-primary-700'
                           : 'bg-slate-300 text-slate-800'
                       )}
                     >

@@ -25,29 +25,29 @@ describe('Alert', () => {
 
     it('renders with default info variant', () => {
       const { container } = render(<Alert>Info</Alert>)
-      expect(container.querySelector('.bg-blue-50')).toBeInTheDocument()
+      expect(container.querySelector('.bg-info-50')).toBeInTheDocument()
     })
   })
 
   describe('Variants', () => {
     it('renders success variant', () => {
       const { container } = render(<Alert variant="success">Success</Alert>)
-      expect(container.querySelector('.bg-emerald-50')).toBeInTheDocument()
+      expect(container.querySelector('.bg-success-50')).toBeInTheDocument()
     })
 
     it('renders error variant', () => {
       const { container } = render(<Alert variant="error">Error</Alert>)
-      expect(container.querySelector('.bg-red-50')).toBeInTheDocument()
+      expect(container.querySelector('.bg-danger-50')).toBeInTheDocument()
     })
 
     it('renders warning variant', () => {
       const { container } = render(<Alert variant="warning">Warning</Alert>)
-      expect(container.querySelector('.bg-amber-50')).toBeInTheDocument()
+      expect(container.querySelector('.bg-warning-50')).toBeInTheDocument()
     })
 
     it('renders info variant', () => {
       const { container } = render(<Alert variant="info">Info</Alert>)
-      expect(container.querySelector('.bg-blue-50')).toBeInTheDocument()
+      expect(container.querySelector('.bg-info-50')).toBeInTheDocument()
     })
   })
 
@@ -165,7 +165,7 @@ describe('Alert', () => {
     it('merges custom className with default classes', () => {
       const { container } = render(<Alert className="my-class">Message</Alert>)
       const alert = container.querySelector('.my-class')
-      expect(alert).toHaveClass('bg-blue-50') // default info variant
+      expect(alert).toHaveClass('bg-info-50') // default info variant
     })
   })
 

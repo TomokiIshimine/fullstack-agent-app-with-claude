@@ -14,13 +14,13 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 focus:ring-blue-300 disabled:bg-blue-300',
+    'bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700 focus:ring-primary-300 disabled:bg-primary-300',
   secondary:
     'bg-slate-500 text-white hover:bg-slate-600 active:bg-slate-700 focus:ring-slate-300 disabled:bg-slate-300',
   danger:
-    'bg-red-500 text-white hover:bg-red-600 active:bg-red-700 focus:ring-red-300 disabled:bg-red-300',
+    'bg-danger-500 text-white hover:bg-danger-600 active:bg-danger-700 focus:ring-danger-300 disabled:bg-danger-300',
   success:
-    'bg-emerald-500 text-white hover:bg-emerald-600 active:bg-emerald-700 focus:ring-emerald-300 disabled:bg-emerald-300',
+    'bg-success-500 text-white hover:bg-success-600 active:bg-success-700 focus:ring-success-300 disabled:bg-success-300',
 }
 
 const sizeStyles: Record<ButtonSize, string> = {

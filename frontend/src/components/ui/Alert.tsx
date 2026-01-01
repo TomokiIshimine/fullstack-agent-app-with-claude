@@ -18,28 +18,28 @@ const variantStyles: Record<
   { container: string; icon: string; iconBg: string; text: string }
 > = {
   success: {
-    container: 'bg-emerald-50 border-emerald-200',
-    icon: 'text-emerald-600',
-    iconBg: 'bg-emerald-100',
-    text: 'text-emerald-800',
+    container: 'bg-success-50 border-success-100',
+    icon: 'text-success-600',
+    iconBg: 'bg-success-100',
+    text: 'text-success-700',
   },
   error: {
-    container: 'bg-red-50 border-red-200',
-    icon: 'text-red-600',
-    iconBg: 'bg-red-100',
-    text: 'text-red-800',
+    container: 'bg-danger-50 border-danger-100',
+    icon: 'text-danger-600',
+    iconBg: 'bg-danger-100',
+    text: 'text-danger-700',
   },
   warning: {
-    container: 'bg-amber-50 border-amber-200',
-    icon: 'text-amber-600',
-    iconBg: 'bg-amber-100',
-    text: 'text-amber-800',
+    container: 'bg-warning-50 border-warning-100',
+    icon: 'text-warning-600',
+    iconBg: 'bg-warning-100',
+    text: 'text-warning-600',
   },
   info: {
-    container: 'bg-blue-50 border-blue-200',
-    icon: 'text-blue-600',
-    iconBg: 'bg-blue-100',
-    text: 'text-blue-800',
+    container: 'bg-info-50 border-info-100',
+    icon: 'text-info-600',
+    iconBg: 'bg-info-100',
+    text: 'text-info-600',
   },
 }
 
