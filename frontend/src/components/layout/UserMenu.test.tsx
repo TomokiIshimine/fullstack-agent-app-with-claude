@@ -152,7 +152,7 @@ describe('UserMenu', () => {
       await user.click(screen.getByRole('button', { name: 'ユーザーメニューを開く' }))
 
       const chatLink = screen.getByRole('menuitem', { name: 'チャット' })
-      expect(chatLink).toHaveClass('user-menu__nav-item--active')
+      expect(chatLink).toHaveClass('bg-primary-50', 'text-primary-500')
     })
 
     it('should close dropdown when link is clicked', async () => {

@@ -25,30 +25,33 @@ export function MessageMetadata({ metadata }: MessageMetadataProps) {
   const totalTokens = (inputTokens || 0) + (outputTokens || 0)
 
   return (
-    <div className="message-metadata">
+    <div className="flex flex-wrap gap-3 mt-3 pt-2 border-t border-slate-200 text-xs text-slate-500">
       {totalTokens > 0 && (
         <span
-          className="message-metadata__item"
+          className="flex items-center gap-1"
           title={`Input: ${formatTokens(inputTokens || 0)} / Output: ${formatTokens(outputTokens || 0)}`}
         >
-          <TokenIcon className="message-metadata__icon" />
+          <TokenIcon className="opacity-70" />
           {formatTokens(totalTokens)} tokens
         </span>
       )}
       {responseTimeMs != null && responseTimeMs > 0 && (
-        <span className="message-metadata__item">
-          <ClockIcon className="message-metadata__icon" />
+        <span className="flex items-center gap-1">
+          <ClockIcon className="opacity-70" />
           {formatResponseTime(responseTimeMs)}
         </span>
       )}
       {costUsd != null && costUsd > 0 && (
-        <span className="message-metadata__item">
-          <CostIcon className="message-metadata__icon" />
+        <span className="flex items-center gap-1">
+          <CostIcon className="opacity-70" />
           {formatCost(costUsd)}
         </span>
       )}
       {model && (
-        <span className="message-metadata__item message-metadata__item--model" title={model}>
+        <span
+          className="flex items-center gap-1 font-mono bg-slate-100 px-1.5 py-0.5 rounded max-w-48 truncate"
+          title={model}
+        >
           {formatModelName(model)}
         </span>
       )}

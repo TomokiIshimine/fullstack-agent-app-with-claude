@@ -52,12 +52,12 @@ export function ChatInput({
   const isDisabled = disabled || isSending
 
   return (
-    <div className="chat-input">
-      <form className="chat-input__form" onSubmit={handleSubmit}>
-        <div className="chat-input__textarea-wrapper">
+    <div className="px-4 md:px-6 py-4 border-t border-slate-200 bg-white">
+      <form className="max-w-3xl mx-auto flex gap-3 items-end" onSubmit={handleSubmit}>
+        <div className="flex-1 relative">
           <textarea
             ref={textareaRef}
-            className="chat-input__textarea"
+            className="w-full min-h-11 max-h-40 py-3 px-4 border border-gray-300 rounded-3xl resize-none text-[15px] leading-normal transition-all duration-200 overflow-y-auto focus:outline-none focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/10 disabled:bg-slate-100 disabled:cursor-not-allowed placeholder:text-slate-400 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             value={message}
             onChange={e => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -68,7 +68,7 @@ export function ChatInput({
         </div>
         <button
           type="submit"
-          className="chat-input__submit"
+          className="w-11 h-11 rounded-full bg-primary-500 text-white border-none cursor-pointer flex items-center justify-center transition-colors duration-200 shrink-0 hover:bg-primary-600 disabled:bg-slate-400 disabled:cursor-not-allowed"
           disabled={isDisabled || !message.trim()}
           aria-label="送信"
         >

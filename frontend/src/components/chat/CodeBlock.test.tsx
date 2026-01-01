@@ -5,10 +5,10 @@ import { CodeBlock } from './CodeBlock'
 
 describe('CodeBlock', () => {
   describe('Inline Code', () => {
-    it('renders inline code with correct class', () => {
+    it('renders inline code with Tailwind styling classes', () => {
       render(<CodeBlock inline>const x = 1</CodeBlock>)
       const code = screen.getByText('const x = 1')
-      expect(code).toHaveClass('markdown-inline-code')
+      expect(code).toHaveClass('rounded', 'font-mono')
       expect(code.tagName).toBe('CODE')
     })
 

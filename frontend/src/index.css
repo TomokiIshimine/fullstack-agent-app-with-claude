@@ -2,41 +2,41 @@
 
 /* ============================================
  * Tailwind Theme Configuration
- * Maps CSS variables to Tailwind utilities
+ * Custom color palette for semantic colors
  * ============================================ */
 @theme {
-  /* Primary colors - use as bg-primary-500, text-primary-600, etc. */
-  --color-primary-50: var(--color-primary-50);
-  --color-primary-100: var(--color-primary-100);
-  --color-primary-200: var(--color-primary-200);
+  /* Primary colors - Blue palette */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
   --color-primary-300: #93c5fd;
   --color-primary-400: #60a5fa;
-  --color-primary-500: var(--color-primary-500);
-  --color-primary-600: var(--color-primary-600);
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
   --color-primary-700: #1d4ed8;
 
-  /* Success colors - use as bg-success-500, text-success-600, etc. */
+  /* Success colors - Emerald palette */
   --color-success-50: #ecfdf5;
   --color-success-100: #d1fae5;
-  --color-success-500: var(--color-success-500);
+  --color-success-500: #10b981;
   --color-success-600: #059669;
   --color-success-700: #047857;
 
-  /* Danger colors - use as bg-danger-500, text-danger-600, etc. */
-  --color-danger-50: var(--color-danger-50);
-  --color-danger-100: var(--color-danger-100);
+  /* Danger colors - Red palette */
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
   --color-danger-300: #fca5a5;
   --color-danger-500: #ef4444;
-  --color-danger-600: var(--color-danger-600);
+  --color-danger-600: #dc2626;
   --color-danger-700: #b91c1c;
 
-  /* Warning colors - use as bg-warning-500, text-warning-600, etc. */
+  /* Warning colors - Amber palette */
   --color-warning-50: #fffbeb;
   --color-warning-100: #fef3c7;
   --color-warning-500: #f59e0b;
   --color-warning-600: #d97706;
 
-  /* Info colors - use as bg-info-500, text-info-600, etc. */
+  /* Info colors - Blue palette */
   --color-info-50: #eff6ff;
   --color-info-100: #dbeafe;
   --color-info-500: #3b82f6;
@@ -54,110 +54,12 @@
     sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1f2a37;
-  background-color: #f5f7fb;
+  color: #1e293b;
+  background-color: #f8fafc;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* ============================================
-   * Design Tokens
-   * ============================================ */
-
-  /* Tap target size for mobile (44px minimum) */
-  --tap-target-min: 2.75rem; /* 44px */
-
-  /* --------------------------------------------
-   * Base Colors (Slate palette)
-   * -------------------------------------------- */
-  --color-white: #ffffff;
-  --color-slate-50: #f8fafc;
-  --color-slate-100: #f1f5f9;
-  --color-slate-200: #e2e8f0;
-  --color-slate-300: #cbd5e1;
-  --color-slate-400: #94a3b8;
-  --color-slate-500: #64748b;
-  --color-slate-600: #475569;
-  --color-slate-700: #334155;
-  --color-slate-800: #1e293b;
-
-  /* Gray (for specific use cases) */
-  --color-gray-300: #d1d5db;
-
-  /* --------------------------------------------
-   * Primary Colors (Blue palette)
-   * -------------------------------------------- */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-
-  /* --------------------------------------------
-   * Success Colors (Emerald palette)
-   * -------------------------------------------- */
-  --color-success-500: #10b981;
-
-  /* --------------------------------------------
-   * Danger Colors (Red palette)
-   * -------------------------------------------- */
-  --color-danger-50: #fef2f2;
-  --color-danger-100: #fee2e2;
-  --color-danger-600: #dc2626;
-
-  /* --------------------------------------------
-   * Code Block Theme (One Dark inspired)
-   * -------------------------------------------- */
-  --color-code-bg: #282c34;
-  --color-code-header: #21252b;
-  --color-code-border: #3e4451;
-  --color-code-button-hover: #4b5263;
-  --color-code-text: #abb2bf;
-
-  /* --------------------------------------------
-   * Semantic Colors
-   * -------------------------------------------- */
-  /* Backgrounds */
-  --bg-primary: var(--color-white);
-  --bg-secondary: var(--color-slate-50);
-  --bg-tertiary: var(--color-slate-100);
-  --bg-dark: var(--color-slate-800);
-  --bg-dark-secondary: var(--color-slate-700);
-
-  /* Text */
-  --text-primary: var(--color-slate-800);
-  --text-secondary: var(--color-slate-600);
-  --text-tertiary: var(--color-slate-500);
-  --text-muted: var(--color-slate-400);
-  --text-inverse: var(--color-white);
-
-  /* Borders */
-  --border-default: var(--color-slate-200);
-  --border-dark: var(--color-slate-700);
-  --border-input: var(--color-gray-300);
-
-  /* Interactive states */
-  --hover-bg: var(--color-slate-100);
-  --hover-bg-dark: var(--color-slate-600);
-  --active-bg: var(--color-primary-50);
-  --active-hover-bg: var(--color-primary-100);
-
-  /* Focus */
-  --focus-ring: var(--color-primary-500);
-  --focus-ring-alpha: rgba(59, 130, 246, 0.1);
-
-  /* Shadows */
-  --shadow-sm: rgba(0, 0, 0, 0.05);
-  --shadow-md: rgba(0, 0, 0, 0.1);
-  --shadow-overlay: rgba(0, 0, 0, 0.5);
-
-  /* User message overlay colors */
-  --user-overlay-10: rgba(255, 255, 255, 0.1);
-  --user-overlay-20: rgba(255, 255, 255, 0.2);
-  --user-overlay-30: rgba(255, 255, 255, 0.3);
-  --user-overlay-50: rgba(255, 255, 255, 0.5);
-  --user-overlay-70: rgba(255, 255, 255, 0.7);
 }
 
 *,
@@ -174,6 +76,10 @@ body {
 button {
   font-family: inherit;
 }
+
+/* ============================================
+ * Animations
+ * ============================================ */
 
 /* Modal animations */
 @keyframes fade-in {
@@ -192,6 +98,30 @@ button {
   }
   to {
     opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Cursor blink animation */
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Loading dots animation */
+@keyframes loadingDot {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+  40% {
     transform: scale(1);
   }
 }

@@ -39,22 +39,25 @@ export function Navbar() {
       ]
 
   return (
-    <header className="navbar">
-      <div className="navbar__container">
+    <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-[100]">
+      <div className="h-full flex items-center justify-between px-4">
         {/* Brand */}
-        <Link to={homePath} className="navbar__brand">
+        <Link
+          to={homePath}
+          className="text-xl font-semibold text-slate-800 no-underline transition-colors duration-200 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+        >
           AIチャット
         </Link>
 
         {/* Right Section */}
-        <div className="navbar__right">
+        <div className="flex items-center gap-2">
           {/* Desktop User Menu */}
           <UserMenu user={user} version={version} navLinks={navLinks} onLogout={handleLogout} />
 
           {/* Mobile Toggle */}
           <button
             type="button"
-            className="navbar__mobile-toggle"
+            className="hidden md:hidden items-center justify-center w-11 h-11 p-0 border-none bg-transparent rounded-lg cursor-pointer text-slate-600 transition-colors duration-200 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500 max-md:flex"
             onClick={() => setIsMobileMenuOpen(true)}
             aria-label="メニューを開く"
             aria-expanded={isMobileMenuOpen}

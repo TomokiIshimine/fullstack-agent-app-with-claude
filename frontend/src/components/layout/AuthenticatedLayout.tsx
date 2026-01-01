@@ -7,7 +7,7 @@ interface AuthenticatedLayoutProps {
 
 export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   return (
-    <div className="authenticated-layout">
+    <div className="pt-16 min-h-screen">
       <Navbar />
       {children}
     </div>

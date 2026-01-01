@@ -46,9 +46,10 @@ describe('MobileMenu', () => {
     it('should render overlay when open', () => {
       renderMobileMenu({ isOpen: true })
 
-      const overlay = document.querySelector('.mobile-menu__overlay')
+      // Overlay is rendered with fixed inset-0 and bg-black/50
+      const overlay = document.querySelector('[aria-hidden="true"]')
       expect(overlay).toBeInTheDocument()
-      expect(overlay).toHaveClass('mobile-menu__overlay--open')
+      expect(overlay).toHaveClass('fixed', 'inset-0', 'bg-black/50')
     })
 
     it('should render menu panel when open', () => {
@@ -95,20 +96,20 @@ describe('MobileMenu', () => {
   })
 
   describe('Visibility States', () => {
-    it('should apply open class when isOpen is true', () => {
+    it('should apply translate-x-0 when isOpen is true', () => {
       renderMobileMenu({ isOpen: true })
 
       const menu = screen.getByRole('navigation', { name: 'モバイルメニュー' })
-      expect(menu).toHaveClass('mobile-menu--open')
+      expect(menu).toHaveClass('translate-x-0')
     })
 
-    it('should not apply open class when isOpen is false', () => {
+    it('should apply -translate-x-full when isOpen is false', () => {
       const { container } = renderMobileMenu({ isOpen: false })
 
       // Use container.querySelector because aria-hidden="true" elements may not be found by getByRole
-      const menu = container.querySelector('.mobile-menu')
+      const menu = container.querySelector('nav[aria-label="モバイルメニュー"]')
       expect(menu).toBeInTheDocument()
-      expect(menu).not.toHaveClass('mobile-menu--open')
+      expect(menu).toHaveClass('-translate-x-full')
     })
 
     it('should set aria-hidden based on isOpen state', () => {
@@ -164,7 +165,7 @@ describe('MobileMenu', () => {
       )
 
       const chatLink = screen.getByText('チャット').closest('a')
-      expect(chatLink).toHaveClass('mobile-menu__link--active')
+      expect(chatLink).toHaveClass('bg-primary-50', 'text-primary-500')
     })
 
     it('should call onClose when link is clicked', async () => {
@@ -191,7 +192,7 @@ describe('MobileMenu', () => {
       const user = userEvent.setup()
       renderMobileMenu()
 
-      const overlay = document.querySelector('.mobile-menu__overlay')
+      const overlay = document.querySelector('[aria-hidden="true"]')
       await user.click(overlay!)
 
       expect(mockOnClose).toHaveBeenCalledOnce()
@@ -297,7 +298,7 @@ describe('MobileMenu', () => {
     it('should mark overlay as aria-hidden', () => {
       renderMobileMenu()
 
-      const overlay = document.querySelector('.mobile-menu__overlay')
+      const overlay = document.querySelector('.fixed.inset-0.bg-black\\/50')
       expect(overlay).toHaveAttribute('aria-hidden', 'true')
     })
   })
