@@ -1,4 +1,5 @@
 import type { Conversation } from '@/types/chat'
+import { cn } from '@/lib/utils/cn'
 
 interface ChatSidebarProps {
   conversations: Conversation[]
@@ -35,7 +36,7 @@ export function ChatSidebar({
     }
   }
 
-  const sidebarClasses = ['chat-sidebar', isOpen && 'chat-sidebar--open'].filter(Boolean).join(' ')
+  const sidebarClasses = cn('chat-sidebar', isOpen && 'chat-sidebar--open')
 
   return (
     <>
@@ -74,7 +75,10 @@ export function ChatSidebar({
             conversations.map(conv => (
               <div
                 key={conv.uuid}
-                className={`chat-sidebar__item ${conv.uuid === currentUuid ? 'chat-sidebar__item--active' : ''}`}
+                className={cn(
+                  'chat-sidebar__item',
+                  conv.uuid === currentUuid && 'chat-sidebar__item--active'
+                )}
                 onClick={() => onSelectConversation(conv.uuid)}
                 role="button"
                 tabIndex={0}

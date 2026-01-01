@@ -1,4 +1,5 @@
 import type { UserRankingItem, TrendMetric } from '@/types/adminDashboard'
+import { cn } from '@/lib/utils/cn'
 
 interface RankingTableProps {
   rankings: UserRankingItem[]
@@ -57,15 +58,13 @@ export function RankingTable({ rankings, metric, title, isLoading = false }: Ran
               <tr key={item.user_id} className="hover:bg-slate-50 transition-colors">
                 <td className="py-3 text-sm">
                   <span
-                    className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold ${
-                      index === 0
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : index === 1
-                          ? 'bg-slate-200 text-slate-700'
-                          : index === 2
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-100 text-slate-600'
-                    }`}
+                    className={cn(
+                      'inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold',
+                      index === 0 && 'bg-yellow-100 text-yellow-800',
+                      index === 1 && 'bg-slate-200 text-slate-700',
+                      index === 2 && 'bg-amber-100 text-amber-800',
+                      index >= 3 && 'bg-slate-100 text-slate-600'
+                    )}
                   >
                     {index + 1}
                   </span>
