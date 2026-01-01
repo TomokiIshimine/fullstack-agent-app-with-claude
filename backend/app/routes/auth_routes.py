@@ -15,6 +15,7 @@ from app.limiter import limiter
 from app.routes.dependencies import validate_request_body, with_auth_service
 from app.schemas.auth import LoginRequest, LogoutResponse, RefreshTokenResponse, UserResponse
 from app.services.auth_service import AuthService
+from app.utils.csrf import clear_csrf_cookie, set_csrf_cookie, validate_csrf_token
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,11 @@ def _set_auth_cookies(response, access_token: str, refresh_token: str):
         path=cookie_config.path,
         domain=cookie_config.domain,
     )
+
+
+def _get_access_token_max_age() -> int:
+    jwt_config = load_jwt_config()
+    return jwt_config.access_token_expire_minutes * SECONDS_PER_MINUTE
 
 
 def _clear_auth_cookies(response):
@@ -106,6 +112,7 @@ def login(*, data: LoginRequest, auth_service: AuthService):
 
     response = make_response(jsonify(response_data.model_dump()), HTTP_OK)
     _set_auth_cookies(response, access_token, refresh_token)
+    set_csrf_cookie(response, max_age=_get_access_token_max_age())
 
     logger.info(f"Login successful: {data.email}")
     return response
@@ -133,6 +140,8 @@ def refresh(*, auth_service: AuthService):
         - access_token: New JWT access token
         - refresh_token: New JWT refresh token
     """
+    validate_csrf_token()
+
     # Get refresh token from cookies
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
@@ -148,6 +157,7 @@ def refresh(*, auth_service: AuthService):
     response = make_response(jsonify(response_data.model_dump()), HTTP_OK)
 
     _set_auth_cookies(response, new_access_token, new_refresh_token)
+    set_csrf_cookie(response, max_age=_get_access_token_max_age())
 
     logger.info("Token refresh successful")
     return response
@@ -171,6 +181,8 @@ def logout(*, auth_service: AuthService):
         - access_token
         - refresh_token
     """
+    validate_csrf_token()
+
     # Get refresh token from cookies
     refresh_token = request.cookies.get("refresh_token")
     if refresh_token:
@@ -181,6 +193,7 @@ def logout(*, auth_service: AuthService):
     response_data = LogoutResponse(message="ログアウトしました")
     response = make_response(jsonify(response_data.model_dump()), HTTP_OK)
     _clear_auth_cookies(response)
+    clear_csrf_cookie(response)
 
     logger.info("Logout successful")
     return response

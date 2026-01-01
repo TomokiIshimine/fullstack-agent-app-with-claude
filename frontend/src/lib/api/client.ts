@@ -1,5 +1,41 @@
 import { logger } from '@/lib/logger'
 import { emitSessionExpired } from '@/lib/authEvents'
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+function getCsrfToken(): string | null {
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  const cookies = document.cookie.split('; ').filter(Boolean)
+  const csrfCookie = cookies.find(cookie => cookie.startsWith('csrf_token='))
+  if (!csrfCookie) {
+    return null
+  }
+
+  return decodeURIComponent(csrfCookie.split('=').slice(1).join('='))
+}
+
+function withCsrfHeader(options?: RequestInit): RequestInit {
+  const method = (options?.method ?? 'GET').toUpperCase()
+  if (SAFE_METHODS.has(method)) {
+    return options ?? {}
+  }
+
+  const csrfToken = getCsrfToken()
+  if (!csrfToken) {
+    return options ?? {}
+  }
+
+  const headers = new Headers(options?.headers ?? {})
+  headers.set('X-CSRF-Token', csrfToken)
+
+  return {
+    ...options,
+    headers,
+  }
+}
 /**
  * Custom error class for API errors
  */
@@ -21,12 +57,13 @@ export class ApiError extends Error {
 export async function fetchWithLogging(url: string, options?: RequestInit): Promise<Response> {
   const method = options?.method || 'GET'
   const startTime = performance.now()
+  const requestOptions = withCsrfHeader(options)
 
   logger.logApiRequest(method, url)
 
   try {
     const response = await fetch(url, {
-      ...options,
+      ...requestOptions,
       credentials: 'include', // Always include cookies for authentication
     })
     const duration = performance.now() - startTime
@@ -224,8 +261,9 @@ export async function fetchSSE<T extends Record<string, unknown> = Record<string
   init: RequestInit,
   sseOptions: SSEStreamOptions<T>
 ): Promise<void> {
+  const requestInit = withCsrfHeader(init)
   const response = await fetch(url, {
-    ...init,
+    ...requestInit,
     credentials: 'include',
   })
 

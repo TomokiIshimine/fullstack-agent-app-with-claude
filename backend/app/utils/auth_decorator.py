@@ -11,6 +11,7 @@ from flask import g, request
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from app.config import load_jwt_config
+from app.utils.csrf import validate_csrf_token
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,9 @@ def require_auth(f: Callable[..., Any]) -> Callable[..., Any]:
 
             # Extract role from payload (default to 'user' for backward compatibility)
             user_role = payload.get("role", "user")
+
+            # Enforce CSRF protection for unsafe methods
+            validate_csrf_token()
 
             # Store user info in Flask's g object for use in the endpoint
             g.user_id = user_id
