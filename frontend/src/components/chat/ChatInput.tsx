@@ -32,10 +32,14 @@ export function ChatInput({
     const trimmed = message.trim()
     if (!trimmed || disabled || isSending) return
 
+    const originalMessage = message
     setIsSending(true)
     setMessage('')
     try {
       await onSend(trimmed)
+    } catch {
+      // 送信失敗時は入力内容を復元
+      setMessage(originalMessage)
     } finally {
       setIsSending(false)
       textareaRef.current?.focus()
