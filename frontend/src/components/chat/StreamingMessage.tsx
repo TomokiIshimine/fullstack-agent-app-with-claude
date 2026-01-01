@@ -15,7 +15,7 @@ export function StreamingMessage({ content, toolCalls = [] }: StreamingMessagePr
   if (!hasToolCalls && !hasContent) {
     return (
       <div className="streaming-message">
-        <div className="message-item__avatar" style={{ backgroundColor: '#10b981' }}>
+        <div className="message-item__avatar">
           AI
         </div>
         <div className="streaming-message__content">
@@ -31,7 +31,7 @@ export function StreamingMessage({ content, toolCalls = [] }: StreamingMessagePr
 
   return (
     <div className="streaming-message">
-      <div className="message-item__avatar" style={{ backgroundColor: '#10b981' }}>
+      <div className="message-item__avatar">
         AI
       </div>
       <div className="streaming-message__content">

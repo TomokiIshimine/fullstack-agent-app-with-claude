@@ -251,6 +251,11 @@
   gap: 1rem;
 }
 
+.streaming-message .message-item__avatar {
+  background-color: #10b981;
+  color: white;
+}
+
 .streaming-message__content {
   max-width: 80%;
   padding: 0.75rem 1rem;
