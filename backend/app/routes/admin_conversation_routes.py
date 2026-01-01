@@ -8,6 +8,7 @@ from flask import Blueprint, jsonify, request
 from werkzeug.exceptions import BadRequest
 
 from app.constants.http import HTTP_OK
+from app.constants.pagination import DEFAULT_PER_PAGE
 from app.routes.dependencies import validate_uuid_param, with_admin_conversation_service
 from app.services.admin_conversation_service import AdminConversationService
 from app.utils.auth_decorator import require_auth, require_role
@@ -59,7 +60,7 @@ def list_all_conversations(*, admin_conversation_service: AdminConversationServi
         }
     """
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    per_page = request.args.get("per_page", DEFAULT_PER_PAGE, type=int)
     user_id = request.args.get("user_id", type=int)
     start_date = request.args.get("start_date", type=str)
     end_date = request.args.get("end_date", type=str)
