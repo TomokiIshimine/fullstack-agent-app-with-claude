@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import type { Message } from '@/types/chat'
 import type { StreamingToolCall } from '@/types/tool'
 import type { RetryStatus } from '@/types/errors'
@@ -24,10 +24,48 @@ export function MessageList({
   userName,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRequestRef = useRef<number | null>(null)
 
+  const scrollToBottom = useCallback((smooth: boolean) => {
+    bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' })
+  }, [])
+
+  // Scroll on new messages (smooth scroll)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingContent, streamingToolCalls, retryStatus])
+    scrollToBottom(true)
+  }, [messages, scrollToBottom])
+
+  // Scroll during streaming (throttled with requestAnimationFrame, instant scroll)
+  useEffect(() => {
+    if (!isStreaming) {
+      return
+    }
+
+    // Cancel any pending scroll request
+    if (scrollRequestRef.current !== null) {
+      cancelAnimationFrame(scrollRequestRef.current)
+    }
+
+    // Schedule scroll on next animation frame to avoid excessive updates
+    scrollRequestRef.current = requestAnimationFrame(() => {
+      scrollToBottom(false)
+      scrollRequestRef.current = null
+    })
+
+    return () => {
+      if (scrollRequestRef.current !== null) {
+        cancelAnimationFrame(scrollRequestRef.current)
+        scrollRequestRef.current = null
+      }
+    }
+  }, [isStreaming, streamingContent, streamingToolCalls, scrollToBottom])
+
+  // Scroll when retry status changes
+  useEffect(() => {
+    if (retryStatus?.isRetrying) {
+      scrollToBottom(true)
+    }
+  }, [retryStatus, scrollToBottom])
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-6">
