@@ -86,9 +86,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             <button
               type="button"
               onClick={togglePasswordVisibility}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-700 focus:outline-none focus:text-slate-700 transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:text-slate-700 rounded transition-colors"
               aria-label={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
-              tabIndex={-1}
+              aria-pressed={showPassword}
             >
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
             </button>
