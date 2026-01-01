@@ -52,34 +52,17 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div
-          style={{
-            padding: '2rem',
-            maxWidth: '600px',
-            margin: '2rem auto',
-            border: '1px solid #ef4444',
-            borderRadius: '8px',
-            backgroundColor: '#fef2f2',
-          }}
-        >
-          <h1 style={{ color: '#dc2626', marginBottom: '1rem' }}>エラーが発生しました</h1>
-          <p style={{ marginBottom: '1rem' }}>
+        <div className="p-8 max-w-xl mx-auto my-8 border border-red-500 rounded-lg bg-red-50">
+          <h1 className="text-red-600 mb-4 text-xl font-bold">エラーが発生しました</h1>
+          <p className="mb-4 text-slate-700">
             申し訳ございません。予期しないエラーが発生しました。
           </p>
           {this.state.error && (
-            <details style={{ marginBottom: '1rem' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+            <details className="mb-4">
+              <summary className="cursor-pointer font-bold mb-2 text-slate-800">
                 エラーの詳細
               </summary>
-              <pre
-                style={{
-                  backgroundColor: '#f3f4f6',
-                  padding: '1rem',
-                  borderRadius: '4px',
-                  overflow: 'auto',
-                  fontSize: '0.875rem',
-                }}
-              >
+              <pre className="bg-slate-100 p-4 rounded overflow-auto text-sm text-slate-700">
                 {this.state.error.message}
                 {'\n\n'}
                 {this.state.error.stack}
@@ -91,15 +74,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               this.setState({ hasError: false, error: null })
               window.location.reload()
             }}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '1rem',
-            }}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors cursor-pointer text-base"
           >
             ページを再読み込み
           </button>

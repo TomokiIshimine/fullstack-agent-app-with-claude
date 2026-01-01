@@ -6,6 +6,7 @@ import {
   resetUserPassword as resetUserPasswordApi,
 } from '@/lib/api/users'
 import { Modal, Button, Alert } from '@/components/ui'
+import { cn } from '@/lib/utils/cn'
 import { InitialPasswordModal } from './InitialPasswordModal'
 
 interface UserListProps {
@@ -142,11 +143,12 @@ export function UserList({ users, onDeleteUser, onResetPassword }: UserListProps
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      className={cn(
+                        'inline-flex px-2 py-1 text-xs font-semibold rounded-full',
                         user.role === 'admin'
                           ? 'bg-purple-100 text-purple-800'
                           : 'bg-blue-100 text-blue-800'
-                      }`}
+                      )}
                     >
                       {user.role === 'admin' ? '管理者' : 'ユーザー'}
                     </span>
