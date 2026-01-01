@@ -332,8 +332,8 @@ describe('UserList', () => {
       expect(adminBadge).toBeInTheDocument()
       expect(adminBadge?.textContent).toBe('管理者')
 
-      // User role badges should have blue background
-      const userBadges = container.querySelectorAll('.bg-blue-100.text-blue-800')
+      // User role badges should have info background
+      const userBadges = container.querySelectorAll('.bg-info-100.text-info-600')
       expect(userBadges).toHaveLength(2)
     })
   })

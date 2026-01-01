@@ -40,7 +40,7 @@ describe('Input', () => {
 
     it('applies error styles to input', () => {
       render(<Input error="Error" />)
-      expect(screen.getByRole('textbox')).toHaveClass('border-red-300')
+      expect(screen.getByRole('textbox')).toHaveClass('border-danger-300')
     })
 
     it('sets aria-invalid when error exists', () => {

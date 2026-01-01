@@ -52,8 +52,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div className="p-8 max-w-xl mx-auto my-8 border border-red-500 rounded-lg bg-red-50">
-          <h1 className="text-red-600 mb-4 text-xl font-bold">エラーが発生しました</h1>
+        <div className="p-8 max-w-xl mx-auto my-8 border border-danger-500 rounded-lg bg-danger-50">
+          <h1 className="text-danger-600 mb-4 text-xl font-bold">エラーが発生しました</h1>
           <p className="mb-4 text-slate-700">
             申し訳ございません。予期しないエラーが発生しました。
           </p>
@@ -74,7 +74,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               this.setState({ hasError: false, error: null })
               window.location.reload()
             }}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors cursor-pointer text-base"
+            className="px-4 py-2 bg-primary-500 text-white rounded hover:bg-primary-600 transition-colors cursor-pointer text-base"
           >
             ページを再読み込み
           </button>

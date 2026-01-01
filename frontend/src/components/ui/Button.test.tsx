@@ -13,7 +13,7 @@ describe('Button', () => {
     it('renders with default props', () => {
       render(<Button>Default</Button>)
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('bg-blue-500') // primary variant
+      expect(button).toHaveClass('bg-primary-500') // primary variant
       expect(button).not.toBeDisabled()
     })
   })
@@ -21,7 +21,7 @@ describe('Button', () => {
   describe('Variants', () => {
     it('renders primary variant', () => {
       render(<Button variant="primary">Primary</Button>)
-      expect(screen.getByRole('button')).toHaveClass('bg-blue-500')
+      expect(screen.getByRole('button')).toHaveClass('bg-primary-500')
     })
 
     it('renders secondary variant', () => {
@@ -31,12 +31,12 @@ describe('Button', () => {
 
     it('renders danger variant', () => {
       render(<Button variant="danger">Danger</Button>)
-      expect(screen.getByRole('button')).toHaveClass('bg-red-500')
+      expect(screen.getByRole('button')).toHaveClass('bg-danger-500')
     })
 
     it('renders success variant', () => {
       render(<Button variant="success">Success</Button>)
-      expect(screen.getByRole('button')).toHaveClass('bg-emerald-500')
+      expect(screen.getByRole('button')).toHaveClass('bg-success-500')
     })
   })
 
@@ -146,7 +146,7 @@ describe('Button', () => {
       render(<Button className="my-custom-class">Button</Button>)
       const button = screen.getByRole('button')
       expect(button).toHaveClass('my-custom-class')
-      expect(button).toHaveClass('bg-blue-500') // still has variant class
+      expect(button).toHaveClass('bg-primary-500') // still has variant class
     })
   })
 

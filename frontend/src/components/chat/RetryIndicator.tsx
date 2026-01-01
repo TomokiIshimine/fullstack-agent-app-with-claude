@@ -20,10 +20,10 @@ export function RetryIndicator({ status }: RetryIndicatorProps) {
   const errorMessage = getBriefErrorMessage(status.errorType)
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
+    <div className="flex items-center gap-2 px-4 py-2 bg-warning-50 border border-warning-100 rounded-lg text-warning-600">
       {/* Spinner */}
       <svg
-        className="animate-spin h-4 w-4 text-amber-600"
+        className="animate-spin h-4 w-4 text-warning-600"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"

@@ -26,7 +26,7 @@ export function StatCard({ title, value, subtitle, icon, trend }: StatCardProps)
             <p
               className={cn(
                 'mt-2 text-sm font-medium',
-                trend.isPositive ? 'text-emerald-600' : 'text-red-600'
+                trend.isPositive ? 'text-success-600' : 'text-danger-600'
               )}
             >
               {trend.isPositive ? '+' : ''}
@@ -35,7 +35,7 @@ export function StatCard({ title, value, subtitle, icon, trend }: StatCardProps)
           )}
         </div>
         {icon && (
-          <div className="flex-shrink-0 p-3 bg-blue-50 rounded-lg text-blue-600">{icon}</div>
+          <div className="flex-shrink-0 p-3 bg-primary-50 rounded-lg text-primary-600">{icon}</div>
         )}
       </div>
     </Card>
