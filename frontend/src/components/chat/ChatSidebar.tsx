@@ -86,25 +86,21 @@ export function ChatSidebar({
             <div className="p-8 text-center text-slate-400 text-sm">会話履歴がありません</div>
           ) : (
             conversations.map(conv => (
-              <div
+              <button
                 key={conv.uuid}
+                type="button"
                 className={cn(
-                  'py-3 px-4 rounded-lg cursor-pointer transition-colors duration-200 mb-1',
+                  'w-full text-left py-3 px-4 rounded-lg cursor-pointer transition-colors duration-200 mb-1',
+                  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:ring-offset-slate-800',
                   conv.uuid === currentUuid ? 'bg-slate-600' : 'hover:bg-slate-700'
                 )}
                 onClick={() => onSelectConversation(conv.uuid)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    onSelectConversation(conv.uuid)
-                  }
-                }}
+                aria-label={`会話: ${conv.title}、${formatDate(conv.updatedAt)}`}
+                aria-current={conv.uuid === currentUuid ? 'true' : undefined}
               >
                 <div className="text-sm font-medium truncate">{conv.title}</div>
                 <div className="text-xs text-slate-400 mt-1">{formatDate(conv.updatedAt)}</div>
-              </div>
+              </button>
             ))
           )}
         </div>
