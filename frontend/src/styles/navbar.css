@@ -9,8 +9,8 @@
   left: 0;
   right: 0;
   height: 4rem;
-  background-color: white;
-  border-bottom: 1px solid #e2e8f0;
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-default);
   z-index: 100;
 }
 
@@ -26,18 +26,18 @@
 .navbar__brand {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-primary);
   text-decoration: none;
   transition: color 0.2s;
 }
 
 .navbar__brand:hover {
-  color: #3b82f6;
+  color: var(--color-primary-500);
 }
 
 .navbar__brand:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #3b82f6;
+  box-shadow: 0 0 0 2px var(--focus-ring);
   border-radius: 0.25rem;
 }
 
@@ -55,7 +55,7 @@
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #475569;
+  color: var(--text-secondary);
   text-decoration: none;
   transition:
     background-color 0.2s,
@@ -64,22 +64,22 @@
 }
 
 .navbar__link:hover {
-  background-color: #f1f5f9;
-  color: #1e293b;
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
 }
 
 .navbar__link:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #3b82f6;
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .navbar__link--active {
-  background-color: #eff6ff;
-  color: #3b82f6;
+  background-color: var(--active-bg);
+  color: var(--color-primary-500);
 }
 
 .navbar__link--active:hover {
-  background-color: #dbeafe;
+  background-color: var(--active-hover-bg);
 }
 
 /* Right Section */
@@ -101,17 +101,17 @@
   background: none;
   border-radius: 0.5rem;
   cursor: pointer;
-  color: #475569;
+  color: var(--text-secondary);
   transition: background-color 0.2s;
 }
 
 .navbar__mobile-toggle:hover {
-  background-color: #f1f5f9;
+  background-color: var(--hover-bg);
 }
 
 .navbar__mobile-toggle:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #3b82f6;
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* ==========================================================================
@@ -136,20 +136,20 @@
 }
 
 .user-menu__trigger:hover {
-  background-color: #f1f5f9;
+  background-color: var(--hover-bg);
 }
 
 .user-menu__trigger:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #3b82f6;
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .user-menu__avatar {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background-color: #3b82f6;
-  color: white;
+  background-color: var(--color-primary-500);
+  color: var(--text-inverse);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,7 +158,7 @@
 }
 
 .user-menu__chevron {
-  color: #94a3b8;
+  color: var(--text-muted);
   transition: transform 0.2s;
 }
 
@@ -172,37 +172,37 @@
   top: 100%;
   margin-top: 0.5rem;
   min-width: 220px;
-  background-color: white;
-  border: 1px solid #e2e8f0;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-default);
   border-radius: 0.75rem;
   box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    0 10px 15px -3px var(--shadow-md),
+    0 4px 6px -4px var(--shadow-md);
   overflow: hidden;
   z-index: 50;
 }
 
 .user-menu__header {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .user-menu__version {
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-bottom: 0.25rem;
 }
 
 .user-menu__name {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #1e293b;
+  color: var(--text-primary);
   word-break: break-all;
 }
 
 .user-menu__email {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-tertiary);
   word-break: break-all;
 }
 
@@ -218,7 +218,7 @@
   padding: 0.75rem 1rem;
   text-align: left;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--text-secondary);
   background: none;
   border: none;
   cursor: pointer;
@@ -229,22 +229,22 @@
 }
 
 .user-menu__nav-item:hover {
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .user-menu__nav-item:focus {
   outline: none;
-  background-color: #f1f5f9;
+  background-color: var(--hover-bg);
 }
 
 .user-menu__nav-item--active {
-  background-color: #eff6ff;
-  color: #3b82f6;
+  background-color: var(--active-bg);
+  color: var(--color-primary-500);
 }
 
 .user-menu__nav-item--active:hover {
-  background-color: #dbeafe;
+  background-color: var(--active-hover-bg);
 }
 
 .user-menu__item {
@@ -255,7 +255,7 @@
   padding: 0.75rem 1rem;
   text-align: left;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--text-secondary);
   background: none;
   border: none;
   cursor: pointer;
@@ -264,25 +264,25 @@
 }
 
 .user-menu__item:hover {
-  background-color: #f8fafc;
+  background-color: var(--bg-secondary);
 }
 
 .user-menu__item:focus {
   outline: none;
-  background-color: #f1f5f9;
+  background-color: var(--hover-bg);
 }
 
 .user-menu__item--danger {
-  color: #dc2626;
+  color: var(--color-danger-600);
 }
 
 .user-menu__item--danger:hover {
-  background-color: #fef2f2;
+  background-color: var(--color-danger-50);
 }
 
 .user-menu__divider {
   height: 1px;
-  background-color: #e2e8f0;
+  background-color: var(--border-default);
   margin: 0;
 }
 
@@ -293,7 +293,7 @@
 .mobile-menu__overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--shadow-overlay);
   z-index: 150;
   opacity: 0;
   visibility: hidden;
@@ -314,13 +314,13 @@
   bottom: 0;
   width: 280px;
   max-width: 85vw;
-  background-color: white;
+  background-color: var(--bg-primary);
   transform: translateX(-100%);
   transition: transform 0.3s ease;
   z-index: 200;
   display: flex;
   flex-direction: column;
-  box-shadow: 4px 0 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 4px 0 6px -1px var(--shadow-md);
 }
 
 .mobile-menu--open {
@@ -332,13 +332,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .mobile-menu__brand {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .mobile-menu__close {
@@ -352,20 +352,20 @@
   background: none;
   border-radius: 0.5rem;
   cursor: pointer;
-  color: #64748b;
+  color: var(--text-tertiary);
   transition:
     background-color 0.2s,
     color 0.2s;
 }
 
 .mobile-menu__close:hover {
-  background-color: #f1f5f9;
-  color: #1e293b;
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
 }
 
 .mobile-menu__close:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #3b82f6;
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .mobile-menu__user {
@@ -373,15 +373,15 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .mobile-menu__avatar {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
-  background-color: #3b82f6;
-  color: white;
+  background-color: var(--color-primary-500);
+  color: var(--text-inverse);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -397,7 +397,7 @@
 .mobile-menu__user-name {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #1e293b;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -405,7 +405,7 @@
 
 .mobile-menu__version {
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .mobile-menu__nav {
@@ -420,7 +420,7 @@
   gap: 0.75rem;
   padding: 0.875rem 1.5rem;
   font-size: 0.9375rem;
-  color: #475569;
+  color: var(--text-secondary);
   text-decoration: none;
   transition:
     background-color 0.2s,
@@ -428,24 +428,24 @@
 }
 
 .mobile-menu__link:hover {
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .mobile-menu__link:focus {
   outline: none;
-  background-color: #f1f5f9;
+  background-color: var(--hover-bg);
 }
 
 .mobile-menu__link--active {
-  background-color: #eff6ff;
-  color: #3b82f6;
+  background-color: var(--active-bg);
+  color: var(--color-primary-500);
   font-weight: 500;
 }
 
 .mobile-menu__footer {
   padding: 0.5rem 0;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border-default);
 }
 
 .mobile-menu__logout {
@@ -454,7 +454,7 @@
   width: 100%;
   padding: 0.875rem 1.5rem;
   font-size: 0.9375rem;
-  color: #dc2626;
+  color: var(--color-danger-600);
   background: none;
   border: none;
   cursor: pointer;
@@ -463,12 +463,12 @@
 }
 
 .mobile-menu__logout:hover {
-  background-color: #fef2f2;
+  background-color: var(--color-danger-50);
 }
 
 .mobile-menu__logout:focus {
   outline: none;
-  background-color: #fee2e2;
+  background-color: var(--color-danger-100);
 }
 
 /* ==========================================================================
