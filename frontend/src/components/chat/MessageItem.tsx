@@ -18,7 +18,7 @@ export function MessageItem({ message, userName }: MessageItemProps) {
     <div className={`flex gap-4 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
         className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
-          isUser ? 'bg-primary-500 text-white' : 'bg-success-500 text-white'
+          isUser ? 'bg-slate-800 text-white' : 'bg-success-500 text-white'
         }`}
       >
         {avatarText}
@@ -26,7 +26,7 @@ export function MessageItem({ message, userName }: MessageItemProps) {
       <div
         className={`max-w-[80%] py-3 px-4 rounded-2xl leading-normal whitespace-pre-wrap break-words ${
           isUser
-            ? 'bg-primary-500 text-white rounded-br-sm'
+            ? 'bg-slate-800 text-white rounded-br-sm'
             : 'bg-white text-slate-800 rounded-bl-sm shadow-sm'
         }`}
       >
