@@ -1,8 +1,8 @@
 # 開発環境ガイド
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-12-27
-**バージョン:** 1.3
+**最終更新:** 2026-01-02
+**バージョン:** 1.4
 
 ---
 
@@ -17,6 +17,7 @@
 - **[認証・認可設計書](./02_authentication-authorization.md)** - JWT認証フロー、トークン仕様、セキュリティ対策
 - **[機能一覧](./03_feature-list.md)** - 実装済み機能の一覧と実装状況
 - **[開発環境ガイド](./00_development.md)** - 本ドキュメント（開発手順、環境設定）
+- **[トラブルシューティング](./10_troubleshooting.md)** - 開発中によくあるエラーと解決策
 
 詳細な実装ガイドは各ディレクトリの `CLAUDE.md` を参照してください:
 - [backend/CLAUDE.md](../backend/CLAUDE.md) - バックエンド実装ガイド
@@ -191,13 +192,17 @@ docker compose -f infra/docker-compose.yml exec redis redis-cli
 | フロー            | コマンド            | 説明                                     |
 |------------------|---------------------|------------------------------------------|
 | 依存関係の導入    | `make install`      | frontend/backend の依存を一括インストール |
-| Docker 起動       | `make up`           | MySQL を含むコンテナをバックグラウンドで起動 |
+| Docker 起動       | `make up`           | MySQL/Redis を含むコンテナをバックグラウンドで起動 |
 | Docker 停止       | `make down`         | コンテナ群を停止／削除                   |
 | Lint             | `make lint`         | ESLint + tsc (React) / flake8 + mypy (Flask) |
 | フォーマットチェック | `make format-check` | コードフォーマットの検証（変更なし）    |
 | テスト            | `make test`         | Vitest (frontend) と pytest (backend)    |
 | テスト（高速）    | `make test-fast`    | カバレッジなしでテスト実行              |
+| カバレッジ詳細    | `make test-coverage`| カバレッジHTMLレポートを生成            |
 | フォーマット      | `make format`       | Prettier / isort / black                 |
+| 環境診断          | `make doctor`       | 開発環境の依存・設定をチェック          |
+| ヘルスチェック    | `make health`       | DockerサービスとHTTPエンドポイントを確認 |
+| セキュリティ監査  | `make security`     | 依存関係のセキュリティ監査を実行         |
 
 **テストインフラ:**
 テストファクトリー・ヘルパー関数・セキュリティテストなどの詳細については、[テスト戦略書](./06_testing-strategy.md) を参照してください。
@@ -209,7 +214,7 @@ docker compose -f infra/docker-compose.yml exec redis redis-cli
 新規環境では、Docker Compose が自動的にデータベースを初期化します:
 
 ```bash
-make up                   # すべてのサービスを起動（MySQL含む）
+make up                   # すべてのサービスを起動（MySQL/Redis含む）
 ```
 
 MySQL コンテナは初回起動時に `infra/mysql/init/001_init.sql` を実行し、以下のテーブルを作成します:

@@ -1,8 +1,8 @@
 # システム構成設計書
 
 **作成日:** 2025-10-28
-**最終更新:** 2025-12-31
-**バージョン:** 1.4
+**最終更新:** 2026-01-02
+**バージョン:** 1.5
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -218,32 +218,32 @@ app/
 
 | カテゴリ               | 技術/ライブラリ          | バージョン | 用途                          |
 |----------------------|-------------------------|-----------|-------------------------------|
-| UI フレームワーク      | React                   | 18.x      | ユーザーインターフェース構築    |
-| 言語                  | TypeScript              | 5.x       | 型安全な開発                   |
-| ビルドツール          | Vite                    | 7.x       | 高速な開発サーバー・ビルド      |
-| ルーティング          | React Router            | 7.x       | SPAのページ遷移管理             |
+| UI フレームワーク      | React                   | 18.2      | ユーザーインターフェース構築    |
+| 言語                  | TypeScript              | 5.4       | 型安全な開発                   |
+| ビルドツール          | Vite                    | 7.1       | 高速な開発サーバー・ビルド      |
+| ルーティング          | React Router            | 7.9       | SPAのページ遷移管理             |
 | 状態管理              | React Context + Hooks   | -         | グローバル状態管理              |
-| スタイリング          | Tailwind CSS            | 4.x       | コンポーネントスタイリング       |
-| テスト                | Vitest + Testing Library| -         | ユニット・統合テスト            |
-| リンター              | ESLint                  | -         | コード品質管理                  |
-| フォーマッター        | Prettier                | -         | コード整形                      |
+| スタイリング          | Tailwind CSS            | 4.1       | コンポーネントスタイリング       |
+| テスト                | Vitest + Testing Library| 4.0 / 16.3| ユニット・統合テスト            |
+| リンター              | ESLint                  | 9.x       | コード品質管理                  |
+| フォーマッター        | Prettier                | 3.6       | コード整形                      |
 
 ### 3.2 バックエンド
 
 | カテゴリ               | 技術/ライブラリ          | バージョン | 用途                          |
 |----------------------|-------------------------|-----------|-------------------------------|
-| Web フレームワーク     | Flask                   | 2.3.x     | RESTful API サーバー          |
+| Web フレームワーク     | Flask                   | 2.3      | RESTful API サーバー          |
 | 言語                  | Python                  | 3.12      | バックエンドロジック            |
 | ORM                   | SQLAlchemy              | 2.x       | データベース操作                |
 | バリデーション        | Pydantic                | 2.x       | リクエスト/レスポンス検証       |
-| 認証                  | Flask + JWT             | -         | トークンベース認証              |
-| パスワードハッシュ    | bcrypt                  | -         | パスワードの安全な保存          |
-| テスト                | pytest                  | -         | ユニット・統合テスト            |
-| リンター              | flake8 + mypy           | -         | コード品質・型チェック          |
-| フォーマッター        | black + isort           | -         | コード整形                      |
-| レート制限            | Flask-Limiter           | 3.x       | APIレート制限                  |
+| 認証                  | PyJWT                   | 2.10     | トークンベース認証              |
+| パスワードハッシュ    | bcrypt                  | 5.x       | パスワードの安全な保存          |
+| テスト                | pytest                  | 8.3      | ユニット・統合テスト            |
+| リンター              | flake8 + mypy           | 7.1 / 1.13| コード品質・型チェック          |
+| フォーマッター        | black + isort           | 24.10 / 5.13 | コード整形                   |
+| レート制限            | Flask-Limiter           | 3.8       | APIレート制限                  |
 | キャッシュ            | Redis                   | 7.x       | レート制限バックエンド          |
-| AI連携               | langchain-anthropic + langgraph | 0.x | Claude + ツール呼び出し対応エージェント |
+| AI連携               | Anthropic SDK + LangGraph + LangChain | 0.40 / 0.2 / 0.3 | Claude + ツール呼び出し対応エージェント |
 
 ### 3.3 データベース
 
@@ -306,14 +306,14 @@ app/
 ```yaml
 services:
   frontend:
-    - Image: node:20-alpine
+    - Build: frontend/Dockerfile.dev (node:20-alpine)
     - Port: 5174
     - Environment: VITE_API_PROXY=http://backend:5000
 
   backend:
-    - Image: python:3.12-slim
+    - Build: backend/Dockerfile.dev (python:3.12-slim)
     - Port: 5000 (Host: 5001)
-    - Environment: DATABASE_URL, FLASK_ENV
+    - Environment: FLASK_APP, FLASK_DEBUG, DATABASE_URL, FRONTEND_URL, RATE_LIMIT_ENABLED, REDIS_*
 
   db:
     - Image: mysql:8.0
@@ -342,9 +342,11 @@ graph TB
         Frontend["frontend<br/>:5174"]
         Backend["backend<br/>:5000"]
         DB["db<br/>:3306"]
+        Redis["redis<br/>:6379"]
 
         Frontend --> Backend
         Backend --> DB
+        Backend --> Redis
         Frontend -.-> Host
     end
 
@@ -366,12 +368,12 @@ graph TB
 #### フロントエンド (.env)
 
 ```env
-VITE_API_PROXY=http://localhost:5001
+VITE_API_PROXY=http://localhost:5000
 VITE_LOG_LEVEL=DEBUG
 VITE_ENABLE_API_LOGGING=true
 ```
 
-**補足:** Docker Compose ではフロントエンドコンテナ内の `VITE_API_PROXY` は `http://backend:5000` に設定されます。
+**補足:** Docker Compose ではフロントエンドコンテナ内の `VITE_API_PROXY` は `http://backend:5000` に設定されます。バックエンドをDockerで起動してホスト側 `http://localhost:5001` に公開している場合は `.env` を `http://localhost:5001` に合わせてください。
 
 #### バックエンド (.env)
 
@@ -402,7 +404,7 @@ MYSQL_PASSWORD=example-password
 # Redis（レート制限用）
 REDIS_HOST=redis
 REDIS_PORT=6379
-REDIS_PASSWORD=dev-password
+REDIS_PASSWORD=dev-redis-password
 RATE_LIMIT_ENABLED=true
 ```
 
