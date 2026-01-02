@@ -1,6 +1,17 @@
 import type { Conversation } from '@/types/chat'
 import { cn } from '@/lib/utils/cn'
 
+/**
+ * New chat button styles
+ */
+const newChatButtonStyles = {
+  base: 'w-full py-3 px-4 rounded-lg text-sm font-medium cursor-pointer flex items-center gap-2',
+  color: 'bg-slate-700 text-white border border-slate-600',
+  transition: 'transition-colors duration-200',
+  hover: 'hover:bg-slate-600',
+  disabled: 'disabled:opacity-50 disabled:cursor-not-allowed',
+} as const
+
 interface ChatSidebarProps {
   conversations: Conversation[]
   currentUuid?: string
@@ -58,7 +69,13 @@ export function ChatSidebar({
         <div className="p-4 border-b border-slate-700">
           <button
             type="button"
-            className="w-full py-3 px-4 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm font-medium cursor-pointer transition-colors duration-200 flex items-center gap-2 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={cn(
+              newChatButtonStyles.base,
+              newChatButtonStyles.color,
+              newChatButtonStyles.transition,
+              newChatButtonStyles.hover,
+              newChatButtonStyles.disabled
+            )}
             onClick={onNewChat}
             disabled={isLoading}
           >
