@@ -9,7 +9,6 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { RoleBasedRedirect } from '@/components/RoleBasedRedirect'
 import { AuthenticatedLayout } from '@/components/layout'
-import '@/styles/navbar.css'
 
 function App() {
   return (
