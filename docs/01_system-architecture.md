@@ -2,7 +2,7 @@
 
 **作成日:** 2025-10-28
 **最終更新:** 2026-01-02
-**バージョン:** 1.5
+**バージョン:** 1.6
 **対象システム:** フルスタックWebアプリケーション
 
 ---
@@ -19,6 +19,7 @@
 - **モダンな技術スタック**: React + TypeScript (フロントエンド)、Flask + SQLAlchemy (バックエンド)
 - **セキュアな認証**: JWT トークンによる認証（httpOnly Cookie）
 - **AIチャット機能**: LangGraph ReAct エージェント + Claude (Anthropic) によるストリーミングAIチャット（ツール呼び出し対応）
+- **AI利用コストの記録**: LiteLLMの料金DBを利用したコスト算出とメッセージメタデータの保存
 - **Docker による開発環境**: 環境構築を簡素化し、開発者間の環境差異を最小化
 - **包括的なロギング**: リクエストトレーシング、パフォーマンス測定、センシティブデータマスキング
 
@@ -127,6 +128,7 @@ app/
 │   ├── auth_service.py
 │   ├── agent_service.py        # LangGraph ReAct エージェントサービス
 │   ├── conversation_service.py # 会話管理サービス
+│   ├── metadata_service.py     # メッセージメタデータ/コスト算出
 │   └── admin_dashboard_service.py  # ダッシュボード統計サービス
 ├── repositories/       # データアクセス層
 │   ├── user_repository.py
@@ -147,6 +149,7 @@ app/
 │   └── admin_dashboard.py  # ダッシュボード用スキーマ
 ├── utils/              # ユーティリティ
 │   ├── auth_decorator.py  # 認証デコレータ
+│   ├── cost_calculator.py # LiteLLMを用いたコスト算出
 │   └── password.py        # パスワードハッシュ化
 ├── database.py         # データベース接続管理
 ├── logger.py           # ロギング設定
@@ -244,6 +247,7 @@ app/
 | レート制限            | Flask-Limiter           | 3.8       | APIレート制限                  |
 | キャッシュ            | Redis                   | 7.x       | レート制限バックエンド          |
 | AI連携               | Anthropic SDK + LangGraph + LangChain | 0.40 / 0.2 / 0.3 | Claude + ツール呼び出し対応エージェント |
+| コスト算出            | LiteLLM                 | 1.80     | LLM利用コストの算出                      |
 
 ### 3.3 データベース
 
