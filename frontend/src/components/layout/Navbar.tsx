@@ -4,9 +4,22 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLogout } from '@/hooks/useLogout'
 import { useVersion } from '@/hooks/useVersion'
 import { getHomePathForRole } from '@/lib/utils/routing'
+import { cn } from '@/lib/utils/cn'
 import { NavIcon, type NavIconType } from './NavIcon'
 import { UserMenu } from './UserMenu'
 import { MobileMenu } from './MobileMenu'
+
+/**
+ * Mobile menu toggle button styles
+ */
+const mobileToggleStyles = {
+  base: 'items-center justify-center w-11 h-11 p-0 border-none bg-transparent rounded-lg cursor-pointer',
+  color: 'text-slate-600',
+  transition: 'transition-colors duration-200',
+  hover: 'hover:bg-slate-100',
+  focus: 'focus:outline-none focus:ring-2 focus:ring-primary-500',
+  responsive: 'hidden max-md:flex',
+} as const
 
 export interface NavLinkItem {
   path: string
@@ -57,7 +70,14 @@ export function Navbar() {
           {/* Mobile Toggle */}
           <button
             type="button"
-            className="hidden md:hidden items-center justify-center w-11 h-11 p-0 border-none bg-transparent rounded-lg cursor-pointer text-slate-600 transition-colors duration-200 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500 max-md:flex"
+            className={cn(
+              mobileToggleStyles.base,
+              mobileToggleStyles.color,
+              mobileToggleStyles.transition,
+              mobileToggleStyles.hover,
+              mobileToggleStyles.focus,
+              mobileToggleStyles.responsive
+            )}
             onClick={() => setIsMobileMenuOpen(true)}
             aria-label="メニューを開く"
             aria-expanded={isMobileMenuOpen}

@@ -4,8 +4,31 @@ import type { User } from '@/types/auth'
 import { isPathActive } from '@/lib/utils/routing'
 import { getDisplayName, getAvatarLetter } from '@/lib/utils/user'
 import { useScrollLock } from '@/hooks/useScrollLock'
+import { cn } from '@/lib/utils/cn'
 import { NavIcon } from './NavIcon'
 import type { NavLinkItem } from './Navbar'
+
+/**
+ * Close button styles for mobile menu header
+ */
+const closeButtonStyles = {
+  base: 'flex items-center justify-center w-10 h-10 p-0 border-none bg-transparent rounded-lg cursor-pointer',
+  color: 'text-slate-500',
+  transition: 'transition-colors duration-200',
+  hover: 'hover:bg-slate-100 hover:text-slate-800',
+  focus: 'focus:outline-none focus:ring-2 focus:ring-primary-500',
+} as const
+
+/**
+ * Logout button styles for mobile menu footer
+ */
+const logoutButtonStyles = {
+  base: 'flex items-center w-full px-6 py-3.5 text-[15px] bg-transparent border-none cursor-pointer text-left',
+  color: 'text-danger-600',
+  transition: 'transition-colors duration-200',
+  hover: 'hover:bg-danger-50',
+  focus: 'focus:outline-none focus:bg-danger-100',
+} as const
 
 interface MobileMenuProps {
   isOpen: boolean
@@ -70,7 +93,13 @@ export function MobileMenu({
           <span className="text-lg font-semibold text-slate-800">AIチャット</span>
           <button
             type="button"
-            className="flex items-center justify-center w-10 h-10 p-0 border-none bg-transparent rounded-lg cursor-pointer text-slate-500 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className={cn(
+              closeButtonStyles.base,
+              closeButtonStyles.color,
+              closeButtonStyles.transition,
+              closeButtonStyles.hover,
+              closeButtonStyles.focus
+            )}
             onClick={onClose}
             aria-label="メニューを閉じる"
           >
@@ -115,7 +144,13 @@ export function MobileMenu({
         <div className="py-2 border-t border-slate-200">
           <button
             type="button"
-            className="flex items-center w-full px-6 py-3.5 text-[15px] text-danger-600 bg-transparent border-none cursor-pointer text-left transition-colors duration-200 hover:bg-danger-50 focus:outline-none focus:bg-danger-100"
+            className={cn(
+              logoutButtonStyles.base,
+              logoutButtonStyles.color,
+              logoutButtonStyles.transition,
+              logoutButtonStyles.hover,
+              logoutButtonStyles.focus
+            )}
             onClick={() => {
               onLogout()
               onClose()
