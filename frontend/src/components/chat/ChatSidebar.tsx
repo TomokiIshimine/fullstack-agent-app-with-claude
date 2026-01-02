@@ -91,7 +91,7 @@ export function ChatSidebar({
                 type="button"
                 className={cn(
                   'w-full text-left py-3 px-4 rounded-lg cursor-pointer transition-colors duration-200 mb-1',
-                  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:ring-offset-slate-800',
+                  'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 focus:ring-offset-slate-800',
                   conv.uuid === currentUuid ? 'bg-slate-600' : 'hover:bg-slate-700'
                 )}
                 onClick={() => onSelectConversation(conv.uuid)}
