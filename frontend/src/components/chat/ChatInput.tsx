@@ -1,4 +1,30 @@
 import { useState, useRef, useCallback, useEffect, type KeyboardEvent, type FormEvent } from 'react'
+import { cn } from '@/lib/utils/cn'
+
+/**
+ * Textarea styles organized by category for maintainability
+ */
+const textareaStyles = {
+  base: 'w-full resize-none text-[15px] leading-normal overflow-y-auto',
+  size: 'min-h-11 max-h-40 py-3 px-4',
+  border: 'border border-gray-300 rounded-3xl',
+  transition: 'transition-all duration-200',
+  focus: 'focus:outline-none focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/10',
+  disabled: 'disabled:bg-slate-100 disabled:cursor-not-allowed',
+  placeholder: 'placeholder:text-slate-400',
+  scrollbar: '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
+} as const
+
+/**
+ * Submit button styles organized by category
+ */
+const submitButtonStyles = {
+  base: 'w-11 h-11 rounded-full border-none cursor-pointer flex items-center justify-center shrink-0',
+  color: 'bg-primary-500 text-white',
+  transition: 'transition-colors duration-200',
+  hover: 'hover:bg-primary-600',
+  disabled: 'disabled:bg-slate-400 disabled:cursor-not-allowed',
+} as const
 
 interface ChatInputProps {
   onSend: (message: string) => Promise<void>
@@ -64,7 +90,16 @@ export function ChatInput({
         <div className="flex-1 relative">
           <textarea
             ref={textareaRef}
-            className="w-full min-h-11 max-h-40 py-3 px-4 border border-gray-300 rounded-3xl resize-none text-[15px] leading-normal transition-all duration-200 overflow-y-auto focus:outline-none focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/10 disabled:bg-slate-100 disabled:cursor-not-allowed placeholder:text-slate-400 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            className={cn(
+              textareaStyles.base,
+              textareaStyles.size,
+              textareaStyles.border,
+              textareaStyles.transition,
+              textareaStyles.focus,
+              textareaStyles.disabled,
+              textareaStyles.placeholder,
+              textareaStyles.scrollbar
+            )}
             value={message}
             onChange={e => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -75,7 +110,13 @@ export function ChatInput({
         </div>
         <button
           type="submit"
-          className="w-11 h-11 rounded-full bg-primary-500 text-white border-none cursor-pointer flex items-center justify-center transition-colors duration-200 shrink-0 hover:bg-primary-600 disabled:bg-slate-400 disabled:cursor-not-allowed"
+          className={cn(
+            submitButtonStyles.base,
+            submitButtonStyles.color,
+            submitButtonStyles.transition,
+            submitButtonStyles.hover,
+            submitButtonStyles.disabled
+          )}
           disabled={isDisabled || !message.trim()}
           aria-label="送信"
         >
