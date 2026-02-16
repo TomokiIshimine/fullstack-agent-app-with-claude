@@ -18,8 +18,8 @@ ultrathink
 
 `$ARGUMENTS` を解析して入力タイプを判定する:
 
-- **Issue番号**（`#42`, `42` など数字を含む）→ Bash ツールで `gh issue view {番号} --json number,title,body,labels` を実行し、Issue の詳細を取得する
-- **フリーテキスト** → そのままバグの説明として使用する
+- **Issue番号**（`$ARGUMENTS` 全体が `#42` や `42` のように `^#?\d+$` にマッチする場合）→ `#` を除去して数値のみを取り出し、Bash ツールで `gh issue view {番号} --json number,title,body,labels` を実行して Issue の詳細を取得する
+- **フリーテキスト**（上記にマッチしない場合）→ そのままバグの説明として使用する
 
 ### Step 0-2: ブランチと作業ディレクトリの作成
 
