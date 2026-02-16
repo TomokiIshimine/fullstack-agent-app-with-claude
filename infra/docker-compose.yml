@@ -32,17 +32,18 @@ services:
       - FLASK_APP=${FLASK_APP:-app.main:app}
       - FLASK_ENV=development
       - FLASK_DEBUG=1
-      - DATABASE_URL=mysql+pymysql://${MYSQL_USER:-app_user}:${MYSQL_PASSWORD:-example-password}@db:3306/${MYSQL_DATABASE:-app_db}
+      - DATABASE_URL=mysql+pymysql://${MYSQL_USER:-app_user}:${MYSQL_PASSWORD:-apppassword123}@db:3306/${MYSQL_DATABASE:-app_db}
       - FRONTEND_URL=http://localhost:5174
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Test123!}
-      - SEED_TEST_USERS=${SEED_TEST_USERS:-false}
+      - SEED_TEST_USERS=${SEED_TEST_USERS:-true}
       - TEST_USER_EMAIL=${TEST_USER_EMAIL:-testuser@example.com}
       - TEST_USER_PASSWORD=${TEST_USER_PASSWORD:-Test123!}
       - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-dev-redis-password}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redispassword123}
     depends_on:
       db:
         condition: service_healthy
@@ -55,10 +56,10 @@ services:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-example-root-password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword123}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-app_db}
       MYSQL_USER: ${MYSQL_USER:-app_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-example-password}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-apppassword123}
     ports:
       - "3306:3306"
     volumes:
@@ -76,7 +77,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:-dev-redis-password}
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redispassword123}
     ports:
       - "6379:6379"
     volumes:
