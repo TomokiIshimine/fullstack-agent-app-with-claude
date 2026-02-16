@@ -85,30 +85,7 @@
     ],
     "deny": [],
     "ask": [
-      "Bash(git push:*)",
-      "Bash(git pull:*)",
-      "Bash(git reset:*)",
-      "Bash(git rebase:*)",
-      "Bash(git merge:*)",
-      "Bash(git cherry-pick:*)",
-      "Bash(git branch -D:*)",
-      "Bash(git tag -d:*)",
-      "Bash(rm:*)",
-      "Bash(rmdir:*)",
-      "Bash(mv:*)",
-      "Bash(cp:*)",
-      "Bash(docker rm:*)",
-      "Bash(docker rmi:*)",
-      "Bash(docker volume rm:*)",
-      "Bash(docker compose down:*)",
-      "Bash(docker compose rm:*)",
-      "Bash(docker restart:*)",
-      "Bash(docker stop:*)",
-      "Bash(docker kill:*)",
-      "Bash(make clean:*)",
-      "Bash(pnpm remove:*)",
-      "Bash(pnpm uninstall:*)",
-      "Bash(poetry remove:*)"
+      "Bash(git tag -d:*)"
     ]
   },
   "enabledMcpjsonServers": [
