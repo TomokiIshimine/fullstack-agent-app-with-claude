@@ -85,7 +85,6 @@
     ],
     "deny": [],
     "ask": [
-      "Bash(git tag -d:*)"
     ]
   },
   "enabledMcpjsonServers": [
