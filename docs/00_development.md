@@ -29,11 +29,14 @@ cp infra/.env.example infra/.env.development
 
 `infra/.env.development` を編集し、以下を設定:
 
-| 変数名 | 説明 | 例 |
-|--------|------|-----|
-| `ANTHROPIC_API_KEY` | Anthropic APIキー | `sk-ant-...` |
-| `JWT_SECRET_KEY` | JWT署名キー | 任意のランダム文字列 |
-| `FLASK_SECRET_KEY` | Flaskセッションキー | 任意のランダム文字列 |
+| 変数名 | 説明 | 必須 |
+|--------|------|------|
+| `ANTHROPIC_API_KEY` | Anthropic APIキー（`sk-ant-...`） | 必須 |
+| `MYSQL_ROOT_PASSWORD` | MySQL rootパスワード（デフォルト: `rootpassword123`） | 任意 |
+| `MYSQL_PASSWORD` | MySQL アプリユーザーパスワード（デフォルト: `apppassword123`） | 任意 |
+| `REDIS_PASSWORD` | Redisパスワード（デフォルト: `redispassword123`） | 任意 |
+
+> **Note**: `ANTHROPIC_API_KEY` 以外の変数はデフォルト値が設定済みのため、ローカル開発ではそのままで動作します。
 
 ### 3. 依存関係のインストール
 
