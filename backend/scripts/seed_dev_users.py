@@ -9,7 +9,7 @@ Double guard:
 
 Behavior:
   - Creates test user from TEST_USER_EMAIL / TEST_USER_PASSWORD env vars
-  - Skips if user already exists (idempotent)
+  - Updates credentials if user already exists (self-healing)
   - Always exits with code 0 (never blocks Flask startup)
 """
 
@@ -54,14 +54,19 @@ def seed_test_users() -> None:
     engine = get_engine()
 
     with Session(engine) as session:
+        expected_hash = hash_password(password)
         existing = session.query(User).filter(User.email == email).first()
         if existing:
-            print(f"[seed_dev_users] User {email} already exists (id={existing.id}). Skipping.")
+            existing.password_hash = expected_hash
+            existing.role = "user"
+            existing.name = "Test User"
+            session.commit()
+            print(f"[seed_dev_users] Updated test user: {email} (id={existing.id})")
             return
 
         user = User(
             email=email,
-            password_hash=hash_password(password),
+            password_hash=expected_hash,
             role="user",
             name="Test User",
         )
