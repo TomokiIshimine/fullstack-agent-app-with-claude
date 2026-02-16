@@ -1,7 +1,6 @@
 ---
 argument-hint: 開発したい機能の説明を入力してください
 description: 新規機能を要件定義からPR作成まで一気通貫で開発する。
-allowed-tools: Read(**)
 ---
 ultrathink
 
