@@ -19,7 +19,7 @@ Full-stack monorepo. Docker Compose for local development.
 
 | Layer | Frontend | Backend |
 |-------|----------|---------|
-| Framework | React 18 + Vite | Flask 3.x |
+| Framework | React 18 + Vite | Flask 2.x |
 | Language | TypeScript | Python 3.12 |
 | ORM/Validation | - | SQLAlchemy 2.x + Pydantic v2 |
 | Database | - | MySQL 8.0 |

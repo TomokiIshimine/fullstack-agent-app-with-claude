@@ -100,7 +100,7 @@ Models (ORM)
 ```
 [ログイン]
   POST /api/auth/login
-    → JWT access_token (httpOnly Cookie, 15分)
+    → JWT access_token (httpOnly Cookie, 24時間)
     → JWT refresh_token (httpOnly Cookie, 7日)
 
 [API呼び出し]

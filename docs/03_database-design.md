@@ -62,10 +62,10 @@ conversations 1──N messages 1──N tool_calls
 | conversation_id | BIGINT | FK → conversations.id (CASCADE) | 会話ID |
 | role | ENUM('user','assistant') | NOT NULL | 送信者ロール |
 | content | TEXT | NOT NULL | メッセージ本文 |
-| input_tokens | INT | NULLABLE | 入力トークン数（assistant のみ） |
-| output_tokens | INT | NULLABLE | 出力トークン数（assistant のみ） |
+| input_tokens | INT UNSIGNED | NULLABLE | 入力トークン数（assistant のみ） |
+| output_tokens | INT UNSIGNED | NULLABLE | 出力トークン数（assistant のみ） |
 | model | VARCHAR(255) | NULLABLE | 使用モデル名（assistant のみ） |
-| response_time_ms | INT | NULLABLE | 応答時間ms（assistant のみ） |
+| response_time_ms | INT UNSIGNED | NULLABLE | 応答時間ms（assistant のみ） |
 | cost_usd | DECIMAL(10,6) | NULLABLE | コストUSD（assistant のみ） |
 | created_at | DATETIME | DEFAULT NOW() | 作成日時 |
 
