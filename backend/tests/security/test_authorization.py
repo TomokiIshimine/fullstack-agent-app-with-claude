@@ -75,7 +75,7 @@ def test_expired_token_is_rejected(client, test_user):
 def test_token_with_wrong_signature_is_rejected(client, test_user):
     """Test that tokens signed with wrong secret are rejected."""
     # Create a token with wrong secret
-    wrong_secret = "wrong-secret-key"
+    wrong_secret = "wrong-secret-key-that-is-long-enough-for-hs256"
     jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256")
 
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
