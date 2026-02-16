@@ -23,14 +23,22 @@ services:
     working_dir: /app
     volumes:
       - ../backend:/app
-    command: poetry run flask run --host=0.0.0.0 --port=5000
+    command: >
+      sh -c "poetry run python scripts/seed_dev_users.py;
+             poetry run flask run --host=0.0.0.0 --port=5000"
     ports:
       - "5001:5000"
     environment:
       - FLASK_APP=${FLASK_APP:-app.main:app}
+      - FLASK_ENV=development
       - FLASK_DEBUG=1
       - DATABASE_URL=mysql+pymysql://${MYSQL_USER:-app_user}:${MYSQL_PASSWORD:-example-password}@db:3306/${MYSQL_DATABASE:-app_db}
       - FRONTEND_URL=http://localhost:5174
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Test123!}
+      - SEED_TEST_USERS=${SEED_TEST_USERS:-false}
+      - TEST_USER_EMAIL=${TEST_USER_EMAIL:-testuser@example.com}
+      - TEST_USER_PASSWORD=${TEST_USER_PASSWORD:-Test123!}
       - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
       - REDIS_HOST=redis
       - REDIS_PORT=6379

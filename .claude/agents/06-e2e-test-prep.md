@@ -42,7 +42,32 @@ Extract the following from these sources and use throughout the workflow:
 
 ## Workflow
 
-Execute the following 5 phases in order. If any critical phase fails, stop and report.
+Execute Phase 0 first. If all checks pass, skip directly to Phase 5 (summary). Otherwise, execute only the phases needed to fix the failures.
+
+### Phase 0: Quick Readiness Check
+
+Before running the full preparation workflow, perform a fast readiness check to determine if the environment is already prepared:
+
+1. **Service Health**: Run `make health` to check if all services are running
+2. **Test Account Verification**: Verify both test accounts can log in via curl:
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:5001/api/auth/login \
+     -H 'Content-Type: application/json' \
+     -d '{"email":"admin@example.com","password":"Test123!"}'
+   ```
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:5001/api/auth/login \
+     -H 'Content-Type: application/json' \
+     -d '{"email":"testuser@example.com","password":"Test123!"}'
+   ```
+3. **Frontend Access**: Use Playwright MCP `browser_navigate` to `http://localhost:5174` and take a `browser_snapshot` to confirm the page loads
+
+**Decision Logic:**
+- **All 3 checks pass** → Skip to Phase 5 with status "Already ready — all checks passed in Phase 0"
+- **Service health fails** → Execute Phase 1, then re-run Phase 0 checks for accounts and frontend
+- **Account login fails** → Execute Phase 3 only
+- **Frontend fails** → Execute Phase 4 only
+- **Multiple failures** → Execute only the failed phases in order (1 → 2 → 3 → 4)
 
 ### Phase 1: Service Health Check
 
