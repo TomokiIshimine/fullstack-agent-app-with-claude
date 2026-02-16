@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid as uuid_module
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 import pytest
 
@@ -403,7 +403,7 @@ class TestGetConversationTrends:
     def test_get_conversation_trends_with_data(self, app, dashboard_repo):
         """Test returns correct daily counts."""
         user_id = create_user_direct(app, email="user@example.com")
-        today = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+        today = datetime.combine(date.today(), time(12, 0))
         create_conversation_on_date(app, user_id, today)
         create_conversation_on_date(app, user_id, today)
 
@@ -463,7 +463,7 @@ class TestGetMessageTrends:
     def test_get_message_trends_with_data(self, app, dashboard_repo):
         """Test returns correct daily message counts."""
         user_id = create_user_direct(app, email="user@example.com")
-        today = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+        today = datetime.combine(date.today(), time(12, 0))
         conv_id, _ = create_conversation_on_date(app, user_id, today)
         create_message_with_metadata(app, conv_id, created_at=today)
         create_message_with_metadata(app, conv_id, created_at=today)
@@ -492,7 +492,7 @@ class TestGetTokenTrends:
     def test_get_token_trends_with_data(self, app, dashboard_repo):
         """Test returns sum of input+output tokens per day."""
         user_id = create_user_direct(app, email="user@example.com")
-        today = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+        today = datetime.combine(date.today(), time(12, 0))
         conv_id, _ = create_conversation_on_date(app, user_id, today)
         # Message with 100 input + 50 output = 150 total
         create_message_with_metadata(app, conv_id, input_tokens=100, output_tokens=50, created_at=today)
@@ -510,7 +510,7 @@ class TestGetTokenTrends:
     def test_get_token_trends_null_handling(self, app, dashboard_repo):
         """Test handles null tokens correctly."""
         user_id = create_user_direct(app, email="user@example.com")
-        today = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+        today = datetime.combine(date.today(), time(12, 0))
         conv_id, _ = create_conversation_on_date(app, user_id, today)
         create_message_with_metadata(app, conv_id, input_tokens=None, output_tokens=None, created_at=today)
         create_message_with_metadata(app, conv_id, input_tokens=100, output_tokens=50, created_at=today)
