@@ -3,7 +3,9 @@
 ## ER図
 
 ```
-users 1──N refresh_tokens
+users 1──1 user_settings
+  │
+  1──N refresh_tokens
   │
   1
   │
@@ -87,6 +89,18 @@ conversations 1──N messages 1──N tool_calls
 | completed_at | DATETIME | NULLABLE | 完了日時 |
 
 インデックス: `idx_tool_calls_message_id(message_id)`, `idx_tool_calls_tool_call_id(tool_call_id)`
+
+### user_settings
+
+| カラム名 | 型 | 制約 | 説明 |
+|---------|-----|------|------|
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 設定ID |
+| user_id | BIGINT UNSIGNED | FK → users.id (CASCADE), UNIQUE | ユーザーID（1ユーザー1レコード） |
+| send_shortcut | ENUM('enter','ctrl_enter') | NOT NULL, DEFAULT 'enter' | 送信ショートカットキー |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 作成日時 |
+| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP ON UPDATE | 更新日時 |
+
+インデックス: `user_id` のUNIQUE制約がインデックスを兼ねる
 
 ### schema_migrations
 

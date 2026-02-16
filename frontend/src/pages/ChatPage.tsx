@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConversations } from '@/hooks/useConversations'
 import { useUnifiedChat } from '@/hooks/useUnifiedChat'
+import { useUserSettings } from '@/hooks/useUserSettings'
 import { ChatSidebar, ChatInput, MessageList, ChatError } from '@/components/chat'
 import { Alert } from '@/components/ui'
 import { isConversationError } from '@/types/errors'
@@ -21,6 +22,7 @@ export function ChatPage() {
     loadConversations,
   } = useConversations()
 
+  const { sendShortcut } = useUserSettings()
   const chat = useUnifiedChat({ initialUuid: uuid })
 
   const handleNewChat = useCallback(() => {
@@ -137,7 +139,11 @@ export function ChatPage() {
               <ChatError error={chat.streamError} onDismiss={chat.clearStreamError} />
             </div>
           )}
-          <ChatInput onSend={handleSendMessage} disabled={chat.isStreaming || chat.isLoading} />
+          <ChatInput
+            onSend={handleSendMessage}
+            disabled={chat.isStreaming || chat.isLoading}
+            sendShortcut={sendShortcut}
+          />
         </div>
       </main>
     </div>

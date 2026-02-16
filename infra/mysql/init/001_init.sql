@@ -86,3 +86,13 @@ CREATE TABLE IF NOT EXISTS tool_calls (
 
 CREATE INDEX idx_tool_calls_message_id ON tool_calls (message_id);
 CREATE INDEX idx_tool_calls_tool_call_id ON tool_calls (tool_call_id);
+
+-- User settings table (per-user preferences)
+CREATE TABLE IF NOT EXISTS user_settings (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL UNIQUE,
+  send_shortcut ENUM('enter', 'ctrl_enter') NOT NULL DEFAULT 'enter',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

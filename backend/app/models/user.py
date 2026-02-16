@@ -51,6 +51,9 @@ class User(Base):
     conversations: Mapped[list["Conversation"]] = relationship(  # type: ignore  # noqa: F821
         "Conversation", back_populates="user", cascade="all, delete-orphan"
     )
+    settings: Mapped["UserSetting"] = relationship(  # type: ignore  # noqa: F821
+        "UserSetting", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"User(id={self.id!r}, email={self.email!r})"
