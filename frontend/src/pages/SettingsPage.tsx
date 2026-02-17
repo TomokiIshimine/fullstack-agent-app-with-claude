@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConversations } from '@/hooks/useConversations'
+import { ChatSettingsForm } from '@/components/settings/ChatSettingsForm'
 import { PasswordChangeForm } from '@/components/settings/PasswordChangeForm'
 import { ProfileUpdateForm } from '@/components/settings/ProfileUpdateForm'
 import { ChatSidebar } from '@/components/chat/ChatSidebar'
@@ -59,6 +60,7 @@ export function SettingsPage() {
 
           <div className="space-y-6">
             <ProfileUpdateForm user={user} onSuccess={handleProfileUpdate} />
+            <ChatSettingsForm onSuccess={handleSuccess} />
             <PasswordChangeForm onSuccess={() => handleSuccess('パスワードを変更しました')} />
           </div>
         </div>
@@ -89,6 +91,7 @@ export function SettingsPage() {
 
           <div className="space-y-6">
             <ProfileUpdateForm user={user} onSuccess={handleProfileUpdate} />
+            <ChatSettingsForm onSuccess={handleSuccess} />
             <PasswordChangeForm onSuccess={() => handleSuccess('パスワードを変更しました')} />
           </div>
         </div>

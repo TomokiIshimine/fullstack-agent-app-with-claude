@@ -36,6 +36,7 @@ from app.database import get_session
 from app.providers import BaseLLMProvider, create_provider
 from app.schemas.password import PasswordValidationError
 from app.schemas.user import UserValidationError
+from app.schemas.user_setting import UserSettingValidationError
 from app.schemas.validators import InvalidUUIDError, validate_uuid
 from app.services.admin_conversation_service import AdminConversationService
 from app.services.admin_dashboard_service import AdminDashboardService
@@ -44,6 +45,7 @@ from app.services.auth_service import AuthService
 from app.services.conversation_service import ConversationService
 from app.services.password_service import PasswordService
 from app.services.user_service import UserService
+from app.services.user_setting_service import UserSettingService
 
 logger = logging.getLogger(__name__)
 
@@ -255,6 +257,17 @@ def get_admin_conversation_service() -> AdminConversationService:
     return service
 
 
+def get_user_setting_service() -> UserSettingService:
+    """Return request-scoped UserSettingService instance."""
+    if service := g.get("user_setting_service"):
+        return service
+
+    session = get_session()
+    service = UserSettingService(session)
+    g.user_setting_service = service
+    return service
+
+
 def get_admin_dashboard_service() -> AdminDashboardService:
     """Return request-scoped AdminDashboardService instance."""
     if service := g.get("admin_dashboard_service"):
@@ -351,6 +364,18 @@ with_admin_dashboard_service: Callable[[RouteCallable], RouteCallable] = _create
 )
 with_admin_dashboard_service.__doc__ = "Inject AdminDashboardService and translate domain errors into HTTP responses."
 
+# User Settings has no specific domain errors, just use empty mapping
+_USER_SETTING_ERROR_MAPPING: ErrorMapping = {}
+
+with_user_setting_service: Callable[[RouteCallable], RouteCallable] = _create_service_decorator(
+    service_getter=get_user_setting_service,
+    service_kwarg="user_setting_service",
+    error_mapping=_USER_SETTING_ERROR_MAPPING,
+    fallback_error_class=Exception,
+    service_name="user_setting",
+)
+with_user_setting_service.__doc__ = "Inject UserSettingService and translate domain errors into HTTP responses."
+
 
 # === Request Validation Decorator ===
 
@@ -372,7 +397,7 @@ def validate_request_body(schema: type[SchemaType]) -> Callable[[RouteCallable],
                 messages = ", ".join(err.get("msg", "Invalid value") for err in exc.errors())
                 logger.warning("Validation failed for request body", extra={"path": request.path, "messages": messages})
                 raise BadRequest(description=f"Validation error: {messages}") from exc
-            except (UserValidationError, PasswordValidationError) as exc:
+            except (UserValidationError, PasswordValidationError, UserSettingValidationError) as exc:
                 logger.warning("Domain validation failed", extra={"path": request.path, "message": str(exc)})
                 raise BadRequest(description=str(exc)) from exc
 
@@ -447,6 +472,8 @@ __all__ = [
     "with_conversation_service",
     "with_password_service",
     "with_user_service",
+    "with_user_setting_service",
+    "get_user_setting_service",
     "validate_request_body",
     "validate_uuid_param",
 ]

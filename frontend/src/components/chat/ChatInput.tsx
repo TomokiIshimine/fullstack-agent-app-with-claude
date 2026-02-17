@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect, type KeyboardEvent, type FormEvent } from 'react'
 import { cn } from '@/lib/utils/cn'
+import { isMac, getModifierKeyLabel } from '@/lib/utils/platform'
+import type { SendShortcut } from '@/types/userSettings'
 
 /**
  * Textarea styles organized by category for maintainability
@@ -30,12 +32,14 @@ interface ChatInputProps {
   onSend: (message: string) => Promise<void>
   disabled?: boolean
   placeholder?: string
+  sendShortcut?: SendShortcut
 }
 
 export function ChatInput({
   onSend,
   disabled = false,
   placeholder = 'メッセージを入力...',
+  sendShortcut = 'enter',
 }: ChatInputProps) {
   const [message, setMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -75,12 +79,32 @@ export function ChatInput({
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // IME入力中（日本語変換中など）は送信しない
     if (e.nativeEvent.isComposing) return
+    // 設定ロード中はキーボード送信を無効化（誤送信防止）
+    if (!sendShortcut) return
 
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      void handleSubmit()
+    if (sendShortcut === 'enter') {
+      // Enter送信モード: Enter で送信、Shift+Enter で改行
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        void handleSubmit()
+      }
+    } else {
+      // Ctrl+Enter送信モード: Ctrl+Enter (macOS: Cmd+Enter) で送信
+      const isModifierPressed = isMac() ? e.metaKey : e.ctrlKey
+      if (e.key === 'Enter' && isModifierPressed) {
+        e.preventDefault()
+        void handleSubmit()
+      }
+      // Enter単押しは改行（デフォルト動作なので何もしない）
     }
   }
+
+  // ヒントテキストの生成
+  const modifierKey = getModifierKeyLabel()
+  const hintText =
+    !sendShortcut || sendShortcut === 'enter'
+      ? 'Enter で送信 / Shift+Enter で改行'
+      : `${modifierKey}+Enter で送信 / Enter で改行`
 
   const isDisabled = disabled || isSending
 
@@ -107,6 +131,7 @@ export function ChatInput({
             disabled={isDisabled}
             rows={1}
           />
+          <p className="mt-1 text-xs text-slate-400">{hintText}</p>
         </div>
         <button
           type="submit"
