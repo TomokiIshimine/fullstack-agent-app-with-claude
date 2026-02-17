@@ -79,6 +79,8 @@ export function ChatInput({
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // IME入力中（日本語変換中など）は送信しない
     if (e.nativeEvent.isComposing) return
+    // 設定ロード中はキーボード送信を無効化（誤送信防止）
+    if (!sendShortcut) return
 
     if (sendShortcut === 'enter') {
       // Enter送信モード: Enter で送信、Shift+Enter で改行
@@ -100,7 +102,7 @@ export function ChatInput({
   // ヒントテキストの生成
   const modifierKey = getModifierKeyLabel()
   const hintText =
-    sendShortcut === 'enter'
+    !sendShortcut || sendShortcut === 'enter'
       ? 'Enter で送信 / Shift+Enter で改行'
       : `${modifierKey}+Enter で送信 / Enter で改行`
 

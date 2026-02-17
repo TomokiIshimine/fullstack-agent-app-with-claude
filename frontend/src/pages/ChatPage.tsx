@@ -22,7 +22,7 @@ export function ChatPage() {
     loadConversations,
   } = useConversations()
 
-  const { sendShortcut } = useUserSettings()
+  const { sendShortcut, isLoading: isLoadingSettings } = useUserSettings()
   const chat = useUnifiedChat({ initialUuid: uuid })
 
   const handleNewChat = useCallback(() => {
@@ -142,7 +142,7 @@ export function ChatPage() {
           <ChatInput
             onSend={handleSendMessage}
             disabled={chat.isStreaming || chat.isLoading}
-            sendShortcut={sendShortcut}
+            sendShortcut={isLoadingSettings ? undefined : sendShortcut}
           />
         </div>
       </main>

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Literal
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.repositories.user_setting_repository import UserSettingRepository
@@ -47,6 +48,9 @@ class UserSettingService:
         """
         Update user settings (upsert: create if not exists, update if exists).
 
+        Handles race conditions where concurrent requests may both attempt to
+        insert a new record by catching IntegrityError and retrying as update.
+
         Args:
             user_id: ID of the user
             send_shortcut: New send shortcut value
@@ -60,8 +64,16 @@ class UserSettingService:
             self.setting_repo.update(setting, send_shortcut=send_shortcut)
             logger.info(f"User settings updated: user_id={user_id}, " f"send_shortcut={send_shortcut}")
         else:
-            self.setting_repo.create(user_id=user_id, send_shortcut=send_shortcut)
-            logger.info(f"User settings created: user_id={user_id}, " f"send_shortcut={send_shortcut}")
+            try:
+                self.setting_repo.create(user_id=user_id, send_shortcut=send_shortcut)
+                logger.info(f"User settings created: user_id={user_id}, " f"send_shortcut={send_shortcut}")
+            except IntegrityError:
+                # Concurrent insert race: rollback and retry as update
+                self.session.rollback()
+                setting = self.setting_repo.find_by_user_id(user_id)
+                if setting:
+                    self.setting_repo.update(setting, send_shortcut=send_shortcut)
+                    logger.info(f"User settings updated (retry after conflict): user_id={user_id}, " f"send_shortcut={send_shortcut}")
 
         return {"send_shortcut": send_shortcut}
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { getUserSettings, updateUserSettings } from '@/lib/api/userSettings'
 import { logger } from '@/lib/logger'
 import type { SendShortcut } from '@/types/userSettings'
@@ -27,6 +27,7 @@ export function useUserSettings(): UseUserSettingsReturn {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const updateRequestRef = useRef(0)
 
   // Fetch settings on mount
   useEffect(() => {
@@ -63,6 +64,7 @@ export function useUserSettings(): UseUserSettingsReturn {
   const updateSendShortcut = useCallback(
     async (value: SendShortcut) => {
       const previousValue = sendShortcut
+      const requestId = ++updateRequestRef.current
       // Optimistic update
       setSendShortcut(value)
       setError(null)
@@ -70,12 +72,17 @@ export function useUserSettings(): UseUserSettingsReturn {
 
       try {
         await updateUserSettings({ send_shortcut: value })
-        setSuccessMessage('チャット設定を更新しました')
+        // Only apply success if this is still the latest request
+        if (requestId === updateRequestRef.current) {
+          setSuccessMessage('チャット設定を更新しました')
+        }
         logger.info('User settings updated', { send_shortcut: value })
       } catch (err) {
-        // Rollback on failure
-        setSendShortcut(previousValue)
-        setError('設定の更新に失敗しました')
+        // Only rollback if this is still the latest request
+        if (requestId === updateRequestRef.current) {
+          setSendShortcut(previousValue)
+          setError('設定の更新に失敗しました')
+        }
         logger.error('Failed to update user settings', err as Error)
       }
     },
