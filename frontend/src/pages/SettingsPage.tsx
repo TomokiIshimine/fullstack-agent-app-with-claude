@@ -70,14 +70,14 @@ export function SettingsPage() {
 
   // User layout (with sidebar)
   return (
-    <div className="settings-layout">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-slate-50">
       <ChatSidebar
         conversations={conversations}
         isLoading={isLoadingConversations}
         onNewChat={handleNewChat}
         onSelectConversation={handleSelectConversation}
       />
-      <div className="settings-content">
+      <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 py-8">
           <h1 className="text-2xl font-bold text-slate-800 mb-8">設定</h1>
 
