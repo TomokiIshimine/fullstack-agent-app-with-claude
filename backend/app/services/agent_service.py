@@ -15,7 +15,7 @@ from app.constants.agent import MAX_CONVERSATION_TITLE_LENGTH, TITLE_TRUNCATION_
 from app.constants.error_types import LLMErrorType
 from app.constants.http import HTTP_BAD_REQUEST, HTTP_INTERNAL_SERVER_ERROR
 from app.constants.jwt import MS_PER_SECOND
-from app.core.exceptions import LLMConnectionError, LLMContextLengthError, LLMRateLimitError, LLMStreamError
+from app.core.exceptions import LLMConnectionError, LLMContextLengthError, LLMRateLimitError, LLMStreamError, ProviderAPIKeyError
 from app.providers import BaseLLMProvider, create_provider
 from app.tools import ToolRegistry, get_tool_registry
 
@@ -510,6 +510,11 @@ class AgentService:
                 if e.status_code == HTTP_BAD_REQUEST and "context_length" in str(e).lower():
                     logger.error(f"Context length exceeded: {e}")
                     raise LLMContextLengthError()
+
+                # Authentication/permission errors (401, 403) - API key issues
+                if e.status_code in (401, 403):
+                    logger.error(f"Authentication error ({e.status_code}): {e}")
+                    raise ProviderAPIKeyError(provider=self.provider_name)
 
                 # Retry on server errors (500+)
                 if e.status_code >= HTTP_INTERNAL_SERVER_ERROR and attempt < max_attempts:

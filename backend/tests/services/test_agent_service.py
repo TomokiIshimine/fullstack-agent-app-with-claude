@@ -11,7 +11,7 @@ from httpx import Request, Response
 from langchain_core.messages import AIMessageChunk, ToolMessage
 
 from app.constants.error_types import LLMErrorType
-from app.core.exceptions import LLMConnectionError, LLMContextLengthError, LLMRateLimitError, LLMStreamError, ProviderNotFoundError
+from app.core.exceptions import LLMConnectionError, LLMContextLengthError, LLMProviderError, LLMRateLimitError, LLMStreamError, ProviderAPIKeyError, ProviderNotFoundError
 from app.providers import LLMConfig, create_provider
 from app.services.agent_service import AgentService, MessageCompleteEvent, RetryEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent
 from app.tools import ToolRegistry
@@ -1228,3 +1228,65 @@ class TestAgentServiceRetry:
         # Should not retry - only one call
         assert mock_agent.stream.call_count == 1
         assert not mock_sleep.called
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_authentication_error_raises_provider_error(self, mock_create_provider, mock_create_agent):
+        """Test that 401 AuthenticationError raises LLMProviderError immediately without retry."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_agent = MagicMock()
+        mock_agent.stream.side_effect = APIStatusError(
+            message="invalid x-api-key",
+            response=Response(401, request=Request("POST", "https://api.anthropic.com")),
+            body=None,
+        )
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        messages = [{"role": "user", "content": "Hi"}]
+
+        with pytest.raises(ProviderAPIKeyError, match="AIサービスの設定に問題があります"):
+            list(service.generate_response(messages))
+
+        # Should not retry - only one call
+        assert mock_agent.stream.call_count == 1
+
+    @patch("app.services.agent_service.create_react_agent")
+    @patch("app.services.agent_service.create_provider")
+    def test_permission_denied_error_raises_provider_error(self, mock_create_provider, mock_create_agent):
+        """Test that 403 PermissionDeniedError raises ProviderAPIKeyError immediately without retry."""
+        mock_llm = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.create_chat_model.return_value = mock_llm
+        mock_provider.provider_name = "anthropic"
+        mock_provider.model_name = "claude-3"
+        mock_provider.config.max_tokens = 4096
+        mock_provider.config.max_retries = 3
+        mock_provider.config.retry_delay = 1.0
+        mock_create_provider.return_value = mock_provider
+
+        mock_agent = MagicMock()
+        mock_agent.stream.side_effect = APIStatusError(
+            message="permission denied",
+            response=Response(403, request=Request("POST", "https://api.anthropic.com")),
+            body=None,
+        )
+        mock_create_agent.return_value = mock_agent
+
+        service = AgentService()
+        messages = [{"role": "user", "content": "Hi"}]
+
+        with pytest.raises(ProviderAPIKeyError, match="AIサービスの設定に問題があります"):
+            list(service.generate_response(messages))
+
+        # Should not retry - only one call
+        assert mock_agent.stream.call_count == 1
