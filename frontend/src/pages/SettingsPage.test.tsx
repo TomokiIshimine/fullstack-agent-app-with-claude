@@ -99,8 +99,8 @@ describe('SettingsPage', () => {
         expect(screen.getByRole('heading', { name: '設定' })).toBeInTheDocument()
       })
 
-      // Admin layout should not have sidebar class
-      expect(container.querySelector('.settings-layout')).not.toBeInTheDocument()
+      // Admin layout should not have sidebar
+      expect(container.querySelector('aside')).not.toBeInTheDocument()
     })
   })
 
@@ -117,8 +117,8 @@ describe('SettingsPage', () => {
         expect(screen.getByRole('heading', { name: '設定' })).toBeInTheDocument()
       })
 
-      // User layout should have settings-layout class
-      expect(container.querySelector('.settings-layout')).toBeInTheDocument()
+      // User layout should have sidebar
+      expect(container.querySelector('aside')).toBeInTheDocument()
     })
   })
 
