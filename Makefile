@@ -96,9 +96,14 @@ setup: install
 	@printf '✅ Environment setup complete. Run "make up" to start the stack.\n'
 
 up:
+	@if [ ! -f infra/.env.development ]; then \
+		printf '📋 Creating infra/.env.development from .env.example...\n'; \
+		cp infra/.env.example infra/.env.development; \
+		printf '   ✅ Created. Edit infra/.env.development to set ANTHROPIC_API_KEY.\n'; \
+	fi
 	@printf '🚀 Starting services...\n'
 	@$(COMPOSE) up -d --quiet-pull 2>/dev/null || $(COMPOSE) up -d
-	@printf '✅ Services started (frontend :5174, backend :5000)\n'
+	@printf '✅ Services started (frontend :5174, backend :5001)\n'
 
 down:
 	@printf '🛑 Stopping services...\n'
