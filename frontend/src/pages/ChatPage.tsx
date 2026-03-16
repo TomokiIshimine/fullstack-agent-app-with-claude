@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConversations } from '@/hooks/useConversations'
@@ -41,6 +41,10 @@ export function ChatPage() {
     [navigate]
   )
 
+  // Track the current conversation uuid to detect stale async callbacks
+  const currentUuidRef = useRef(uuid)
+  currentUuidRef.current = uuid
+
   const handleSendMessage = useCallback(
     async (content: string) => {
       if (chat.isStreaming) return
@@ -51,9 +55,12 @@ export function ChatPage() {
 
         if (result.isNew) {
           void loadConversations()
+          currentUuidRef.current = result.uuid
           navigate(`/chat/${result.uuid}`, { replace: true })
         }
-        // Fetch suggestions after navigation so conversationUuid is stable
+        // Guard: skip if user navigated to a different conversation while streaming
+        const expectedUuid = result.isNew ? result.uuid : uuid
+        if (currentUuidRef.current !== expectedUuid) return
         suggestions.fetchSuggestions(result.isNew ? result.uuid : undefined)
       } catch (err) {
         // Check if we should navigate despite error
