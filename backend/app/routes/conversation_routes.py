@@ -11,7 +11,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from app.constants.error_types import LLMErrorType
 from app.constants.http import HTTP_CREATED, HTTP_NO_CONTENT, HTTP_OK
 from app.constants.pagination import DEFAULT_PER_PAGE
-from app.constants.rate_limit import CREATE_CONVERSATION_RATE_LIMIT, SEND_MESSAGE_RATE_LIMIT
+from app.constants.rate_limit import CREATE_CONVERSATION_RATE_LIMIT, SEND_MESSAGE_RATE_LIMIT, SUGGESTION_RATE_LIMIT
 from app.constants.sse_events import SERVICE_TO_SSE_EVENT_MAP, SSEEvent
 from app.core.exceptions import (
     ConversationAccessDeniedError,
@@ -23,9 +23,10 @@ from app.core.exceptions import (
     LLMStreamError,
 )
 from app.limiter import limiter
-from app.routes.dependencies import validate_request_body, validate_uuid_param, with_conversation_service
+from app.routes.dependencies import validate_request_body, validate_uuid_param, with_conversation_service, with_suggestion_service
 from app.schemas.conversation import CreateConversationRequest, SendMessageRequest
 from app.services.conversation_service import ConversationService
+from app.services.suggestion_service import SuggestionService
 from app.utils.auth_decorator import require_auth
 
 logger = logging.getLogger(__name__)
@@ -186,6 +187,12 @@ def create_conversation(*, data: CreateConversationRequest, conversation_service
                         user_message_id = event_data.get("user_message_id")
                     sse_event = SERVICE_TO_SSE_EVENT_MAP.get(event_type)
                     if sse_event:
+                        # Commit the service session before message_end so
+                        # subsequent requests (e.g. suggestions) can see the data.
+                        # Note: use service's session directly because get_session()
+                        # may return a different session in threaded mode.
+                        if sse_event == SSEEvent.MESSAGE_END:
+                            conversation_service.session.commit()
                         yield f"event: {sse_event}\ndata: {json.dumps(event_data)}\n\n"
             except Exception as exc:
                 logger.error("Error during conversation creation streaming", exc_info=True)
@@ -332,6 +339,10 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
                         user_message_id = event_data.get("user_message_id")
                     sse_event = SERVICE_TO_SSE_EVENT_MAP.get(event_type)
                     if sse_event:
+                        # Commit the service session before message_end so
+                        # subsequent requests (e.g. suggestions) can see the data.
+                        if sse_event == SSEEvent.MESSAGE_END:
+                            conversation_service.session.commit()
                         yield f"event: {sse_event}\ndata: {json.dumps(event_data)}\n\n"
             except Exception as exc:
                 logger.error("Error during streaming", exc_info=True)
@@ -356,6 +367,38 @@ def send_message(uuid: str, *, data: SendMessageRequest, conversation_service: C
         )
         logger.info(f"POST /api/conversations/{uuid}/messages - Message exchange completed")
         return jsonify(response.model_dump(mode="json")), HTTP_OK
+
+
+@conversation_bp.post("/<uuid>/suggestions")
+@require_auth
+@validate_uuid_param("uuid")
+@limiter.limit(SUGGESTION_RATE_LIMIT)
+@with_suggestion_service
+def generate_suggestions(uuid: str, *, suggestion_service: SuggestionService):
+    """
+    Generate reply suggestions for a conversation.
+
+    Path parameters:
+        uuid: Conversation UUID
+
+    Returns:
+        {
+            "suggestions": ["suggestion 1", "suggestion 2", ...]
+        }
+    """
+    user_id = g.user_id
+    logger.info(f"POST /api/conversations/{uuid}/suggestions - Generating suggestions for user_id={user_id}")
+
+    try:
+        response = suggestion_service.generate_suggestions(uuid=uuid, user_id=user_id)
+    except (ConversationNotFoundError, ConversationAccessDeniedError):
+        raise
+    except Exception:
+        logger.warning(f"POST /api/conversations/{uuid}/suggestions - Failed to generate suggestions", exc_info=True)
+        return jsonify({"suggestions": []}), HTTP_OK
+
+    logger.info(f"POST /api/conversations/{uuid}/suggestions - Generated {len(response.suggestions)} suggestions")
+    return jsonify(response.model_dump(mode="json")), HTTP_OK
 
 
 __all__ = ["conversation_bp"]

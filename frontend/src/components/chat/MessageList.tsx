@@ -5,6 +5,7 @@ import type { RetryStatus } from '@/types/errors'
 import { MessageItem } from './MessageItem'
 import { StreamingMessage } from './StreamingMessage'
 import { RetryIndicator } from './RetryIndicator'
+import { SuggestionButtons } from './SuggestionButtons'
 
 interface MessageListProps {
   messages: Message[]
@@ -13,6 +14,9 @@ interface MessageListProps {
   streamingToolCalls?: StreamingToolCall[]
   retryStatus?: RetryStatus | null
   userName?: string
+  suggestions?: string[]
+  isSuggestionsLoading?: boolean
+  onSuggestionSelect?: (suggestion: string) => void
 }
 
 export function MessageList({
@@ -22,6 +26,9 @@ export function MessageList({
   streamingToolCalls = [],
   retryStatus,
   userName,
+  suggestions = [],
+  isSuggestionsLoading = false,
+  onSuggestionSelect,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollRequestRef = useRef<number | null>(null)
@@ -79,6 +86,13 @@ export function MessageList({
         <div className="px-4 py-2">
           <RetryIndicator status={retryStatus} />
         </div>
+      )}
+      {!isStreaming && onSuggestionSelect && (
+        <SuggestionButtons
+          suggestions={suggestions}
+          isLoading={isSuggestionsLoading}
+          onSelect={onSuggestionSelect}
+        />
       )}
       <div ref={bottomRef} />
     </div>

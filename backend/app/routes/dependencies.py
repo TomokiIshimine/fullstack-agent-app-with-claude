@@ -44,6 +44,7 @@ from app.services.agent_service import AgentService
 from app.services.auth_service import AuthService
 from app.services.conversation_service import ConversationService
 from app.services.password_service import PasswordService
+from app.services.suggestion_service import SuggestionService
 from app.services.user_service import UserService
 from app.services.user_setting_service import UserSettingService
 
@@ -268,6 +269,17 @@ def get_user_setting_service() -> UserSettingService:
     return service
 
 
+def get_suggestion_service() -> SuggestionService:
+    """Return request-scoped SuggestionService instance."""
+    if service := g.get("suggestion_service"):
+        return service
+
+    session = get_session()
+    service = SuggestionService(session)
+    g.suggestion_service = service
+    return service
+
+
 def get_admin_dashboard_service() -> AdminDashboardService:
     """Return request-scoped AdminDashboardService instance."""
     if service := g.get("admin_dashboard_service"):
@@ -376,6 +388,20 @@ with_user_setting_service: Callable[[RouteCallable], RouteCallable] = _create_se
 )
 with_user_setting_service.__doc__ = "Inject UserSettingService and translate domain errors into HTTP responses."
 
+_SUGGESTION_ERROR_MAPPING: ErrorMapping = {
+    ConversationNotFoundError: NotFound,
+    ConversationAccessDeniedError: Forbidden,
+}
+
+with_suggestion_service: Callable[[RouteCallable], RouteCallable] = _create_service_decorator(
+    service_getter=get_suggestion_service,
+    service_kwarg="suggestion_service",
+    error_mapping=_SUGGESTION_ERROR_MAPPING,
+    fallback_error_class=Exception,
+    service_name="suggestion",
+)
+with_suggestion_service.__doc__ = "Inject SuggestionService and translate domain errors into HTTP responses."
+
 
 # === Request Validation Decorator ===
 
@@ -465,15 +491,17 @@ __all__ = [
     "get_conversation_service",
     "get_llm_provider",
     "get_password_service",
+    "get_suggestion_service",
     "get_user_service",
+    "get_user_setting_service",
     "with_admin_conversation_service",
     "with_admin_dashboard_service",
     "with_auth_service",
     "with_conversation_service",
     "with_password_service",
+    "with_suggestion_service",
     "with_user_service",
     "with_user_setting_service",
-    "get_user_setting_service",
     "validate_request_body",
     "validate_uuid_param",
 ]

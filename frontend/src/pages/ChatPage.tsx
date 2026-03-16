@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useConversations } from '@/hooks/useConversations'
 import { useUnifiedChat } from '@/hooks/useUnifiedChat'
 import { useUserSettings } from '@/hooks/useUserSettings'
+import { useSuggestions } from '@/hooks/useSuggestions'
 import { ChatSidebar, ChatInput, MessageList, ChatError } from '@/components/chat'
 import { Alert } from '@/components/ui'
 import { isConversationError } from '@/types/errors'
@@ -24,6 +25,7 @@ export function ChatPage() {
 
   const { sendShortcut, isLoading: isLoadingSettings } = useUserSettings()
   const chat = useUnifiedChat({ initialUuid: uuid })
+  const suggestions = useSuggestions({ conversationUuid: uuid })
 
   const handleNewChat = useCallback(() => {
     chat.reset()
@@ -42,6 +44,7 @@ export function ChatPage() {
   const handleSendMessage = useCallback(
     async (content: string) => {
       if (chat.isStreaming) return
+      suggestions.clearSuggestions()
 
       try {
         const result = await chat.sendMessage(content)
@@ -50,6 +53,8 @@ export function ChatPage() {
           void loadConversations()
           navigate(`/chat/${result.uuid}`, { replace: true })
         }
+        // Fetch suggestions after navigation so conversationUuid is stable
+        suggestions.fetchSuggestions(result.isNew ? result.uuid : undefined)
       } catch (err) {
         // Check if we should navigate despite error
         if (isConversationError(err) && err.userMessagePersisted && err.uuid) {
@@ -62,7 +67,7 @@ export function ChatPage() {
         // Error is already set in hook state
       }
     },
-    [chat, loadConversations, navigate]
+    [chat, suggestions, loadConversations, navigate]
   )
 
   const error = conversationsError || chat.error
@@ -125,6 +130,9 @@ export function ChatPage() {
               streamingToolCalls={chat.streamingToolCalls}
               retryStatus={chat.retryStatus}
               userName={user?.name || undefined}
+              suggestions={suggestions.suggestions}
+              isSuggestionsLoading={suggestions.isLoading}
+              onSuggestionSelect={handleSendMessage}
             />
           </div>
         ) : (

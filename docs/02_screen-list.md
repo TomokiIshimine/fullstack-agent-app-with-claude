@@ -42,7 +42,7 @@
 | 画面 | 主要コンポーネント |
 |------|-------------------|
 | S001 | LoginPage |
-| S002 | ChatPage → ChatSidebar, ChatInput, MessageList, MessageItem, StreamingMessage, MarkdownRenderer, CodeBlock, ToolCallsGroup |
+| S002 | ChatPage → ChatSidebar, ChatInput, MessageList, MessageItem, StreamingMessage, MarkdownRenderer, CodeBlock, ToolCallsGroup, SuggestionButtons |
 | S003 | SettingsPage → ProfileUpdateForm, ChatSettingsForm, PasswordChangeForm |
 | S004 | UserManagementPage → UserList, UserCreateForm, InitialPasswordModal, Pagination |
 | S005 | DashboardPage → StatCard, TrendChart, RankingTable, PeriodFilter |
