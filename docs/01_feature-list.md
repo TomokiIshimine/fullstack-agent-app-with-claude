@@ -20,3 +20,4 @@
 | F014 | ヘルスチェック | アプリケーション・DB状態確認 | - | GET /api/health | 実装済み |
 | F015 | ロールベースアクセス制御 | Admin/Userロールによるアクセス制御 | 全画面 | 全エンドポイント | 実装済み |
 | F016 | 送信ショートカットキー設定 | メッセージ送信キーをEnterまたはCtrl+Enter(Cmd+Enter)から選択 | S003, S002 | GET/PATCH /api/users/me/settings | 実装済み |
+| F017 | 返信サジェスション | AIレスポンス後に返信候補を3〜5個自動生成・表示 | S002 | POST /api/conversations/{uuid}/suggestions | 実装済み |

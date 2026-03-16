@@ -205,13 +205,11 @@ class TestApplyMigration:
 
             # Create migration file with multiple statements
             migration_file = tmp_path / "101_multiple_statements.sql"
-            migration_file.write_text(
-                """
+            migration_file.write_text("""
                 CREATE TABLE users_temp (id INTEGER PRIMARY KEY);
                 CREATE TABLE posts_temp (id INTEGER PRIMARY KEY, user_id INTEGER);
                 CREATE INDEX idx_posts_user ON posts_temp(user_id);
-                """
-            )
+                """)
 
             # Apply migration
             apply_migration(session, migration_file)
@@ -227,14 +225,12 @@ class TestApplyMigration:
             session = get_session()
 
             migration_file = tmp_path / "102_with_comments.sql"
-            migration_file.write_text(
-                """
+            migration_file.write_text("""
                 -- This is a comment
                 CREATE TABLE comment_test (id INTEGER PRIMARY KEY);
                 /* Multi-line
                    comment */
-                """
-            )
+                """)
 
             # Apply migration
             apply_migration(session, migration_file)

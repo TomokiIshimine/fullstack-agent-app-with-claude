@@ -134,3 +134,7 @@ button {
 .animate-scale-in {
   animation: scale-in 200ms ease-out;
 }
+
+.animate-fadeIn {
+  animation: fade-in 300ms ease-out;
+}

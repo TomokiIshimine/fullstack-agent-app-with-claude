@@ -11,6 +11,7 @@ LOGOUT_RATE_LIMIT = "20 per minute"
 # Conversation endpoint rate limits
 CREATE_CONVERSATION_RATE_LIMIT = "30/minute"
 SEND_MESSAGE_RATE_LIMIT = "30/minute"
+SUGGESTION_RATE_LIMIT = "60/minute"
 
 # Rate limit strategy
 DEFAULT_RATE_LIMIT_STRATEGY = "fixed-window"
@@ -22,5 +23,6 @@ __all__ = [
     "LOGOUT_RATE_LIMIT",
     "CREATE_CONVERSATION_RATE_LIMIT",
     "SEND_MESSAGE_RATE_LIMIT",
+    "SUGGESTION_RATE_LIMIT",
     "DEFAULT_RATE_LIMIT_STRATEGY",
 ]
