@@ -50,14 +50,14 @@ export function useSuggestions({ conversationUuid }: UseSuggestionsOptions): Use
 
       const attemptFetch = (retriesLeft: number): void => {
         fetchSuggestionsApi(uuid, controller.signal)
-          .then((data) => {
+          .then(data => {
             if (!controller.signal.aborted) {
               setSuggestions(data.suggestions)
               setIsLoading(false)
               logger.debug('Suggestions fetched', { count: data.suggestions.length })
             }
           })
-          .catch((err) => {
+          .catch(err => {
             if (controller.signal.aborted) return
 
             const status = err?.status ?? err?.response?.status
