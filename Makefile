@@ -206,9 +206,9 @@ lint-ci:
 	@$(POETRY_QUIET) run mypy app
 
 format-check-ci:
-	@$(PNPM_QUIET) exec prettier --check --log-level error $(PRETTIER_PATTERNS)
-	@$(POETRY_QUIET) run isort --check-only app tests
-	@$(POETRY_QUIET) run black --check app tests
+	$(PNPM) exec prettier --check $(PRETTIER_PATTERNS)
+	$(POETRY) run isort --check-only app tests
+	$(POETRY) run black --check app tests
 
 test-frontend-ci:
 	@$(PNPM_QUIET) run test:coverage
